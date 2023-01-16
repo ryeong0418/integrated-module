@@ -1,0 +1,9 @@
+pip install psycopg2
+pip install pandas
+pip install sqlalchemy
+pip install pyarrow
+pip install xlwt
+pip install openpyxl
+pip install sqlparse
+pip install modin[all]
+pip install dask[complete]

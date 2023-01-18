@@ -5,6 +5,8 @@
 ./job/log
 ./job/log/*
 
+export/
+
 *.pyc
 
 ### PyCharm ###

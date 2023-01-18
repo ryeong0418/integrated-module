@@ -280,7 +280,7 @@ def action():
         start_tm = datetime.now() # Query 시작 시간 추출하기 
         logger.info("Insert 시작시간 : "+ str(start_tm))
         
-        engine = create_engine("postgresql+psycopg2://{user}:{pw}@127.0.0.1:{port}/{db}".format(user=im_user[0], pw=im_password[0], ip=im_host[0], port=im_port[0], db=im_dbname[0]))
+        engine = create_engine("postgresql+psycopg2://{user}:{pw}@{ip}:{port}/{db}".format(user=im_user[0], pw=im_password[0], ip=im_host[0], port=im_port[0], db=im_dbname[0]))
         logger.info("import DB 접속 정보 : IP="+ im_host[0] + " PORT="+ im_port[0] + " SID="+ im_dbname[0] + " USER="+ im_user[0] + " PW="+ im_password[0])
 
         result.to_sql(name = 'ae_db_info',

@@ -20,10 +20,10 @@
  
   <import_db>
 	  	<db_type>postgres</db_type>
-	  	<conn_ip>127.0.0.1</conn_ip>
+	  	<conn_ip>10.10.47.241</conn_ip>
 		<conn_port>5432</conn_port>
-		<sid>AEproject</sid>
-		<user>postgres</user>
-		<password>postgres</password>
+		<sid>sh_dev</sid>
+		<user>sh_dev</user>
+		<password>sh_dev</password>
  </import_db>  
 </DBInfo>

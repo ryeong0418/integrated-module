@@ -3,6 +3,7 @@ import psycopg2 as db #postgreDB 연동 모듈 pip install psycopg2
 import pandas as pd   #데이터 활용 모듈 pip install pandas
 import xml.etree.ElementTree as ET #xml 관리 모듈
 from datetime import datetime, timedelta
+from pathlib import Path
 import log # 별도로 만든 log.py 클래스를 사용하기 위해 import
 import traceback # Exception Stack Trace 내용을 출력하기 위한 모듈
 from io import StringIO # DataFrame Info 정보를 출력하기 위해 사용한 모듈 
@@ -75,10 +76,13 @@ class wasBatch:
                 #print(df.head())        
                 
                 df1 = df.astype({'txn_id':'category'})
+
+                log_path = Path('../export_file/parquet')
+                log_path.mkdir(exist_ok=True, parents=True)
                 
                 # 다양한 파일 저장 방식 중 효율이 제일 좋은 parquest 방식으로 저장 
                 #df.to_csv(".//txn_detail_csv_"+date_condition+".csv", index=False)
-                df1.to_parquet("..\\..\\..\\export_file\\parquet\\txn_detail_parquet_"+date_condition+".parquet", engine='pyarrow', index=False, compression='gzip')
+                df1.to_parquet(f"{log_path}/txn_detail_parquet_"+date_condition+".parquet", engine='pyarrow', index=False, compression='gzip')
                 #df.to_pickle(".//txn_detail_pickle_"+date_condition+".pkl")
                 #df.to_feather(".//txn_detail_feather_"+date_condition+".ftr")
                 

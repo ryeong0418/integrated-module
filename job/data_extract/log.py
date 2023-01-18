@@ -1,6 +1,7 @@
 # logging 모듈 import install 하지 않아도 된다. 
 #해당 log.py를 사용하고자 하는 .py와 동일한 디렉토리에 놓고 import log.py를 하면 get_logger() 호출을 통해 사용할 수 있다.
 from logging import handlers
+from pathlib import Path
 import logging
 
 #if __name__ == '__main__':
@@ -18,7 +19,10 @@ def get_logger(name=None):
     ## when/interval - 저장 주기 설정 시 midnight -> 매일밤 자정에 새 로그 파일이 만들어진다(interval 은 atTime을 지정하지 않으면 자정에 수행)
     ## backupCount - 최대 백업할 로그 파일의 개수( 0으로 세팅시 무한 생성 )
     ## suffix - 파일이 만들어지는 형식 기준 log_debug.log뒤에 suffix(%Y%m%d)가 추가된다
-    timedfilehandler = logging.handlers.TimedRotatingFileHandler(filename="..\\..\\..\\log\\log_debug.log", when='midnight', interval=1, backupCount=0, encoding='utf-8')
+    log_path = Path('../log')
+    log_path.mkdir(exist_ok=True, parents=True)
+
+    timedfilehandler = logging.handlers.TimedRotatingFileHandler(filename=f"{log_path}/log_debug.log", when='midnight', interval=1, backupCount=0, encoding='utf-8')
     timedfilehandler.setFormatter(formatter)
     timedfilehandler.suffix = "%Y%m%d"        
     

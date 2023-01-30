@@ -233,6 +233,9 @@ $RECYCLE.BIN/
 # logs
 logs/
 
+# local config, logger
+resources/**/*-local.json
+
 # export file
 export_file/
 

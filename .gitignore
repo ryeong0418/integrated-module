@@ -230,4 +230,10 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+# logs
+logs/
+
+# export file
+export_file/
+
 # End of https://www.toptal.com/developers/gitignore/api/windows,pycharm,python

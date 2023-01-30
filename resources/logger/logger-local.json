@@ -1,0 +1,32 @@
+{
+    "version": 1,
+    "disable_existing_loggers": false,
+    "formatters": {
+        "basic": {
+            "format": "%(asctime)s [%(levelname)5s] [%(filename)20s:%(lineno)4s] - %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S"
+        }
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "basic"
+        },
+        "file": {
+            "class": "logging.handlers.TimedRotatingFileHandler",
+            "formatter": "basic",
+            "filename": "",
+            "when":"midnight",
+            "interval":1,
+            "backupCount":30,
+            "encoding": "utf-8"
+        }
+    },
+    "loggers": {
+
+    },
+    "root": {
+        "level": "DEBUG",
+        "propagate": true
+    }
+}

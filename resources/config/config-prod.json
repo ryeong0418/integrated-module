@@ -1,0 +1,26 @@
+{
+	"intermax_repo": {
+		"db_type": "",
+		"host": "",
+		"port": 0,
+		"sid": "",
+		"user": "",
+		"password": ""
+	},
+	"maxgauge_repo": {
+		"db_type": "",
+		"host": "",
+		"port": 0,
+		"sid": "",
+		"user": "",
+		"password": ""
+	},
+	"analysis_repo": {
+		"db_type": "",
+		"host": "",
+		"port": 0,
+		"sid": "",
+		"user": "",
+		"password": ""
+	}
+}

@@ -5,7 +5,9 @@ import os
 from pathlib import Path
 from psycopg2 import errors
 from psycopg2.errorcodes import DUPLICATE_TABLE
+import pandas as pd
 
+from src.common.timelogger import TimeLogger
 
 class SystemUtils:
 
@@ -69,6 +71,15 @@ class SystemUtils:
         """
         return 'prod' if os.environ.get("DEPLOY_ENV") is None else os.environ.get("DEPLOY_ENV")
 
+    @staticmethod
+    def byte_transform(bytes, to, bsize=1025):
+        a = {'k': 1, 'm': 2, 'g': 3, 't': 4, 'p': 5, 'e': 6}
+        r = float(bytes)
+        for i in range(a[to]):
+            r = r / bsize
+        return round(r, 2)
+
+
 class TargetUtils:
 
     @staticmethod
@@ -107,3 +118,31 @@ class TargetUtils:
                 conn.close()
 
             logger.info(fetched_rows)
+
+    @staticmethod
+    def get_engine_template(repo_info):
+        return "postgresql+psycopg2://{}:{}@{}:{}/{}".format(
+            repo_info['user'],
+            repo_info['password'],
+            repo_info['host'],
+            repo_info['port'],
+            repo_info['sid']
+        )
+
+    @staticmethod
+    def insert_meta_data(logger, target_conn, analysis_engine, table_name, query):
+        with TimeLogger(f"{table_name} to export", logger):
+            df = pd.read_sql(query, target_conn)
+
+        logger.info(f"{table_name} export pandas data memory (deep) : "
+                    f"{SystemUtils.byte_transform(df.memory_usage(deep=True).sum(), 'm')} Mb")
+
+        with TimeLogger(f"{table_name} to import", logger):
+            df.to_sql(
+                name=table_name,
+                con=analysis_engine,
+                schema='public',
+                if_exists='append',
+                index=False,
+            )
+

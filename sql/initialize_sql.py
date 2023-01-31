@@ -120,6 +120,22 @@ class InterMaxInitializeQuery:
         """
     )
 
+    SELECT_XAPM_WAS_INFO = (
+        "select was_id, was_name, host_name from xapm_was_info"
+    )
+
+    SELECT_XAPM_TXN_NAME = (
+        "select txn_id, txn_name, business_id, business_name  from xapm_txn_name"
+    )
+
+    SELECT_XAPM_SQL_TEXT = (
+        "select sql_id, sql_text_100, sql_text from xapm_sql_text"
+    )
+
+    SELECT_XAPM_DB_INFO = (
+        "select db_id, host_name, instance_name, instance_alias , db_type, host_ip, sid, lsnr_port from xapm_db_info"
+    )
+
 
 class MaxGauseInitializeQuery:
 
@@ -272,6 +288,10 @@ class MaxGauseInitializeQuery:
              where c.relname similar to '(ae_db|ae_sql|ae_session)%'
             order by table_name
         """
+    )
+
+    SELECT_APM_DB_INFO = (
+        "select * from APM_DB_INFO"
     )
 
 

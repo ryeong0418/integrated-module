@@ -5,6 +5,7 @@ from pathlib import Path
 
 from src.common.utils import SystemUtils
 from src.common.constants import SystemConstants
+from src.common.timelogger import TimeLogger
 from src.module_factory import ModuleFactory
 from resources.config_manager import Config
 from resources.logger_manager import Logger
@@ -33,7 +34,9 @@ def main_process():
         fmf = ModuleFactory(logger)
         instance = fmf.get_module_instance(process)
         instance.set_config(config)
-        instance.main_process()
+
+        with TimeLogger(f'{instance.__class__.__name__}', logger):
+            instance.main_process()
 
     except Exception as e:
         logger.exception(e)

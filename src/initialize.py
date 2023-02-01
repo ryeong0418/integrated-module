@@ -1,7 +1,7 @@
 import time
 
 from src import common_module as cm
-from src.analysis_target import InterMaxTarget, MaxGauseTarget, SaTarget
+from src.analysis_target import InterMaxTarget, MaxGaugeTarget, SaTarget
 
 
 class Initialize(cm.CommonModule):
@@ -28,8 +28,8 @@ class Initialize(cm.CommonModule):
             self.imt.insert_intermax_meta()
 
         if self.config['maxgauge_repo']['use']:
-            self.logger.debug("MaxGauseTarget init")
-            self.mgt = MaxGauseTarget(self.logger, self.config)
+            self.logger.debug("MaxGaugeTarget init")
+            self.mgt = MaxGaugeTarget(self.logger, self.config)
             self.mgt.create_table()
             time.sleep(1)
 

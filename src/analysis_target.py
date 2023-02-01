@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 
 from src.common.utils import TargetUtils
 from src.common.constants import TableConstants
-from sql.initialize_sql import InterMaxInitializeQuery, MaxGauseInitializeQuery, SaInitializeQuery
+from sql.initialize_sql import InterMaxInitializeQuery, MaxGaugeInitializeQuery, SaInitializeQuery
 
 
 class CommonTarget:
@@ -39,7 +39,7 @@ class InterMaxTarget(CommonTarget):
 
     def create_table(self):
         conn = db.connect(self.analysis_conn_str)
-        querys = InterMaxInitializeQuery.SQL
+        querys = InterMaxInitializeQuery.DDL_SQL
         check_query = InterMaxInitializeQuery.CHECK_SQL
 
         TargetUtils.create_and_check_table(self.logger, conn, querys, check_query)
@@ -79,7 +79,7 @@ class InterMaxTarget(CommonTarget):
         TargetUtils.insert_meta_data(self.logger, self.im_conn, self.analysis_engine, table_name, query,)
 
 
-class MaxGauseTarget(CommonTarget):
+class MaxGaugeTarget(CommonTarget):
 
     def init_process(self):
         self.mg_conn = db.connect(self.mg_conn_str)
@@ -93,8 +93,8 @@ class MaxGauseTarget(CommonTarget):
 
     def create_table(self):
         conn = db.connect(self.analysis_conn_str)
-        querys = MaxGauseInitializeQuery.SQL
-        check_query = MaxGauseInitializeQuery.CHECK_SQL
+        querys = MaxGaugeInitializeQuery.DDL_SQL
+        check_query = MaxGaugeInitializeQuery.CHECK_SQL
 
         TargetUtils.create_and_check_table(self.logger, conn, querys, check_query)
 
@@ -102,7 +102,7 @@ class MaxGauseTarget(CommonTarget):
         self._insert_ae_db_info()
 
     def _insert_ae_db_info(self):
-        query = MaxGauseInitializeQuery.SELECT_APM_DB_INFO
+        query = MaxGaugeInitializeQuery.SELECT_APM_DB_INFO
         table_name = TableConstants.AE_DB_INFO
 
         TargetUtils.insert_meta_data(self.logger, self.mg_conn, self.analysis_engine, table_name, query,)
@@ -122,6 +122,6 @@ class SaTarget(CommonTarget):
             self.sa_conn.close()
 
     def create_table(self):
-        querys = SaInitializeQuery.SQL
+        querys = SaInitializeQuery.DDL_SQL
 
         TargetUtils.create_and_check_table(self.logger, self.sa_conn, querys, None)

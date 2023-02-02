@@ -9,6 +9,7 @@ import pandas as pd
 
 from src.common.timelogger import TimeLogger
 
+
 class SystemUtils:
 
     @staticmethod
@@ -36,6 +37,12 @@ class SystemUtils:
 
     @staticmethod
     def get_module_from_file(module_name, file_path):
+        """
+        모듈 파일 이름으로 모듈을 임포트 할 모듈 반환 함수
+        :param module_name: 해당 모듈 파일 이름
+        :param file_path: 해당 모듈 파일 경로
+        :return: 해당하는 모듈
+        """
         spec = importlib.util.spec_from_file_location(
             module_name, str(Path(file_path) / f"{module_name}.py")
         )
@@ -72,7 +79,14 @@ class SystemUtils:
         return 'prod' if os.environ.get("DEPLOY_ENV") is None else os.environ.get("DEPLOY_ENV")
 
     @staticmethod
-    def byte_transform(bytes, to, bsize=1025):
+    def byte_transform(bytes, to, bsize=1024):
+        """
+        byte를 kb, mb, gb, tb, eb로 변환하는 함수
+        :param bytes: 변환하려는 byte 값
+        :param to: 변환 하려는 단위 (k : kb, m : mb, g : gb, t : tb, e : eb)
+        :param bsize: 변환 상수
+        :return: 변환 하려는 단위의 반올림 값
+        """
         a = {'k': 1, 'm': 2, 'g': 3, 't': 4, 'p': 5, 'e': 6}
         r = float(bytes)
         for i in range(a[to]):
@@ -84,6 +98,11 @@ class TargetUtils:
 
     @staticmethod
     def get_db_conn_str(repo_info):
+        """
+        DB connection string를 만들기위한 함수
+        :param repo_info: 대상 repository의 정보 (dict)
+        :return: 접속 정보 str
+        """
         return "dbname={} host={} port={} user={} password={}".format(
             repo_info['sid'],
             repo_info['host'],
@@ -94,6 +113,14 @@ class TargetUtils:
 
     @staticmethod
     def create_and_check_table(logger, conn, querys, check_query=None):
+        """
+        분석 모듈에서 사용할 테이블 생성 함수
+        :param logger: logger
+        :param conn: connect object
+        :param querys: 쿼리 (DDL)
+        :param check_query: 테이블 생성 체크 쿼리
+        :return:
+        """
         cur = conn.cursor()
 
         for query in querys:
@@ -121,6 +148,11 @@ class TargetUtils:
 
     @staticmethod
     def get_engine_template(repo_info):
+        """
+        분석 모듈 DB 저장을 위한 SqlAlchemy engine 생성을 위한 string 생성 함수
+        :param repo_info: 분석 모듈 DB repository 정보
+        :return: engine 생성을 위한 str
+        """
         return "postgresql+psycopg2://{}:{}@{}:{}/{}".format(
             repo_info['user'],
             repo_info['password'],
@@ -131,6 +163,15 @@ class TargetUtils:
 
     @staticmethod
     def insert_meta_data(logger, target_conn, analysis_engine, table_name, query):
+        """
+        분석 모듈 DB에 분석 대상의 Meta 정보 저장을 위한 함수
+        :param logger: logger
+        :param target_conn: 분석 대상 DB connect object
+        :param analysis_engine: 분석 모듈 SqlAlchemy engine
+        :param table_name: 분석 모듈 저장 DB 테이블
+        :param query: 분석 대상 DB 요청 query
+        :return:
+        """
         with TimeLogger(f"{table_name} to export", logger):
             df = pd.read_sql(query, target_conn)
 

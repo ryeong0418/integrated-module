@@ -412,3 +412,7 @@ class SaInitializeQuery:
             OWNER TO postgres;
         """
     )
+
+    DELETE_TABLE_DEFAULT_QUERY = (
+        "delete from #(table_name)"
+    )

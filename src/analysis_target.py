@@ -1,10 +1,12 @@
 import psycopg2 as db
+import pandas as pd
 
 from sqlalchemy import create_engine
 
 from src.common.utils import TargetUtils
 from src.common.constants import TableConstants
 from sql.initialize_sql import InterMaxInitializeQuery, MaxGaugeInitializeQuery, SaInitializeQuery
+from sql.sql_test_merge_sql import InterMaxSqlTextMergeQuery, SaSqlTextMergeQuery
 
 
 class CommonTarget:
@@ -78,6 +80,16 @@ class InterMaxTarget(CommonTarget):
 
         TargetUtils.insert_meta_data(self.logger, self.im_conn, self.analysis_engine, table_name, query,)
 
+    def get_xapm_sql_text(self):
+        query = InterMaxSqlTextMergeQuery.SELECT_XAPM_SQL_TEXT
+
+        return pd.read_sql(query, self.im_conn)
+
+    def insert_ae_sql_text(self, filtered_df):
+        table_name = TableConstants.AE_SQL_TEXT
+
+        TargetUtils.default_insert_data(self.logger, self.analysis_engine, table_name, filtered_df)
+
 
 class MaxGaugeTarget(CommonTarget):
 
@@ -125,3 +137,21 @@ class SaTarget(CommonTarget):
         querys = SaInitializeQuery.DDL_SQL
 
         TargetUtils.create_and_check_table(self.logger, self.sa_conn, querys, None)
+
+    def drop_table_for_sql_text_merge(self):
+        query = SaSqlTextMergeQuery.DROP_TABLE_AE_SQL_TEXT
+
+        try:
+            cursor = self.sa_conn.cursor()
+            cursor.execute(query)
+
+        except Exception as e:
+            self.logger.exception(e)
+        finally:
+            self.sa_conn.commit()
+
+    def get_ae_db_sql_text(self):
+        query = SaSqlTextMergeQuery.SELECT_AE_DB_SQL_TEXT
+
+        return pd.read_sql(query, self.sa_conn)
+

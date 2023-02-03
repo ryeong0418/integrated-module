@@ -187,3 +187,18 @@ class TargetUtils:
                 index=False,
             )
 
+    @staticmethod
+    def default_insert_data(logger, analysis_engine, table_name, df):
+
+        logger.info(f"{table_name} import pandas data memory (deep) : "
+                    f"{SystemUtils.byte_transform(df.memory_usage(deep=True).sum(), 'm')} Mb")
+
+        with TimeLogger(f"{table_name} to import", logger):
+            df.to_sql(
+                name=table_name,
+                con=analysis_engine,
+                schema='public',
+                if_exists='append',
+                index=False,
+            )
+

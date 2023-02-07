@@ -93,6 +93,21 @@ class SystemUtils:
             r = r / bsize
         return round(r, 2)
 
+    @staticmethod
+    def sql_replace_to_dict(sql, replace_dict):
+        """
+        sql query에 동적 parameter를 set 하기 위한 함수
+        :param sql: SQL 원본 쿼리
+        :param replace_dict: 변경이 필요한 파라미터의 dict
+                (ex) table_name를 치환하기 위해서는 원본 쿼리에 #(table_name) 형식으로 만들어 준다
+        :return: 치환된 sql query
+        :exception: 치환되지 않는 형태의 오류 발생시 원본 쿼리와 각 동적 parameter dict 키 매핑 확인
+        """
+        for key in replace_dict.keys():
+            sql = sql.replace(f"#({key})", replace_dict[key])
+
+        return sql
+
 
 class TargetUtils:
 
@@ -162,15 +177,14 @@ class TargetUtils:
         )
 
     @staticmethod
-    def insert_meta_data(logger, target_conn, analysis_engine, table_name, query):
+    def get_target_data_by_query(logger, target_conn, query, table_name="UNKNOWN TABLE"):
         """
-        분석 모듈 DB에 분석 대상의 Meta 정보 저장을 위한 함수
+        각 분석 대상의 DB에서 query 결과를 DataFrame 담아오는 함수
         :param logger: logger
-        :param target_conn: 분석 대상 DB connect object
-        :param analysis_engine: 분석 모듈 SqlAlchemy engine
-        :param table_name: 분석 모듈 저장 DB 테이블
-        :param query: 분석 대상 DB 요청 query
-        :return:
+        :param target_conn: 각 타겟 connect object
+        :param query: 각 타겟 호출 SQL
+        :param table_name: 분석 모듈 DB에 저장될 테이블 명 (for logging)
+        :return: 각 타겟의 query 결과 정보 (DataFrame)
         """
         with TimeLogger(f"{table_name} to export", logger):
             df = pd.read_sql(query, target_conn)
@@ -178,21 +192,18 @@ class TargetUtils:
         logger.info(f"{table_name} export pandas data memory (deep) : "
                     f"{SystemUtils.byte_transform(df.memory_usage(deep=True).sum(), 'm')} Mb")
 
-        with TimeLogger(f"{table_name} to import", logger):
-            df.to_sql(
-                name=table_name,
-                con=analysis_engine,
-                schema='public',
-                if_exists='append',
-                index=False,
-            )
+        return df
 
     @staticmethod
-    def default_insert_data(logger, analysis_engine, table_name, df):
-
-        logger.info(f"{table_name} import pandas data memory (deep) : "
-                    f"{SystemUtils.byte_transform(df.memory_usage(deep=True).sum(), 'm')} Mb")
-
+    def insert_analysis_by_df(logger, analysis_engine, table_name, df):
+        """
+        분석 모듈 DB에 DataFrame의 데이터 저장 함수
+        :param logger: logger
+        :param analysis_engine: 분석 모듈 SqlAlchemy engine
+        :param table_name: 분석 모듈 저장 DB 테이블
+        :param df: 저장하려는 DataFrame
+        :return:
+        """
         with TimeLogger(f"{table_name} to import", logger):
             df.to_sql(
                 name=table_name,
@@ -202,3 +213,19 @@ class TargetUtils:
                 index=False,
             )
 
+    def default_sa_execute_query(logger, sa_conn, query):
+        """
+        분석 모듈 DB 기본 sql 실행 쿼리
+        :param logger: logger
+        :param sa_conn: 분석 모듈 DB Connection Object
+        :param query: 실행 하려는 쿼리
+        :return:
+        """
+        try:
+            cursor = sa_conn.cursor()
+            cursor.execute(query)
+        except Exception as e:
+            logger.exception(e)
+        finally:
+            sa_conn.commit()
+            cursor.close()

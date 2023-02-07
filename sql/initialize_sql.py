@@ -74,7 +74,7 @@ class InterMaxInitializeQuery:
                 remote_count int4 NULL,
                 remote_elapse int4 NULL,
                 create_dt timestamp default current_timestamp,
-                create_id varchar(20) not NULL
+                create_id varchar(20) default 'system' not NULL
             )
         """,
         # 22.07.15 테이블 컬럼 추가 db_id
@@ -94,7 +94,7 @@ class InterMaxInitializeQuery:
                     sql_seq int4 NULL,
                     cursor_id int8 NULL,
                     create_dt timestamp default current_timestamp,
-                    create_id varchar(20) not NULL
+                    create_id varchar(20) default 'system' not NULL
             )
         """,
         # 22.08.01 테이블 신규 추가 AE_TXN_SQL_FETCH
@@ -110,7 +110,7 @@ class InterMaxInitializeQuery:
                     fetch_time_max int4 NULL,
                     jdbc_fetch_count int4 NULL,
                     create_dt timestamp default current_timestamp,
-                    create_id varchar(20) not NULL                        
+                    create_id varchar(20) default 'system' not NULL                     
             )
         """
     )
@@ -217,7 +217,7 @@ class MaxGaugeInitializeQuery:
                 TXN_NAME VARCHAR(64) NULL,
                 TID INT8 NULL,
                 create_dt timestamp default current_timestamp,
-                create_id varchar(20) not NULL
+                create_id varchar(20) default 'system' not NULL
             )
         """,
         # 22.07.13 테이블 컬럼 추가 action
@@ -243,7 +243,7 @@ class MaxGaugeInitializeQuery:
                 REDO_SIZE INT8 NULL,
                 EXECUTION_COUNT INT8 NULL,
                 create_dt timestamp default current_timestamp,
-                create_id varchar(20) not NULL
+                create_id varchar(20) default 'system' not NULL
             )
         """,
         # 22.07.13 테이블 컬럼 추가 action
@@ -266,7 +266,7 @@ class MaxGaugeInitializeQuery:
                 EVENT_NAME VARCHAR(64) NULL,
                 WAIT_CLASS VARCHAR(64) NULL,
                 create_dt timestamp default current_timestamp,
-                create_id varchar(20) not NULL
+                create_id varchar(20) default 'system' not NULL
             )
         """,
         # 22.07.13 AE_SESSION_INFO 테이블 추가
@@ -288,7 +288,7 @@ class MaxGaugeInitializeQuery:
                     program varchar(128) NULL,
                     session_type int8 NULL,
                     create_dt timestamp default current_timestamp,
-                    create_id varchar(20) not NULL
+                    create_id varchar(20) default 'system' not NULL
                 )            
         """
     )
@@ -375,7 +375,7 @@ class SaInitializeQuery:
                 sql_elapse_avg int4 NULL,
                 sql_elapse_max int4 NULL,
                 create_dt timestamp default current_timestamp,
-                create_id varchar(20) not NULL
+                create_id varchar(20) default 'system' not NULL
                                 
             )
         """,

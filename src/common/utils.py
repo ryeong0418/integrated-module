@@ -65,6 +65,7 @@ class SystemUtils:
         parser.add_argument('--proc', required=True)
         parser.add_argument('--s_date')
         parser.add_argument('--interval')
+        parser.add_argument('--sub_proc')
 
         args = parser.parse_args()
         return args
@@ -213,6 +214,7 @@ class TargetUtils:
                 index=False,
             )
 
+    @staticmethod
     def default_sa_execute_query(logger, sa_conn, query):
         """
         분석 모듈 DB 기본 sql 실행 쿼리

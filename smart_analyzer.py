@@ -1,4 +1,5 @@
 import os
+import sys
 
 from pprint import pformat
 from pathlib import Path
@@ -12,6 +13,8 @@ from resources.logger_manager import Logger
 
 
 def main_process():
+    sys.setrecursionlimit(10**7)
+
     home = os.path.dirname(os.path.abspath(__file__))
 
     env = SystemUtils.get_environment_variable()
@@ -25,6 +28,7 @@ def main_process():
 
     config = Config(env).get_config()
     config['args'] = vars(args)
+    config['home'] = home
 
     logger.info("*" * 79)
     logger.info(f"Module config :\n {pformat(config)}")

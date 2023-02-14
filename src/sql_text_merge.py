@@ -1,9 +1,16 @@
-import pandas as pd
+import os
+
 import numpy as np
+import pandas as pd
 import sqlparse
+import re
+
+from pathos.multiprocessing import Pool
 
 from src import common_module as cm
-
+from src.common.timelogger import TimeLogger
+from src.common.constants import SystemConstants
+from src.common.file_export import ParquetFile
 from src.analysis_target import InterMaxTarget, SaTarget
 
 
@@ -15,85 +22,143 @@ class SqlTextMerge(cm.CommonModule):
         self.imt = None
         self.mgt = None
 
+    def parallelize(self, data, func, num_of_processes=4):
+        data_split = np.array_split(data, num_of_processes)
+        pool = Pool(num_of_processes)
+        data = pd.concat(pool.map(func, data_split))
+        pool.close()
+        pool.join()
+        return data
+
     def main_process(self):
         self.logger.debug("SqlTextMerge main")
-
-        self.st = SaTarget(self.logger, self.config)
-        self.st.init_process()
-
-        # self.st.drop_table_for_sql_text_merge()
 
         if not self.config['intermax_repo']['use'] and not self.config['maxgauge_repo']['use']:
             self.logger.error(f"intermax_repo or maxgauge_repo use false.. please check config")
             return
 
-        self.imt = InterMaxTarget(self.logger, self.config)
-        self.imt.init_process()
-        xapm_sql_df = self.imt.get_xapm_sql_text()
+        self.st = SaTarget(self.logger, self.config)
+        self.st.init_process()
 
-        ae_sql_df = self.st.get_ae_db_sql_text()
+        chunksize = 50
+        export_parquet_root_path = f'{self.config["home"]}/{SystemConstants.EXPORT_PARQUET_PATH}'
 
-        merged_df = self._sql_text_merge(xapm_sql_df, ae_sql_df)
+        parquet_file_name = f"{SystemConstants.DB_SQL_TEXT_FILE_NAME}" \
+                            f"_" \
+                            f"{self.config['args']['s_date']}" \
+                            f"{SystemConstants.DB_SQL_TEXT_FILE_SUFFIX}"
 
-        filtered_df = self._merged_df_filter(merged_df)
+        if self.config['args']['sub_proc'] == 'export':
+            pf = ParquetFile(self.logger, self.config)
+            pf.remove_parquet(export_parquet_root_path, parquet_file_name)
 
-        # self.imt.insert_ae_sql_text(filtered_df)
+            with TimeLogger(f"Make_parquet_file_ae_db_sql_text : ", self.logger):
+                for df in self.st.get_ae_db_sql_text_1seq(chunksize=chunksize):
+                    results = self.st.get_ae_db_sql_text_by_1seq(df, chunksize=chunksize)
 
+                    grouping_df = self._reconstruct_by_grouping(results)
+                    grouping_df = self._preprocessing(grouping_df)
+
+                    pf.make_parquet_by_df(grouping_df, export_parquet_root_path, parquet_file_name)
+
+        else:
+            # self.st.drop_table_for_sql_text_merge()
+
+            # self.imt = InterMaxTarget(self.logger, self.config)
+            # self.imt.init_process()
+            # xapm_sql_df = self.imt.get_xapm_sql_text()
+
+            filenames = [file for file in os.listdir(path=export_parquet_root_path)]
+
+            for xapm_sql_df in self.st.get_ae_was_sql_text(chunksize=chunksize):
+                p_was_df = self._preprocessing(xapm_sql_df)
+
+                compare_col_list = ['len', 'first_t', 'last_t']
+                for _, was_df in p_was_df.iterrows():
+                    result_df = pd.DataFrame()
+                    len_result_df = pd.DataFrame()
+                    for filename in filenames:
+                        p_ae_sql_df = pd.read_parquet(f'{export_parquet_root_path}/{filename}')
+                        len_ae_sql_df = p_ae_sql_df[(p_ae_sql_df['total_len'] == was_df['total_len'])]
+
+                        p_ae_sql_df = p_ae_sql_df[(p_ae_sql_df['total_len'] == was_df['total_len']) &
+                                                  (p_ae_sql_df['last_token_len'] == was_df['last_token_len']) &
+                                                  (p_ae_sql_df['first_token'] == was_df['first_token']) &
+                                                  (p_ae_sql_df['last_token'] == was_df['last_token'])
+                        ]
+
+                        # merge_df = was_df.merge(p_ae_sql_df, how='inner', on=compare_col_list)
+                        result_df = result_df.append(p_ae_sql_df)
+                        len_result_df = len_result_df.append(len_ae_sql_df)
+                        self.logger.info("end")
+
+                    self.logger.info(result_df.head())
+
+                self.logger.info("stop")
 
         self.logger.debug("SqlTextMerge End")
 
-    def _sql_text_merge(self, xapm_sql_df, ae_sql_df):
+    def _reconstruct_by_grouping(self, results):
+        results_df = pd.DataFrame(results, columns=['sql_text', 'partition_key', 'sql_uid', 'seq'])
+        results_df = results_df.groupby(['sql_uid', 'partition_key'], as_index=False).agg({'sql_text': ''.join})
+        return results_df
 
-        # ae_db_sql_text 테이블은 파티션이 관리되기 때문에 일자별로 중복된 데이터가 있어서 제거 작업 수행
-        ae_sql_df = ae_sql_df.drop_duplicates(subset=['sql_uid'], keep='first', inplace=False, ignore_index=False)
+    def _preprocessing(self, xapm_sql_df):
+        self.logger.info(f"_preprocessing start {os.getpid()}")
+        # 메모리 문제로 타겟 컬럼과 도착지 컬럼을 같게(None) 줘야할수도 있을듯
+        xapm_sql_df = self._remove_unnecess_char(xapm_sql_df, 'sql_text')
+        # xapm_sql_df = self._set_common_sql_format(xapm_sql_df, 'sql_text')
+        xapm_sql_df = self._parse_sql_text(xapm_sql_df, 'sql_text', 'p_sql_text')
+        xapm_sql_df = self._set_token_compare_info(xapm_sql_df, 'p_sql_text')
+        return xapm_sql_df
 
-        # ae_db_sql_text 테이블 SQL_TEXT 데이터 정제 작업 (공백(' '),탭(\t),엔터(\n),앞엔터(\r))
-        ae_sql_df = ae_sql_df.apply(
-            lambda x: x.replace(to_replace=[r"\\t|\\n|\\r", "\t|\n|\r", " "], value=["", "", ""], regex=True,
-                                inplace=False), axis=1)
+    def _remove_unnecess_char(self, df, target_c: str, dest_c: str = None):
+        dest_c = target_c if dest_c is None else dest_c
 
-        for idx, row in ae_sql_df.iterrows():
-            sql_text = row['sql_text']
-            # ae_db_sql_text 테이블 SQL_TEXT 데이터 정제 작업 (주석제거,upper)
-            ae_sql_df['sql_text'] = np.where(ae_sql_df['sql_text'] == sql_text,
-                                         sqlparse.format(sql_text, reindent=False, keyword_case='upper',
-                                                         identifier_case='upper', strip_comments=True),
-                                         ae_sql_df['sql_text'])
+        repls = {r'\\t': '', r'\\n': '', r'\\r': '', '\t': '', '\n': '', '\r': ''}
+        rep = dict((re.escape(k), v) for k, v in repls.items())
+        pattern = re.compile("|".join(rep.keys()))
 
-            # 주석 제거 여부 체크를 하기 위한 State_Code 컬럼값 df_ex DataFrame에 추가
-        xapm_sql_df = xapm_sql_df.reindex(columns=xapm_sql_df.columns.tolist() + ["state_code"])
+        df[dest_c] = df[target_c].apply(
+            lambda x: pattern.sub(lambda m: rep[re.escape(m.group(0))], x)
+        )
+        return df
 
-        # xapm_sql_text 테이블 SQL_TEXT 데이터 정제 작업 (공백(' '),탭(\t),엔터(\n),앞엔터(\r))
-        xapm_sql_df = xapm_sql_df.apply(
-            lambda x: x.replace(to_replace=[r"\\t|\\n|\\r", "\t|\n|\r", " "], value=["", "", ""], regex=True,
-                                inplace=False), axis=1)
+    def _parse_sql_text(self, df, target_c: str, dest_c: str = None):
+        dest_c = target_c if dest_c is None else dest_c
 
-        for idx, row in xapm_sql_df.iterrows():
-            # np.where 조건문에 사용하기 위해 기존 SQL_TEXT 값을 sql_text변수에 세팅
-            sql_text = row['sql_text']
+        df[dest_c] = df[target_c].apply(
+            lambda x: sqlparse.parse(
+                x
+                # sqlparse.format(x, keyword_case='upper', identifier_case='upper', strip_comments=True)
+            )
+        )
 
-            # np.where 함수 설명 : (조건문,참일경우 넣는값, 거짓일경우 넣는값)
-            # xapm_sql_Text 테이블 SQL_TEXT 데이터 정제 작업 (주석제거,upper)
-            xapm_sql_df['sql_text'] = np.where(xapm_sql_df['sql_text'] == sql_text,
-                                         sqlparse.format(sql_text, reindent=False, keyword_case='upper',
-                                                         identifier_case='upper', strip_comments=True),
-                                         xapm_sql_df['sql_text'])
+        return df
 
-            # 주석 조건을 제외한 정제작업 조건을 맞추기 위해 SQL_TEXT 변수 정제 작업(공백(' '),탭(\t),엔터(\n),앞엔터(\r),upper)
-            # sql_text = sql_text.replace(to_replace=[r"\\t|\\n|\\r", "\t|\n|\r", " "], value=["","",""])
-            # sql_text = sqlparse.format(sql_text, reindent=False, keyword_case='upper', identifier_case='upper')
+    def _set_token_compare_info(self, df, target_c):
+        df['total_len'] = df[target_c].apply(
+            lambda x: len(x[0].tokens)
+        )
+        df['first_token'] = df[target_c].apply(
+            lambda x: str(x[0].tokens[0])
+        )
+        df['last_token_len'] = df[target_c].apply(
+            lambda x: len(x[0].tokens[-1].tokens) if getattr(x[0].tokens[-1], 'tokens', False) else 1
+        )
+        df['last_token'] = df[target_c].apply(
+            lambda x: str(x[0].tokens[-1])
+        )
+        # df['sql_text'] = df[target_c].apply(
+        #     self._tokens_flatten
+        # )
+        return df
 
-            # 주석 제거 전 SQL_TEXT와 제거 후 SQL_TEXT 데이터를 비교하여 State_Code 데이터를 세팅하는 IF문 : 주석제거했으면 1, 않했으면 0으로 세팅
-            # df_ex["state_code"] = np.where(df_ex['sql_text'] != sql_text, 1, 0)
-
-        # xapm_sql_text 테이블과 ae_db_sql_text 테이블을 정제된 sql_text 값 기준으로 merge 작업 수행
-        df_result = pd.merge(xapm_sql_df, ae_sql_df, how='left', on=['sql_text'])
-
-        return df_result
+    def _tokens_flatten(self, x):
+        return tuple(str(t) for t in x[0].tokens if str(t).strip() != '')
 
     def _merged_df_filter(self, merged_df):
-        merged_df.rename(columns={'sql_id':'was_sql_id'}, inplace=True)
-        merged_df.rename(columns={'sql_uid':'db_sql_uid'}, inplace=True)
+        merged_df.rename(columns={'sql_id': 'was_sql_id'}, inplace=True)
+        merged_df.rename(columns={'sql_uid': 'db_sql_uid'}, inplace=True)
         merged_df.drop(["sql_text"], axis=1, inplace=True)
         return merged_df
-

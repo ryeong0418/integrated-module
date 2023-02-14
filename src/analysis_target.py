@@ -1,12 +1,13 @@
 import psycopg2 as db
 import pandas as pd
+import psycopg2.extras
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 from src.common.utils import TargetUtils, SystemUtils
 from src.common.constants import TableConstants
 from sql.initialize_sql import InterMaxInitializeQuery, MaxGaugeInitializeQuery, SaInitializeQuery
-from sql.sql_test_merge_sql import InterMaxSqlTextMergeQuery, SaSqlTextMergeQuery
+from sql.sql_text_merge_sql import InterMaxSqlTextMergeQuery, SaSqlTextMergeQuery
 
 
 class CommonTarget:
@@ -25,6 +26,8 @@ class CommonTarget:
         self.im_conn = None
         self.mg_conn = None
         self.sa_conn = None
+
+        self.sa_cursor = None
 
 
 class InterMaxTarget(CommonTarget):
@@ -142,12 +145,17 @@ class SaTarget(CommonTarget):
 
     def init_process(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
+        self.analysis_engine = create_engine(self.analysis_engine_template)
+
+        self.sa_cursor = self.sa_conn.cursor()
 
         self.logger.info(f"analysis_repo DB 접속 정보 {self.analysis_conn_str}")
         self.logger.info(f"intermax_repo DB 접속 정보 {self.im_conn_str}")
         self.logger.info(f"maxgauge_repo DB 접속 정보 {self.mg_conn_str}")
 
     def __del__(self):
+        if self.sa_cursor:
+            self.sa_cursor.close()
         if self.sa_conn:
             self.sa_conn.close()
 
@@ -168,8 +176,23 @@ class SaTarget(CommonTarget):
         finally:
             self.sa_conn.commit()
 
-    def get_ae_db_sql_text(self):
-        query = SaSqlTextMergeQuery.SELECT_AE_DB_SQL_TEXT
+    def get_ae_was_sql_text(self, chunksize):
+        query = SaSqlTextMergeQuery.SELECT_AE_WAS_SQL_TEXT
+        conn = self.analysis_engine.connect().execution_options(stream_results=True,)
+        return pd.read_sql_query(text(query), conn, chunksize=chunksize)
 
-        return pd.read_sql(query, self.sa_conn)
+    def get_ae_db_sql_text_1seq(self, chunksize):
+        replace_dict = {'s_date': self.config['args']['s_date']}
+        query = SystemUtils.sql_replace_to_dict(SaSqlTextMergeQuery.SELECT_AE_DB_SQL_TEXT_1SEQ, replace_dict)
 
+        return pd.read_sql_query(query, self.sa_conn, chunksize=chunksize)
+
+    def get_ae_db_sql_text_by_1seq(self, df, chunksize):
+        query_with_data = SaSqlTextMergeQuery.SELECT_AE_DB_SQL_TEXT_WITH_DATA
+
+        params = tuple(df.itertuples(index=False, name=None))
+
+        psycopg2.extras.execute_values(self.sa_cursor, query_with_data, params, page_size=chunksize)
+        results = self.sa_cursor.fetchall()
+
+        return results

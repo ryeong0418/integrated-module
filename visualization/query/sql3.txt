@@ -1,1 +1,0 @@
-select fetch_time_sum,fetch_time_avg,fetch_time_max from ae_txn_sql_summary;

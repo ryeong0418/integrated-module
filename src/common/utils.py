@@ -264,6 +264,7 @@ class TargetUtils:
         start_dates = []
         end_dates = []
         pairs = []
+
         for i in range(1, int(input_interval)+1):
             from_date = datetime.strptime(str(input_date), '%Y%m%d')
             date_condition = from_date + timedelta(days=i - 1)
@@ -275,46 +276,21 @@ class TargetUtils:
 
         for pair in zip(start_dates, end_dates):
             pairs.append(pair)
+
         return pairs
 
     @staticmethod
-    def summarizer_query_change(query,date_dict):
-
-        SD_change_query=query.replace(f"#(StartDate)",date_dict['StartDate'])
-        change_query = SD_change_query.replace(f"#(EndDate)", date_dict['EndDate'])
-
-        return change_query
-
-    @staticmethod
-    def create_summarizer(logger, conn, querys, check_query=None):
-        curs = conn.cursor()
-        curs.execute(querys)
-        conn.commit()
-
-
-    @staticmethod
-    def dataframe_set(logger, conn, querys):
-        curs = conn.cursor()
-        curs.execute(querys)
-        rs_list = curs.fetchall()
-        inter_df = pd.DataFrame(rs_list)
-        inter_df.columns = [i_desc[0] for i_desc in curs.description]
-
-        return inter_df
-
-    @staticmethod
     def visualization_query(query_folder, sql_name):
-        sql_query_list = []
         with open(query_folder + "/" + sql_name, "r", encoding='utf-8') as file:
             sql_query = file.read()
-            sql_query_list.append(sql_query)
 
-        return sql_query_list
+        return sql_query
 
     @staticmethod
     def visualization_data_processing(df):
         df.columns = map(lambda x: str(x).upper(), df.columns)
         df = df.apply(pd.to_numeric, errors='ignore')
+
         if 'TIME' in df.columns:
             df['TIME'] = pd.to_datetime(df['TIME'])
 
@@ -326,7 +302,6 @@ class TargetUtils:
         prtitionDate=now_day.strftime('%y%m%d')
         sheet_name_txt = sql_name.split('.')[0]
         excel_file = excel_path +"/"+sheet_name_txt+"_"+prtitionDate+'.xlsx'
-        print(excel_file)
 
         if not os.path.exists(excel_file):
             with pd.ExcelWriter(excel_file, mode='w', engine='openpyxl') as writer:

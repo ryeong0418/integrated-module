@@ -1,28 +1,26 @@
 {
 	"intermax_repo": {
-		"db_type": "postgres",
-		"host": "10.10.48.173",
-		"port": 5432,
-		"sid": "intermax",
-		"user": "intermax",
-		"password": "intermax",
-		"use": true
+		"db_type": "",
+		"host": "",
+		"port": 0,
+		"sid": "",
+		"user": "",
+		"password": ""
 	},
 	"maxgauge_repo": {
-		"db_type": "postgres",
-		"host": "10.20.132.206",
-		"port": 5430,
-		"sid": "MFO",
-		"user": "postgres",
-		"password": "intermax",
-		"use": true
+		"db_type": "",
+		"host": "",
+		"port": 0,
+		"sid": "",
+		"user": "",
+		"password": ""
 	},
 	"analysis_repo": {
-		"db_type": "postgres",
-		"host": "10.10.47.241",
-		"port": 5432,
-		"sid": "postgres",
-		"user": "sr_dev",
-		"password": "sr123"
+		"db_type": "",
+		"host": "",
+		"port": 0,
+		"sid": "",
+		"user": "",
+		"password": ""
 	}
 }

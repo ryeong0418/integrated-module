@@ -19,7 +19,6 @@ def main_process():
     log_dir = str(Path(home) / SystemConstants.LOGGER_PATH)
 
     logger = Logger(env).get_default_logger(log_dir, SystemConstants.MASTER_LOG_FILE_NAME)
-
     args = SystemUtils.get_start_args()
     process = args.proc
 

@@ -22,7 +22,7 @@
 		"host": "10.10.47.241",
 		"port": 5432,
 		"sid": "postgres",
-		"user": "sr_dev",
-		"password": "sr123"
+		"user": "postgres",
+		"password": "postgres"
 	}
 }

@@ -68,6 +68,7 @@ class SystemUtils:
         parser.add_argument('--proc', required=True)
         parser.add_argument('--s_date')
         parser.add_argument('--interval')
+        parser.add_argument('--sub_proc')
 
         args = parser.parse_args()
         return args
@@ -310,10 +311,4 @@ class TargetUtils:
         else:
             with pd.ExcelWriter(excel_file, mode='a', engine='openpyxl', if_sheet_exists='replace') as writer:
                 df.to_excel(writer, sheet_name=sheet_name_txt[0], index=False)
-
-
-
-
-
-
 

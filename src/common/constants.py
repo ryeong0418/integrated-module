@@ -18,6 +18,13 @@ class SystemConstants:
     # logs 폴더명
     LOGGER_PATH = 'logs'
 
+    # db sql text parquet 파일명
+    DB_SQL_TEXT_FILE_NAME = 'export_ae_db_sql_text'
+    DB_SQL_TEXT_FILE_SUFFIX = '.parquet'
+
+    # export 폴더명
+    EXPORT_PARQUET_PATH = 'export/parquet'
+
 
 class TableConstants:
     AE_WAS_INFO = "ae_was_info"

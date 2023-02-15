@@ -1,11 +1,14 @@
+import os
 import pandas as pd
 import psycopg2 as db
-import os
+import psycopg2.extras
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
+
 from src.common.utils import TargetUtils, SystemUtils
 from src.common.constants import TableConstants
 from sql.initialize_sql import InterMaxInitializeQuery, MaxGaugeInitializeQuery, SaInitializeQuery
+from sql.sql_text_merge_sql import InterMaxSqlTextMergeQuery, SaSqlTextMergeQuery
 from sql.extract_sql import InterMaxExtractQuery, MaxGaugeExtractorQuery
 from sql.summarizer_sql import SummarizerQuery,InterMaxGaugeSummarizerQuery
 
@@ -26,6 +29,8 @@ class CommonTarget:
         self.im_conn = None
         self.mg_conn = None
         self.sa_conn = None
+
+        self.sa_cursor = None
 
 
 class InterMaxTarget(CommonTarget):
@@ -85,6 +90,16 @@ class InterMaxTarget(CommonTarget):
         TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, delete_table_query)
         meta_df = TargetUtils.get_target_data_by_query(self.logger, self.im_conn, query, table_name,)
         TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, meta_df)
+
+    def get_xapm_sql_text(self):
+        query = InterMaxSqlTextMergeQuery.SELECT_XAPM_SQL_TEXT
+
+        return pd.read_sql(query, self.im_conn)
+
+    def insert_ae_sql_text(self, filtered_df):
+        table_name = TableConstants.AE_SQL_TEXT
+
+        TargetUtils.default_insert_data(self.logger, self.analysis_engine, table_name, filtered_df)
 
     def _insert_intermax_detail_data(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
@@ -255,6 +270,9 @@ class SaTarget(CommonTarget):
 
     def init_process(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
+        self.analysis_engine = create_engine(self.analysis_engine_template)
+
+        self.sa_cursor = self.sa_conn.cursor()
 
         self.logger.info(f"analysis_repo DB 접속 정보 {self.analysis_conn_str}")
         self.logger.info(f"intermax_repo DB 접속 정보 {self.im_conn_str}")
@@ -263,12 +281,47 @@ class SaTarget(CommonTarget):
         self.analysis_engine = create_engine(self.analysis_engine_template)
 
     def __del__(self):
+        if self.sa_cursor:
+            self.sa_cursor.close()
         if self.sa_conn:
             self.sa_conn.close()
 
     def create_table(self):
         querys = SaInitializeQuery.DDL_SQL
         TargetUtils.create_and_check_table(self.logger, self.sa_conn, querys, None)
+
+    def drop_table_for_sql_text_merge(self):
+        query = SaSqlTextMergeQuery.DROP_TABLE_AE_SQL_TEXT
+
+        try:
+            cursor = self.sa_conn.cursor()
+            cursor.execute(query)
+
+        except Exception as e:
+            self.logger.exception(e)
+        finally:
+            self.sa_conn.commit()
+
+    def get_ae_was_sql_text(self, chunksize):
+        query = SaSqlTextMergeQuery.SELECT_AE_WAS_SQL_TEXT
+        conn = self.analysis_engine.connect().execution_options(stream_results=True,)
+        return pd.read_sql_query(text(query), conn, chunksize=chunksize)
+
+    def get_ae_db_sql_text_1seq(self, chunksize):
+        replace_dict = {'s_date': self.config['args']['s_date']}
+        query = SystemUtils.sql_replace_to_dict(SaSqlTextMergeQuery.SELECT_AE_DB_SQL_TEXT_1SEQ, replace_dict)
+
+        return pd.read_sql_query(query, self.sa_conn, chunksize=chunksize)
+
+    def get_ae_db_sql_text_by_1seq(self, df, chunksize):
+        query_with_data = SaSqlTextMergeQuery.SELECT_AE_DB_SQL_TEXT_WITH_DATA
+
+        params = tuple(df.itertuples(index=False, name=None))
+
+        psycopg2.extras.execute_values(self.sa_cursor, query_with_data, params, page_size=chunksize)
+        results = self.sa_cursor.fetchall()
+
+        return results
 
     def ae_txn_detail_summary_temp_create_table(self):
         pairs = TargetUtils.summarizer_set_date(self.config['args']['s_date'], self.config['args']['interval'])
@@ -318,10 +371,3 @@ class SaTarget(CommonTarget):
             df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, sql_query)
             result_df = TargetUtils.visualization_data_processing(df)
             TargetUtils.excel_export(excel_file, sql_name, result_df)
-
-
-
-
-
-
-

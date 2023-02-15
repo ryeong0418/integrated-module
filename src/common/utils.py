@@ -1,11 +1,14 @@
 import importlib.util
 import argparse
 import os
-
+import psycopg2 as db
 from pathlib import Path
 from psycopg2 import errors
 from psycopg2.errorcodes import DUPLICATE_TABLE
+from pandas.io.sql import DatabaseError
+import sqlalchemy
 import pandas as pd
+from datetime import datetime, timedelta
 
 from src.common.timelogger import TimeLogger
 
@@ -212,6 +215,7 @@ class TargetUtils:
                 if_exists='append',
                 index=False,
             )
+        return df
 
     @staticmethod
     def default_sa_execute_query(logger, sa_conn, query):
@@ -230,4 +234,86 @@ class TargetUtils:
         finally:
             sa_conn.commit()
             cursor.close()
+
+    @staticmethod
+    def set_intermax_date(input_date, input_interval):
+        date_conditions = []
+
+        for i in range(1,int(input_interval)+1):
+            from_date = datetime.strptime(str(input_date), '%Y%m%d')
+            date_condition = from_date + timedelta(days=i - 1)
+            date_condition = date_condition.strftime('%Y%m%d')
+            date_conditions.append(date_condition)
+
+        return date_conditions
+
+    @staticmethod
+    def set_maxgauge_date(input_date, input_interval):
+        date_conditions = []
+
+        for i in range(1,int(input_interval)+1):
+            from_date = datetime.strptime(str(input_date), '%Y%m%d')
+            date_condition = from_date + timedelta(days=i - 1)
+            date_condition = date_condition.strftime('%y%m%d')
+            date_conditions.append(date_condition)
+
+        return date_conditions
+
+    @staticmethod
+    def summarizer_set_date(input_date, input_interval):
+        start_dates = []
+        end_dates = []
+        pairs = []
+
+        for i in range(1, int(input_interval)+1):
+            from_date = datetime.strptime(str(input_date), '%Y%m%d')
+            date_condition = from_date + timedelta(days=i - 1)
+            start_date = date_condition.strftime('%Y-%m-%d 00:00:00')
+            start_dates.append(start_date)
+            date_condition_p = from_date + timedelta(days=i)
+            end_date = date_condition_p.strftime('%Y-%m-%d 00:00:00')
+            end_dates.append(end_date)
+
+        for pair in zip(start_dates, end_dates):
+            pairs.append(pair)
+
+        return pairs
+
+    @staticmethod
+    def visualization_query(query_folder, sql_name):
+        with open(query_folder + "/" + sql_name, "r", encoding='utf-8') as file:
+            sql_query = file.read()
+
+        return sql_query
+
+    @staticmethod
+    def visualization_data_processing(df):
+        df.columns = map(lambda x: str(x).upper(), df.columns)
+        df = df.apply(pd.to_numeric, errors='ignore')
+
+        if 'TIME' in df.columns:
+            df['TIME'] = pd.to_datetime(df['TIME'])
+
+        return df
+
+    @staticmethod
+    def excel_export(excel_path, sql_name, df):
+        now_day = datetime.now()
+        prtitionDate=now_day.strftime('%y%m%d')
+        sheet_name_txt = sql_name.split('.')[0]
+        excel_file = excel_path +"/"+sheet_name_txt+"_"+prtitionDate+'.xlsx'
+
+        if not os.path.exists(excel_file):
+            with pd.ExcelWriter(excel_file, mode='w', engine='openpyxl') as writer:
+                df.to_excel(writer, sheet_name=sheet_name_txt[0], index=False)
+
+        else:
+            with pd.ExcelWriter(excel_file, mode='a', engine='openpyxl', if_sheet_exists='replace') as writer:
+                df.to_excel(writer, sheet_name=sheet_name_txt[0], index=False)
+
+
+
+
+
+
 

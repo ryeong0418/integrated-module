@@ -21,8 +21,8 @@
 		"db_type": "postgres",
 		"host": "10.10.47.241",
 		"port": 5432,
-		"sid": "sh_dev",
-		"user": "sh_dev",
-		"password": "sh_dev"
+		"sid": "postgres",
+		"user": "postgres",
+		"password": "postgres"
 	}
 }

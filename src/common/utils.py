@@ -1,13 +1,17 @@
 import importlib.util
 import argparse
 import os
-
+import psycopg2 as db
 from pathlib import Path
 from psycopg2 import errors
 from psycopg2.errorcodes import DUPLICATE_TABLE
+from pandas.io.sql import DatabaseError
+import sqlalchemy
 import pandas as pd
+from datetime import datetime, timedelta
 
 from src.common.timelogger import TimeLogger
+
 
 class SystemUtils:
 
@@ -36,6 +40,12 @@ class SystemUtils:
 
     @staticmethod
     def get_module_from_file(module_name, file_path):
+        """
+        모듈 파일 이름으로 모듈을 임포트 할 모듈 반환 함수
+        :param module_name: 해당 모듈 파일 이름
+        :param file_path: 해당 모듈 파일 경로
+        :return: 해당하는 모듈
+        """
         spec = importlib.util.spec_from_file_location(
             module_name, str(Path(file_path) / f"{module_name}.py")
         )
@@ -58,6 +68,7 @@ class SystemUtils:
         parser.add_argument('--proc', required=True)
         parser.add_argument('--s_date')
         parser.add_argument('--interval')
+        parser.add_argument('--sub_proc')
 
         args = parser.parse_args()
         return args
@@ -72,18 +83,45 @@ class SystemUtils:
         return 'prod' if os.environ.get("DEPLOY_ENV") is None else os.environ.get("DEPLOY_ENV")
 
     @staticmethod
-    def byte_transform(bytes, to, bsize=1025):
+    def byte_transform(bytes, to, bsize=1024):
+        """
+        byte를 kb, mb, gb, tb, eb로 변환하는 함수
+        :param bytes: 변환하려는 byte 값
+        :param to: 변환 하려는 단위 (k : kb, m : mb, g : gb, t : tb, e : eb)
+        :param bsize: 변환 상수
+        :return: 변환 하려는 단위의 반올림 값
+        """
         a = {'k': 1, 'm': 2, 'g': 3, 't': 4, 'p': 5, 'e': 6}
         r = float(bytes)
         for i in range(a[to]):
             r = r / bsize
         return round(r, 2)
 
+    @staticmethod
+    def sql_replace_to_dict(sql, replace_dict):
+        """
+        sql query에 동적 parameter를 set 하기 위한 함수
+        :param sql: SQL 원본 쿼리
+        :param replace_dict: 변경이 필요한 파라미터의 dict
+                (ex) table_name를 치환하기 위해서는 원본 쿼리에 #(table_name) 형식으로 만들어 준다
+        :return: 치환된 sql query
+        :exception: 치환되지 않는 형태의 오류 발생시 원본 쿼리와 각 동적 parameter dict 키 매핑 확인
+        """
+        for key in replace_dict.keys():
+            sql = sql.replace(f"#({key})", replace_dict[key])
+
+        return sql
+
 
 class TargetUtils:
 
     @staticmethod
     def get_db_conn_str(repo_info):
+        """
+        DB connection string를 만들기위한 함수
+        :param repo_info: 대상 repository의 정보 (dict)
+        :return: 접속 정보 str
+        """
         return "dbname={} host={} port={} user={} password={}".format(
             repo_info['sid'],
             repo_info['host'],
@@ -94,6 +132,14 @@ class TargetUtils:
 
     @staticmethod
     def create_and_check_table(logger, conn, querys, check_query=None):
+        """
+        분석 모듈에서 사용할 테이블 생성 함수
+        :param logger: logger
+        :param conn: connect object
+        :param querys: 쿼리 (DDL)
+        :param check_query: 테이블 생성 체크 쿼리
+        :return:
+        """
         cur = conn.cursor()
 
         for query in querys:
@@ -121,6 +167,11 @@ class TargetUtils:
 
     @staticmethod
     def get_engine_template(repo_info):
+        """
+        분석 모듈 DB 저장을 위한 SqlAlchemy engine 생성을 위한 string 생성 함수
+        :param repo_info: 분석 모듈 DB repository 정보
+        :return: engine 생성을 위한 str
+        """
         return "postgresql+psycopg2://{}:{}@{}:{}/{}".format(
             repo_info['user'],
             repo_info['password'],
@@ -130,13 +181,33 @@ class TargetUtils:
         )
 
     @staticmethod
-    def insert_meta_data(logger, target_conn, analysis_engine, table_name, query):
+    def get_target_data_by_query(logger, target_conn, query, table_name="UNKNOWN TABLE"):
+        """
+        각 분석 대상의 DB에서 query 결과를 DataFrame 담아오는 함수
+        :param logger: logger
+        :param target_conn: 각 타겟 connect object
+        :param query: 각 타겟 호출 SQL
+        :param table_name: 분석 모듈 DB에 저장될 테이블 명 (for logging)
+        :return: 각 타겟의 query 결과 정보 (DataFrame)
+        """
         with TimeLogger(f"{table_name} to export", logger):
             df = pd.read_sql(query, target_conn)
 
         logger.info(f"{table_name} export pandas data memory (deep) : "
                     f"{SystemUtils.byte_transform(df.memory_usage(deep=True).sum(), 'm')} Mb")
 
+        return df
+
+    @staticmethod
+    def insert_analysis_by_df(logger, analysis_engine, table_name, df):
+        """
+        분석 모듈 DB에 DataFrame의 데이터 저장 함수
+        :param logger: logger
+        :param analysis_engine: 분석 모듈 SqlAlchemy engine
+        :param table_name: 분석 모듈 저장 DB 테이블
+        :param df: 저장하려는 DataFrame
+        :return:
+        """
         with TimeLogger(f"{table_name} to import", logger):
             df.to_sql(
                 name=table_name,
@@ -145,4 +216,99 @@ class TargetUtils:
                 if_exists='append',
                 index=False,
             )
+        return df
+
+    @staticmethod
+    def default_sa_execute_query(logger, sa_conn, query):
+        """
+        분석 모듈 DB 기본 sql 실행 쿼리
+        :param logger: logger
+        :param sa_conn: 분석 모듈 DB Connection Object
+        :param query: 실행 하려는 쿼리
+        :return:
+        """
+        try:
+            cursor = sa_conn.cursor()
+            cursor.execute(query)
+        except Exception as e:
+            logger.exception(e)
+        finally:
+            sa_conn.commit()
+            cursor.close()
+
+    @staticmethod
+    def set_intermax_date(input_date, input_interval):
+        date_conditions = []
+
+        for i in range(1,int(input_interval)+1):
+            from_date = datetime.strptime(str(input_date), '%Y%m%d')
+            date_condition = from_date + timedelta(days=i - 1)
+            date_condition = date_condition.strftime('%Y%m%d')
+            date_conditions.append(date_condition)
+
+        return date_conditions
+
+    @staticmethod
+    def set_maxgauge_date(input_date, input_interval):
+        date_conditions = []
+
+        for i in range(1,int(input_interval)+1):
+            from_date = datetime.strptime(str(input_date), '%Y%m%d')
+            date_condition = from_date + timedelta(days=i - 1)
+            date_condition = date_condition.strftime('%y%m%d')
+            date_conditions.append(date_condition)
+
+        return date_conditions
+
+    @staticmethod
+    def summarizer_set_date(input_date, input_interval):
+        start_dates = []
+        end_dates = []
+        pairs = []
+
+        for i in range(1, int(input_interval)+1):
+            from_date = datetime.strptime(str(input_date), '%Y%m%d')
+            date_condition = from_date + timedelta(days=i - 1)
+            start_date = date_condition.strftime('%Y-%m-%d 00:00:00')
+            start_dates.append(start_date)
+            date_condition_p = from_date + timedelta(days=i)
+            end_date = date_condition_p.strftime('%Y-%m-%d 00:00:00')
+            end_dates.append(end_date)
+
+        for pair in zip(start_dates, end_dates):
+            pairs.append(pair)
+
+        return pairs
+
+    @staticmethod
+    def visualization_query(query_folder, sql_name):
+        with open(query_folder + "/" + sql_name, "r", encoding='utf-8') as file:
+            sql_query = file.read()
+
+        return sql_query
+
+    @staticmethod
+    def visualization_data_processing(df):
+        df.columns = map(lambda x: str(x).upper(), df.columns)
+        df = df.apply(pd.to_numeric, errors='ignore')
+
+        if 'TIME' in df.columns:
+            df['TIME'] = pd.to_datetime(df['TIME'])
+
+        return df
+
+    @staticmethod
+    def excel_export(excel_path, sql_name, df):
+        now_day = datetime.now()
+        prtitionDate=now_day.strftime('%y%m%d')
+        sheet_name_txt = sql_name.split('.')[0]
+        excel_file = excel_path +"/"+sheet_name_txt+"_"+prtitionDate+'.xlsx'
+
+        if not os.path.exists(excel_file):
+            with pd.ExcelWriter(excel_file, mode='w', engine='openpyxl') as writer:
+                df.to_excel(writer, sheet_name=sheet_name_txt[0], index=False)
+
+        else:
+            with pd.ExcelWriter(excel_file, mode='a', engine='openpyxl', if_sheet_exists='replace') as writer:
+                df.to_excel(writer, sheet_name=sheet_name_txt[0], index=False)
 

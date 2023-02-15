@@ -3,7 +3,6 @@ import os
 from src.common.enum import ModuleFactoryEnum
 from src.common.utils import SystemUtils
 
-
 class ModuleFactory:
 
     def __init__(self, logger):
@@ -21,8 +20,8 @@ class ModuleFactory:
         try:
             self.logger.info(f"request process : {ModuleFactoryEnum[process].value}")
             self.logger.info("*" * 79)
-            module_name = ModuleFactoryEnum[process].value
-            class_name = SystemUtils.to_camel_case(module_name)
+            module_name = ModuleFactoryEnum[process].value #initialize
+            class_name = SystemUtils.to_camel_case(module_name) #Initialize
 
             module_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -31,6 +30,7 @@ class ModuleFactory:
             )
 
             instance = target_class(self.logger)
+
 
         except KeyError as ke:
             self.logger.error(

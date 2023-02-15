@@ -9,6 +9,7 @@ from sql.initialize_sql import InterMaxInitializeQuery, MaxGaugeInitializeQuery,
 from sql.extract_sql import InterMaxExtractQuery, MaxGaugeExtractorQuery
 from sql.summarizer_sql import SummarizerQuery,InterMaxGaugeSummarizerQuery
 
+
 class CommonTarget:
 
     def __init__(self, logger, config):
@@ -88,13 +89,13 @@ class InterMaxTarget(CommonTarget):
     def _insert_intermax_detail_data(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
         
-        self._set_insert_xapm_txn_detail(self.logger)
+        self._set_insert_xapm_txn_detail()
         
-        self._set_insert_xapm_txn_sql_detail(self.logger)
+        self._set_insert_xapm_txn_sql_detail()
         
-        self._set_insert_xapm_txn_sql_fetch(self.logger)
+        self._set_insert_xapm_txn_sql_fetch()
 
-    def _set_insert_xapm_txn_detail(self, logger):
+    def _set_insert_xapm_txn_detail(self):
         date_conditions = TargetUtils.set_intermax_date(self.config['args']['s_date'], self.config['args']['interval'])
         for date in date_conditions:
             table_suffix_dict = {'table_suffix': date}
@@ -104,9 +105,9 @@ class InterMaxTarget(CommonTarget):
             try:
                 self._excute_insert_intermax_detail_data(detail_query, table_name)
             except Exception as e:
-                logger.exception(e)
+                self.logger.exception(e)
 
-    def _set_insert_xapm_txn_sql_detail(self, logger):
+    def _set_insert_xapm_txn_sql_detail(self):
         date_conditions = TargetUtils.set_intermax_date(self.config['args']['s_date'], self.config['args']['interval'])
         for date in date_conditions:
             table_suffix_dict = {'table_suffix': date}
@@ -116,9 +117,9 @@ class InterMaxTarget(CommonTarget):
             try:
                 self._excute_insert_intermax_detail_data(detail_query, table_name)
             except Exception as e:
-                logger.exception(e)
+                self.logger.exception(e)
 
-    def _set_insert_xapm_txn_sql_fetch(self, logger):
+    def _set_insert_xapm_txn_sql_fetch(self):
         date_conditions = TargetUtils.set_intermax_date(self.config['args']['s_date'], self.config['args']['interval'])
         for date in date_conditions:
             table_suffix_dict = {'table_suffix': date}
@@ -128,7 +129,7 @@ class InterMaxTarget(CommonTarget):
             try:
                 self._excute_insert_intermax_detail_data(detail_query, table_name)
             except Exception as e:
-                logger.exception(e)
+                self.logger.exception(e)
 
     def _excute_insert_intermax_detail_data(self, query, table_name):
         df = TargetUtils.get_target_data_by_query(self.logger, self.im_conn, query, table_name)
@@ -175,17 +176,17 @@ class MaxGaugeTarget(CommonTarget):
     def _insert_maxgauge_detail_data(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
 
-        self._set_insert_ora_session_info(self.logger)
+        self._set_insert_ora_session_info()
 
-        self._set_insert_ora_session_stat(self.logger)
+        self._set_insert_ora_session_stat()
 
-        self._set_insert_apm_sql_list(self.logger)
+        self._set_insert_apm_sql_list()
 
-        self._set_insert_ora_sql_stat_10(self.logger)
+        self._set_insert_ora_sql_stat_10()
 
-        self._set_insert_ora_sql_wait_10(self.logger)
+        self._set_insert_ora_sql_wait_10()
 
-    def _set_insert_ora_session_info(self, logger):
+    def _set_insert_ora_session_info(self):
         date_conditions = TargetUtils.set_maxgauge_date(self.config['args']['s_date'], self.config['args']['interval'])
         for date in date_conditions:
             table_suffix_dict = {'table_suffix': date}
@@ -195,9 +196,9 @@ class MaxGaugeTarget(CommonTarget):
             try:
                 self._excute_insert_maxgauge_detail_data(detail_query, table_name)
             except Exception as e:
-                logger.exception(e)
+                self.logger.exception(e)
 
-    def _set_insert_ora_session_stat(self, logger):
+    def _set_insert_ora_session_stat(self):
         date_conditions = TargetUtils.set_maxgauge_date(self.config['args']['s_date'], self.config['args']['interval'])
         for date in date_conditions:
             table_suffix_dict = {'table_suffix': date}
@@ -207,9 +208,9 @@ class MaxGaugeTarget(CommonTarget):
             try:
                 self._excute_insert_maxgauge_detail_data(detail_query, table_name)
             except Exception as e:
-                logger.exception(e)
+                self.logger.exception(e)
 
-    def _set_insert_apm_sql_list(self, logger):
+    def _set_insert_apm_sql_list(self):
         date_conditions = TargetUtils.set_maxgauge_date(self.config['args']['s_date'], self.config['args']['interval'])
         for date in date_conditions:
             table_suffix_dict = {'table_suffix': date}
@@ -219,9 +220,9 @@ class MaxGaugeTarget(CommonTarget):
             try:
                 self._excute_insert_maxgauge_detail_data(detail_query, table_name)
             except Exception as e:
-                logger.exception(e)
+                self.logger.exception(e)
 
-    def _set_insert_ora_sql_stat_10(self, logger):
+    def _set_insert_ora_sql_stat_10(self):
         date_conditions = TargetUtils.set_maxgauge_date(self.config['args']['s_date'], self.config['args']['interval'])
         for date in date_conditions:
             table_suffix_dict = {'table_suffix': date}
@@ -231,9 +232,9 @@ class MaxGaugeTarget(CommonTarget):
             try:
                 self._excute_insert_maxgauge_detail_data(detail_query, table_name)
             except Exception as e:
-                logger.exception(e)
+                self.logger.exception(e)
 
-    def _set_insert_ora_sql_wait_10(self, logger):
+    def _set_insert_ora_sql_wait_10(self):
         date_conditions = TargetUtils.set_maxgauge_date(self.config['args']['s_date'], self.config['args']['interval'])
         for date in date_conditions:
             table_suffix_dict = {'table_suffix': date}
@@ -243,7 +244,7 @@ class MaxGaugeTarget(CommonTarget):
             try:
                 self._excute_insert_maxgauge_detail_data(detail_query, table_name)
             except Exception as e:
-                logger.exception(e)
+                self.logger.exception(e)
 
     def _excute_insert_maxgauge_detail_data(self, query, table_name):
         df = TargetUtils.get_target_data_by_query(self.logger, self.mg_conn, query, table_name,)
@@ -269,7 +270,7 @@ class SaTarget(CommonTarget):
         querys = SaInitializeQuery.DDL_SQL
         TargetUtils.create_and_check_table(self.logger, self.sa_conn, querys, None)
 
-    def ae_txn_detail_summary_temp_create_table(self, logger):
+    def ae_txn_detail_summary_temp_create_table(self):
         pairs = TargetUtils.summarizer_set_date(self.config['args']['s_date'], self.config['args']['interval'])
         for pair in pairs:
             date_dict = {'StartDate': pair[0], 'EndDate': pair[1]}
@@ -278,9 +279,9 @@ class SaTarget(CommonTarget):
             try:
                 TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, ae_txn_detail_summary_temp_SQL)
             except Exception as e:
-                logger.exception(e)
+                self.logger.exception(e)
 
-    def ae_txn_sql_detail_summary_temp_create_table(self, logger):
+    def ae_txn_sql_detail_summary_temp_create_table(self):
         pairs = TargetUtils.summarizer_set_date(self.config['args']['s_date'], self.config['args']['interval'])
         for pair in pairs:
             date_dict = {'StartDate': pair[0], 'EndDate': pair[1]}
@@ -289,9 +290,9 @@ class SaTarget(CommonTarget):
             try:
                 TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, ae_txn_sql_detail_summary_temp_SQL)
             except Exception as e:
-                logger.exception(e)
+                self.logger.exception(e)
 
-    def summary_join(self, logger):
+    def summary_join(self):
         pairs = TargetUtils.summarizer_set_date(self.config['args']['s_date'], self.config['args']['interval'])
         for pair in pairs:
             date_dict = {'StartDate': pair[0], 'EndDate': pair[1]}
@@ -300,11 +301,11 @@ class SaTarget(CommonTarget):
 
             try:
                 table_name = TableConstants.AE_TXN_SQL_SUMMARY
-                inter_df = TargetUtils.get_target_data_by_query(logger, self.sa_conn, join_query, table_name)
+                inter_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, join_query, table_name)
                 TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine,table_name,inter_df)
 
             except Exception as e:
-                logger.exception(e)
+                self.logger.exception(e)
 
     def visualization_data(self):
         root = os.getcwd()

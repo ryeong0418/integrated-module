@@ -15,6 +15,7 @@ def main_process():
     home = os.path.dirname(os.path.abspath(__file__))
 
     env = SystemUtils.get_environment_variable()
+    print(env)
 
     log_dir = str(Path(home) / SystemConstants.LOGGER_PATH)
 

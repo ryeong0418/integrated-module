@@ -305,10 +305,10 @@ class TargetUtils:
 
         if not os.path.exists(excel_file):
             with pd.ExcelWriter(excel_file, mode='w', engine='openpyxl') as writer:
-                df.to_excel(writer, sheet_name=sheet_name_txt[0],index=False)
+                df.to_excel(writer, sheet_name=sheet_name_txt[0], index=False)
 
         else:
-            with pd.ExcelWriter(excel_file, mode='a', engine='openpyxl', if_sheet_exists= 'replace') as writer:
+            with pd.ExcelWriter(excel_file, mode='a', engine='openpyxl', if_sheet_exists='replace') as writer:
                 df.to_excel(writer, sheet_name=sheet_name_txt[0], index=False)
 
 

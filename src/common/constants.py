@@ -15,6 +15,9 @@ class SystemConstants:
     # logger master 파일 이름
     MASTER_LOG_FILE_NAME = 'master'
 
+    # logger scheduler 파일 이름
+    SCHEDULER_LOG_FILE_NAME = 'scheduler'
+
     # logs 폴더명
     LOGGER_PATH = 'logs'
 

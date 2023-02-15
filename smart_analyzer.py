@@ -28,6 +28,9 @@ def main_process():
 
     config = Config(env).get_config()
     config['args'] = vars(args)
+
+    config['log_dir'] = log_dir
+    config['env'] = env
     config['home'] = home
 
     logger.info("*" * 79)

@@ -360,31 +360,8 @@ class SaTarget(CommonTarget):
             except Exception as e:
                 self.logger.exception(e)
 
-    def visualization_data(self, query_folder, sql_name):
+    def sql_query_convert_df(self, sql_query):
 
-        sql_query = TargetUtils.visualization_query(query_folder, sql_name)
+        df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, sql_query)
 
-        return sql_query
-
-
-
-    # def df_processing(self, df_list):
-    #
-    #     result_df_list = []
-    #
-    #     for visual_df in df_list:
-    #         result_df = TargetUtils.visualization_data_processing(visual_df)
-    #         result_df_list.append(result_df)
-    #
-    #     return result_df_list
-    # def df_excel_export(self, result_df_list):
-    #
-    #     root = self.config['home']
-    #     query_folder = root + '/' + SystemConstants.SQL_PATH
-    #     excel_file = root + '/' + SystemConstants.CSV_PATH
-    #     sql_file_list = os.listdir(query_folder)
-    #
-    #     sql_query_list = {x: y for x, y in zip(sql_file_list,result_df_list)}
-    #
-    #     for sql_name, query in sql_query_list.items():
-    #         TargetUtils.excel_export(excel_file, sql_name, query)
+        return df

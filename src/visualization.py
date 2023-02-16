@@ -25,17 +25,12 @@ class Visualization(cm.CommonModule):
 
         TargetUtils.folder_check(root)
 
-        analysis_conn_str = TargetUtils.get_db_conn_str(self.config['analysis_repo'])
-        sa_conn = db.connect(analysis_conn_str)
-
-        # # 시각화 sql filenames 획득, 시각화 데이터 sql 요청
         sql_name_list = os.listdir(query_folder)
-        for sql_name in sql_name_list:
-            sql_query = self.st.visualization_data(query_folder, sql_name)
 
-            # data frame data 전처리
-            df = TargetUtils.get_target_data_by_query(self.logger, sa_conn, sql_query)
+        for sql_name in sql_name_list:
+            sql_query = TargetUtils.get_file_in_path(query_folder, sql_name)
+
+            df = self.st.sql_query_convert_df(sql_query)
             result_df = TargetUtils.visualization_data_processing(df)
 
-            # excel 존재 유무
             TargetUtils.excel_export(excel_file, sql_name, result_df)

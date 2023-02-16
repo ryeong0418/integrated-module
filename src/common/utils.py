@@ -282,7 +282,7 @@ class TargetUtils:
         return pairs
 
     @staticmethod
-    def visualization_query(query_folder, sql_name):
+    def get_file_in_path(query_folder, sql_name):
         with open(query_folder + "/" + sql_name, "r", encoding='utf-8') as file:
             sql_query = file.read()
 

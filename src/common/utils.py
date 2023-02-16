@@ -113,6 +113,51 @@ class SystemUtils:
 
         return sql
 
+    @staticmethod
+    def get_file_in_path(query_folder, sql_name):
+        with open(query_folder + "/" + sql_name, "r", encoding='utf-8') as file:
+            sql_query = file.read()
+
+        return sql_query
+
+    @staticmethod
+    def visualization_data_processing(df):
+        df.columns = map(lambda x: str(x).upper(), df.columns)
+        df = df.apply(pd.to_numeric, errors='ignore')
+
+        if 'TIME' in df.columns:
+            df['TIME'] = pd.to_datetime(df['TIME'])
+
+        return df
+
+    @staticmethod
+    def excel_export(excel_path, sql_name, df):
+
+        now_day = datetime.now()
+        prtitionDate = now_day.strftime('%y%m%d')
+        sheet_name_txt = sql_name.split('.')[0]
+        excel_file = excel_path + "/" + sheet_name_txt + "_" + prtitionDate + '.xlsx'
+
+        if not os.path.exists(excel_file):
+            with pd.ExcelWriter(excel_file, mode='w', engine='openpyxl') as writer:
+                df.to_excel(writer, sheet_name=sheet_name_txt[0], index=False)
+
+        else:
+            with pd.ExcelWriter(excel_file, mode='a', engine='openpyxl', if_sheet_exists='replace') as writer:
+                df.to_excel(writer, sheet_name=sheet_name_txt[0], index=False)
+
+    @staticmethod
+    def folder_check(root):
+
+        if not os.path.exists(root + '/' + SystemConstants.SQL_PATH):
+            os.makedirs(root + '/' + SystemConstants.SQL_PATH)
+
+        if not os.path.exists(root + '/' + SystemConstants.CSV_PATH):
+            os.makedirs(root + '/' + SystemConstants.CSV_PATH)
+        else:
+            print("folder pass")
+            pass
+
 
 class TargetUtils:
 
@@ -280,50 +325,3 @@ class TargetUtils:
             pairs.append(pair)
 
         return pairs
-
-    @staticmethod
-    def get_file_in_path(query_folder, sql_name):
-        with open(query_folder + "/" + sql_name, "r", encoding='utf-8') as file:
-            sql_query = file.read()
-
-        return sql_query
-
-    @staticmethod
-    def visualization_data_processing(df):
-        df.columns = map(lambda x: str(x).upper(), df.columns)
-        df = df.apply(pd.to_numeric, errors='ignore')
-
-        if 'TIME' in df.columns:
-            df['TIME'] = pd.to_datetime(df['TIME'])
-
-        return df
-
-    @staticmethod
-    def excel_export(excel_path, sql_name, df):
-
-        now_day = datetime.now()
-        prtitionDate = now_day.strftime('%y%m%d')
-        sheet_name_txt = sql_name.split('.')[0]
-        excel_file = excel_path +"/"+sheet_name_txt+"_"+prtitionDate+'.xlsx'
-
-        if not os.path.exists(excel_file):
-            with pd.ExcelWriter(excel_file, mode='w', engine='openpyxl') as writer:
-                df.to_excel(writer, sheet_name=sheet_name_txt[0], index=False)
-
-        else:
-            with pd.ExcelWriter(excel_file, mode='a', engine='openpyxl', if_sheet_exists='replace') as writer:
-                df.to_excel(writer, sheet_name=sheet_name_txt[0], index=False)
-
-
-    @staticmethod
-    def folder_check(root):
-
-        if not os.path.exists(root + '/' + SystemConstants.SQL_PATH):
-            os.makedirs(root + '/' + SystemConstants.SQL_PATH)
-
-        if not os.path.exists(root + '/' + SystemConstants.CSV_PATH):
-            os.makedirs(root + '/' + SystemConstants.CSV_PATH)
-        else:
-            print("folder pass")
-            pass
-

@@ -31,12 +31,12 @@ class ModuleFactory:
 
             instance = target_class(self.logger)
 
-
         except KeyError as ke:
             self.logger.error(
                 f"Process {process} invalid. Please check ModuleFactoryEnum.. Terminated.."
             )
             exit()
+
         except Exception as e:
             self.logger.exception(
                 f"target_class invalid. Please check module and class name in src.. Terminated.."

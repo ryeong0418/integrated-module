@@ -28,6 +28,12 @@ class SystemConstants:
     # export 폴더명
     EXPORT_PARQUET_PATH = 'export/parquet'
 
+    #sql path
+    SQL_PATH = 'export/sql_csv/sql'
+
+    #csv_path
+    CSV_PATH = 'export/sql_csv/csv'
+
 
 class TableConstants:
     AE_WAS_INFO = "ae_was_info"

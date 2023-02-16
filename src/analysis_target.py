@@ -6,7 +6,7 @@ import psycopg2.extras
 from sqlalchemy import create_engine, text
 
 from src.common.utils import TargetUtils, SystemUtils
-from src.common.constants import TableConstants
+from src.common.constants import TableConstants,SystemConstants
 from sql.initialize_sql import InterMaxInitializeQuery, MaxGaugeInitializeQuery, SaInitializeQuery
 from sql.sql_text_merge_sql import InterMaxSqlTextMergeQuery, SaSqlTextMergeQuery
 from sql.extract_sql import InterMaxExtractQuery, MaxGaugeExtractorQuery
@@ -355,19 +355,13 @@ class SaTarget(CommonTarget):
             try:
                 table_name = TableConstants.AE_TXN_SQL_SUMMARY
                 inter_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, join_query, table_name)
-                TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine,table_name,inter_df)
+                TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, inter_df)
 
             except Exception as e:
                 self.logger.exception(e)
 
-    def visualization_data(self):
-        root = os.getcwd()
-        query_folder = root + '/export/sql_csv/sql'
-        excel_file = root + '/export/sql_csv/csv'
-        sql_file_list = os.listdir(query_folder)
+    def sql_query_convert_df(self, sql_query):
 
-        for sql_name in sql_file_list:
-            sql_query = TargetUtils.visualization_query(query_folder, sql_name)
-            df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, sql_query)
-            result_df = TargetUtils.visualization_data_processing(df)
-            TargetUtils.excel_export(excel_file, sql_name, result_df)
+        df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, sql_query)
+
+        return df

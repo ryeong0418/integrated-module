@@ -4,8 +4,6 @@ from src import common_module as cm
 from src.analysis_target import InterMaxTarget, MaxGaugeTarget, SaTarget
 
 
-
-
 class Initialize(cm.CommonModule):
 
     def __init__(self, logger):

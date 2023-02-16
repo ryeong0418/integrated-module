@@ -9,6 +9,7 @@ from pandas.io.sql import DatabaseError
 import sqlalchemy
 import pandas as pd
 from datetime import datetime, timedelta
+from src.common.constants import SystemConstants
 
 from src.common.timelogger import TimeLogger
 
@@ -299,8 +300,9 @@ class TargetUtils:
 
     @staticmethod
     def excel_export(excel_path, sql_name, df):
+
         now_day = datetime.now()
-        prtitionDate=now_day.strftime('%y%m%d')
+        prtitionDate = now_day.strftime('%y%m%d')
         sheet_name_txt = sql_name.split('.')[0]
         excel_file = excel_path +"/"+sheet_name_txt+"_"+prtitionDate+'.xlsx'
 
@@ -311,4 +313,17 @@ class TargetUtils:
         else:
             with pd.ExcelWriter(excel_file, mode='a', engine='openpyxl', if_sheet_exists='replace') as writer:
                 df.to_excel(writer, sheet_name=sheet_name_txt[0], index=False)
+
+
+    @staticmethod
+    def folder_check(root):
+
+        if not os.path.exists(root + '/' + SystemConstants.SQL_PATH):
+            os.makedirs(root + '/' + SystemConstants.SQL_PATH)
+
+        if not os.path.exists(root + '/' + SystemConstants.CSV_PATH):
+            os.makedirs(root + '/' + SystemConstants.CSV_PATH)
+        else:
+            print("folder pass")
+            pass
 

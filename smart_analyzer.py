@@ -18,7 +18,6 @@ def main_process():
     home = os.path.dirname(os.path.abspath(__file__))
 
     env = SystemUtils.get_environment_variable()
-    print(env)
 
     log_dir = str(Path(home) / SystemConstants.LOGGER_PATH)
 
@@ -27,6 +26,7 @@ def main_process():
     process = args.proc
 
     config = Config(env).get_config()
+
     config['args'] = vars(args)
 
     config['log_dir'] = log_dir
@@ -41,6 +41,7 @@ def main_process():
         fmf = ModuleFactory(logger)
         instance = fmf.get_module_instance(process)
         instance.set_config(config)
+        print(instance)
 
         with TimeLogger(f'{instance.__class__.__name__}', logger):
             instance.main_process()

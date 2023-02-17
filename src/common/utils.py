@@ -155,7 +155,6 @@ class SystemUtils:
         if not os.path.exists(root + '/' + SystemConstants.CSV_PATH):
             os.makedirs(root + '/' + SystemConstants.CSV_PATH)
         else:
-            print("folder pass")
             pass
 
 

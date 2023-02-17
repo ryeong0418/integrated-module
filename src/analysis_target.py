@@ -362,6 +362,7 @@ class SaTarget(CommonTarget):
 
     def sql_query_convert_df(self, sql_query):
 
-        df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, sql_query)
+        table_name = TableConstants.AE_TXN_SQL_SUMMARY
+        df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, sql_query, table_name)
 
         return df

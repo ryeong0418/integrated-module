@@ -41,7 +41,6 @@ def main_process():
         fmf = ModuleFactory(logger)
         instance = fmf.get_module_instance(process)
         instance.set_config(config)
-        print(instance)
 
         with TimeLogger(f'{instance.__class__.__name__}', logger):
             instance.main_process()

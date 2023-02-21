@@ -34,8 +34,6 @@ class ParquetFile:
 
         self.index = 1 if self.index > 30 else self.index
 
-        df.drop(columns='p_sql_text', inplace=True)
-
         if not os.path.isfile(parquet_name):
             df.to_parquet(parquet_name, engine='fastparquet')
             self.logger.info(f"{parquet_file_name} file create and export ({df_volume}) {self.DOT * self.index}")

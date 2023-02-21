@@ -22,7 +22,7 @@ class SystemConstants:
     LOGGER_PATH = 'logs'
 
     # db sql text parquet 파일명
-    DB_SQL_TEXT_FILE_NAME = 'export_ae_db_sql_text'
+    DB_SQL_TEXT_FILE_NAME = 'ae_db_sql_text'
     DB_SQL_TEXT_FILE_SUFFIX = '.parquet'
 
     # export 폴더명

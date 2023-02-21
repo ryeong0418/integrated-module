@@ -307,8 +307,8 @@ class SaTarget(CommonTarget):
         conn = self.analysis_engine.connect().execution_options(stream_results=True,)
         return pd.read_sql_query(text(query), conn, chunksize=chunksize)
 
-    def get_ae_db_sql_text_1seq(self, chunksize):
-        replace_dict = {'s_date': self.config['args']['s_date']}
+    def get_ae_db_sql_text_1seq(self, date, chunksize):
+        replace_dict = {'s_date': date}
         query = SystemUtils.sql_replace_to_dict(SaSqlTextMergeQuery.SELECT_AE_DB_SQL_TEXT_1SEQ, replace_dict)
 
         return pd.read_sql_query(query, self.sa_conn, chunksize=chunksize)
@@ -366,3 +366,11 @@ class SaTarget(CommonTarget):
         df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, sql_query, table_name)
 
         return df
+
+    def get_maxgauge_date_conditions(self,):
+        return TargetUtils.set_maxgauge_date(self.config['args']['s_date'], self.config['args']['interval'])
+
+    def insert_merged_result(self, merged_df):
+        table_name = TableConstants.AE_SQL_TEXT
+        TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, merged_df)
+

@@ -101,13 +101,13 @@ class InterMaxTarget(CommonTarget):
 
         TargetUtils.default_insert_data(self.logger, self.analysis_engine, table_name, filtered_df)
 
-    def _insert_intermax_detail_data(self):
+    def insert_intermax_detail_data(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
         
         self._set_insert_xapm_txn_detail()
         
         self._set_insert_xapm_txn_sql_detail()
-        
+
         self._set_insert_xapm_txn_sql_fetch()
 
     def _set_insert_xapm_txn_detail(self):
@@ -148,6 +148,8 @@ class InterMaxTarget(CommonTarget):
 
     def _excute_insert_intermax_detail_data(self, query, table_name):
         df = TargetUtils.get_target_data_by_query(self.logger, self.im_conn, query, table_name)
+        #print(df.drop_duplicates(['tid'], inplace=True))
+        # df.drop_duplicates(['tid'],inplace=True)
         TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
 
@@ -188,7 +190,7 @@ class MaxGaugeTarget(CommonTarget):
         detail_df = TargetUtils.get_target_data_by_query(self.logger, self.mg_conn, query, table_name,)
         TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, detail_df)
 
-    def _insert_maxgauge_detail_data(self):
+    def insert_maxgauge_detail_data(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
 
         self._set_insert_ora_session_info()

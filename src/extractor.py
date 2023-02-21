@@ -17,13 +17,13 @@ class Extractor(cm.CommonModule):
             self.logger.debug("Intermax extractor")
             self.imt = InterMaxTarget(self.logger, self.config)
             self.imt.init_process()
-            self.imt._insert_intermax_detail_data()
+            self.imt.insert_intermax_detail_data()
 
         if self.config['maxgauge_repo']['use']:
             self.logger.debug("maxgauge extractor")
-            self.mgt= MaxGaugeTarget(self.logger, self.config)
+            self.mgt = MaxGaugeTarget(self.logger, self.config)
             self.mgt.init_process()
-            self.mgt._insert_maxgauge_detail_data()
+            self.mgt.insert_maxgauge_detail_data()
 
 
 

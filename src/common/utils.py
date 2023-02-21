@@ -1,14 +1,13 @@
 import importlib.util
 import argparse
 import os
-import psycopg2 as db
+import pandas as pd
+
+from datetime import datetime, timedelta
 from pathlib import Path
 from psycopg2 import errors
 from psycopg2.errorcodes import DUPLICATE_TABLE
-from pandas.io.sql import DatabaseError
-import sqlalchemy
-import pandas as pd
-from datetime import datetime, timedelta
+
 from src.common.constants import SystemConstants
 
 from src.common.timelogger import TimeLogger
@@ -156,6 +155,17 @@ class SystemUtils:
             os.makedirs(root + '/' + SystemConstants.CSV_PATH)
         else:
             pass
+
+    @staticmethod
+    def get_date_by_interval(interval, fmt="%Y%m%d"):
+        """
+        interval에 따른 날짜를 구하기 위한 함수 
+        :param interval: 필요한 날짜 interval (ex, 어제 -1, 내일 1)
+        :param fmt: return 포맷 (기본 : yyyymmdd)
+        :return: interval 날짜
+        """
+        now = datetime.now()
+        return (now + timedelta(days=interval)).strftime(fmt)
 
 
 class TargetUtils:

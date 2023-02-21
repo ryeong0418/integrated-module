@@ -22,5 +22,15 @@
 		"sid": "",
 		"user": "",
 		"password": ""
+	},
+	"scheduler": {
+		"is_alive_sched": {
+			"hour": "*",
+			"minute": "0,30"
+		},
+		"main_sched": {
+			"hour": "1",
+			"minute": "0"
+		}
 	}
 }

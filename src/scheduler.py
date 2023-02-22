@@ -92,18 +92,19 @@ class Scheduler(cm.CommonModule):
     def _main_job(self):
         self._update_config_custom_values()
 
-        # self._extractor_job()
+        self._extractor_job()
 
         self._summarizer_job()
 
+        # sql text parquet 파일 분리해내서 그부분만 돌수 있게 처리 추가
         self._sql_text_merge_job()
 
     def _extractor_job(self):
         self.scheduler_logger.info(f"_extractor_job start")
 
-        extrator = Extractor(self.scheduler_logger)
-        extrator.set_config(self.config)
-        extrator.main_process()
+        extractor = Extractor(self.scheduler_logger)
+        extractor.set_config(self.config)
+        extractor.main_process()
 
         self.scheduler_logger.info(f"_extractor_job end")
 

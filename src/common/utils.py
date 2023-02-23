@@ -155,6 +155,17 @@ class SystemUtils:
         else:
             pass
 
+    @staticmethod
+    def get_filenames_from_path(path: str, prefix: str = '', suffix: str = ''):
+        """
+        path에 모든 파일 이름을 가져오는 함수
+        :param path: 파일 이름을 가져오려는 절대 경로
+        :param prefix: 시작이 prefix를 포함하는 파일 (optional)
+        :param suffix: 끝이 suffix를 포함하는 파일 (optional)
+        :return: 파일 이름 list
+        """
+        return [x for x in os.listdir(path) if str(x).startswith(prefix) and str(x).endswith(suffix)]
+
 
 class TargetUtils:
 

@@ -46,7 +46,7 @@ class SqlTextMerge(cm.CommonModule):
 
         self.export_parquet_root_path = f'{self.config["home"]}/{SystemConstants.EXPORT_PARQUET_PATH}'
 
-        # self._export_db_sql_text()
+        self._export_db_sql_text()
 
         self._sql_text_merge()
 
@@ -147,7 +147,6 @@ class SqlTextMerge(cm.CommonModule):
         return results_df
 
     def _preprocessing(self, xapm_sql_df):
-        self.logger.info(f"_preprocessing start {os.getpid()}")
         # 메모리 문제로 타겟 컬럼과 도착지 컬럼을 같게(None) 줘야할수도 있을듯
         xapm_sql_df = self._remove_unnecess_char(xapm_sql_df, 'sql_text')
         xapm_sql_df = self._split_parse_sql_text(xapm_sql_df, 'sql_text', 'sp_sql_text')

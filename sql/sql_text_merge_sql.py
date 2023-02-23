@@ -17,22 +17,9 @@ class SaSqlTextMergeQuery:
         select sql_uid,            
             partition_key             		   
         from ae_db_sql_text
-        where seq = 1 
-        and partition_key = #(s_date)001
-        
-        """
-    )
-
-    SELECT_AE_DB_SQL_TEXT_BY_SQL_UID = (
-        """
-        select sql_text
-             , partition_key
-             , sql_uid           		   
-        from ae_db_sql_text
-        where 1=1
-        AND partition_key = #(partition_key)
-        AND sql_uid = '#(sql_uid)'
-        order by seq asc    
+        where 1=1 
+        and partition_key = #(partition_key)
+        and seq = 1
         """
     )
 

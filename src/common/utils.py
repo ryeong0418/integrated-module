@@ -1,16 +1,14 @@
 import importlib.util
 import argparse
 import os
-import psycopg2 as db
+import pandas as pd
+
 from pathlib import Path
 from psycopg2 import errors
 from psycopg2.errorcodes import DUPLICATE_TABLE
-from pandas.io.sql import DatabaseError
-import sqlalchemy
-import pandas as pd
 from datetime import datetime, timedelta
-from src.common.constants import SystemConstants
 
+from src.common.constants import SystemConstants
 from src.common.timelogger import TimeLogger
 
 
@@ -156,6 +154,17 @@ class SystemUtils:
             os.makedirs(root + '/' + SystemConstants.CSV_PATH)
         else:
             pass
+
+    @staticmethod
+    def get_filenames_from_path(path: str, prefix: str = '', suffix: str = ''):
+        """
+        path에 모든 파일 이름을 가져오는 함수
+        :param path: 파일 이름을 가져오려는 절대 경로
+        :param prefix: 시작이 prefix를 포함하는 파일 (optional)
+        :param suffix: 끝이 suffix를 포함하는 파일 (optional)
+        :return: 파일 이름 list
+        """
+        return [x for x in os.listdir(path) if str(x).startswith(prefix) and str(x).endswith(suffix)]
 
 
 class TargetUtils:

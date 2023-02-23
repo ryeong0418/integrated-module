@@ -21,14 +21,18 @@ class InterMaxInitializeQuery:
                 txn_name varchar(256) NULL,
                 business_id int4 NULL,
                 business_name varchar(256) NULL,
-                modified_time timestamp NULL
+                modified_time timestamp NULL,
+                create_dt timestamp default current_timestamp,
+                create_id varchar(20) default 'system' not NULL
             )
         """,
         """ 
             CREATE TABLE AE_WAS_INFO (
                 was_id int4 NULL,
                 was_name varchar(128) NULL,
-                host_name varchar(64) NULL
+                host_name varchar(64) NULL,
+                create_dt timestamp default current_timestamp,
+                create_id varchar(20) default 'system' not NULL
             )
         """,
         # 22.07.13 테이블 명칭 변경 AE_APM_SQL_TEXT -> AE_WAS_SQL_TEXT
@@ -36,7 +40,9 @@ class InterMaxInitializeQuery:
             CREATE TABLE AE_WAS_SQL_TEXT (
                 sql_id varchar(40) NULL,
                 sql_text_100 varchar(100) NULL,
-                sql_text text NULL                
+                sql_text text NULL,
+                create_dt timestamp default current_timestamp,
+                create_id varchar(20) default 'system' not NULL       
             )
         """,
         # 22.07.15 테이블 신규 추가 AE_WAS_DB_INFO
@@ -49,7 +55,9 @@ class InterMaxInitializeQuery:
                 host_name varchar(64) NULL,
                 host_ip varchar(16) NULL,
                 sid varchar(64) NULL,
-                lsnr_port int8 NULL
+                lsnr_port int8 NULL,
+                create_dt timestamp default current_timestamp,
+                create_id varchar(20) default 'system' not NULL
             )
         """,
         # 22.08.01 jdbc_fetch_count 컬럼 추가
@@ -186,7 +194,9 @@ class MaxGaugeInitializeQuery:
                 RAC_INST_NUMBER INT8 ,
                 BUSINESS_NAME VARCHAR(64) ,
                 IS_MASTER_RTS VARCHAR(1),
-                BATCH_JOB_YN VARCHAR(1)  
+                BATCH_JOB_YN VARCHAR(1),
+                create_dt timestamp default current_timestamp,
+                create_id varchar(20) default 'system' not NULL  
             )
         """,
         # 22.07.13 테이블 명칭 변경 AE_SQL_LIST -> AE_DB_SQL_TEXT
@@ -196,7 +206,9 @@ class MaxGaugeInitializeQuery:
                 DB_ID INT2 NULL,
                 SQL_UID VARCHAR(48) NULL,	    
                 SEQ INT2 NULL,
-                SQL_TEXT VARCHAR(4000) NULL
+                SQL_TEXT VARCHAR(4000) NULL,
+                create_dt timestamp default current_timestamp,
+                create_id varchar(20) default 'system' not NULL
             )
         """,
         """
@@ -318,9 +330,9 @@ class SaInitializeQuery:
     # AE_TXN_SQL_SUMMARY
     #
     ###############################################################
-    # Sa Function Lists
+    # Sa Sequence
     ###############################################################
-    # sql_full(p_dbid integer, p_parti bigint, p_sql_uid character varying)
+    # seq_execute_log_id
     #
     ###############################################################
 
@@ -331,7 +343,9 @@ class SaInitializeQuery:
                 was_sql_id varchar(40) NULL,	
                 db_sql_uid varchar(40) null,
                 sql_text_100 varchar(100) null,
-                state_code varchar(100) null
+                state_code varchar(100) null,
+                create_dt timestamp default current_timestamp,
+                create_id varchar(20) default 'system' not NULL
             )
         """,
         # 22.07.28 ae_txn_sql_summary 테이블 신규 추가
@@ -375,41 +389,30 @@ class SaInitializeQuery:
                 sql_elapse_avg int4 NULL,
                 sql_elapse_max int4 NULL,
                 create_dt timestamp default current_timestamp,
-                create_id varchar(20) default 'system' not NULL
-                                
+                create_id varchar(20) default 'system' not NULL                                
             )
         """,
-        # 22.07.27  sql_full 펑션 추가
-        """ 
-            CREATE OR REPLACE FUNCTION sql_full(p_dbid integer, p_parti bigint, p_sql_uid character varying)
-            RETURNS text AS
-            $BODY$
-                declare 
-                rTab1 record;
-                rText text;
-                v_parti bigint;
-                v_sql_uid character varying(48);
-                v_sql_text varchar(4000);
-
-                begin
-                rText :=' ';
-                for rTab1 in
-                select substr(replace( x.sql_text, chr(12), chr(10) ), 1, length( x.sql_text ))  col1 
-                from ae_db_sql_text x
-                where x.db_id = $1
-                and x.partition_key = $2
-                and x.sql_uid = $3
-                order by x.seq		
-                loop
-                rText :=rText||rTab1.col1||'';
-                end loop;
-                return rText;
-                end;
-            $BODY$
-            LANGUAGE plpgsql VOLATILE
-            COST 100;
-            ALTER FUNCTION sql_full(integer, bigint, character varying)
-            OWNER TO postgres;
+        """
+        CREATE SEQUENCE seq_execute_log_id
+        INCREMENT 1
+        START 1
+        MINVALUE 1
+        MAXVALUE 9223372036854775807
+        CACHE 1;        
+        """,
+        """
+        CREATE TABLE AE_EXECUTE_LOG (
+            seq bigint not null,
+            execute_name varchar(20) not null,
+            execute_start_dt varchar(20) not null,
+            execute_end_dt varchar(20) not null,
+            execute_elapsed_time integer not null,
+            execute_args varchar(100) null,
+            result varchar(1) not null,
+            result_msg varchar(100) not null,
+            create_dt timestamp default current_timestamp,
+            create_id varchar(20) default 'system' not null
+        )
         """
     )
 

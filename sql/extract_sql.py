@@ -83,8 +83,8 @@ class MaxGaugeExtractorQuery:
                       cpid,
                       (select s.value from apm_string_data s where s.id = si.program_id   and id_type='PROGRAM') as program,
                       session_type
-               from qs19c.ora_session_info si
-               where partition_key =  """ + "#(table_suffix)" + """004
+               from #(instance_name).ora_session_info si
+               where partition_key =  #(partition_key)
                --and db_id=2
             """
     )
@@ -109,8 +109,8 @@ class MaxGaugeExtractorQuery:
                         was_id,
                         split_part(client_identifier, ',' , 4) txn_name,
                         tid
-                from qs19c.ora_session_stat
-                where partition_key = """ + "#(table_suffix)" + """004
+                from #(instance_name).ora_session_stat
+                where partition_key = #(partition_key)
                 --and db_id=2
                 and sql_id is not null                
             """
@@ -124,8 +124,8 @@ class MaxGaugeExtractorQuery:
                     ,SQL_UID
                     ,SEQ
                     ,SQL_TEXT
-            FROM qs19c.APM_SQL_LIST
-            WHERE PARTITION_KEY = """ + "#(table_suffix)" + """004
+            FROM #(instance_name).APM_SQL_LIST
+            WHERE PARTITION_KEY = #(partition_key)
             --AND DB_ID=2
             """
     )
@@ -164,8 +164,8 @@ class MaxGaugeExtractorQuery:
                         --,OPTIMIZED_PHY_READ_REQUESTS
                         --,IO_CELL_UNCOMPRESSED_BYTES
                         --,IO_CELL_OFFLOAD_RETURNED_BYTES
-                FROM  qs19c.ORA_SQL_STAT_10MIN A
-                WHERE  PARTITION_KEY = """ + "#(table_suffix)" + """004
+                FROM  #(instance_name).ORA_SQL_STAT_10MIN A
+                WHERE  PARTITION_KEY = #(partition_key)
                 --AND  A.DB_ID = 2
             """
     )
@@ -191,12 +191,13 @@ class MaxGaugeExtractorQuery:
                         A.EVENT_VERSION,
                         B.EVENT_NAME,
                         B.WAIT_CLASS
-                FROM qs19c.ORA_SQL_WAIT_10MIN A ,
+                FROM #(instance_name).ORA_SQL_WAIT_10MIN A ,
                     ORA_EVENT_NAME B
-                WHERE PARTITION_KEY = """ + "#(table_suffix)" + """004
+                WHERE PARTITION_KEY = #(partition_key)
                 --AND A.DB_ID = 2
                 AND A.DB_ID=B.DB_ID
                 AND A.EVENT_ID=B.EVENT_ID
                 AND A.EVENT_VERSION=B.EVENT_VERSION
             """
     )
+

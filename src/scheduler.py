@@ -70,6 +70,9 @@ class Scheduler(cm.CommonModule):
             minute=self.config['scheduler']['main_sched']['minute'],
             id='_extract_summary_job'
         )
+        self.scheduler_logger.info(f"Main scheduler start and set config cron expression - "
+                                   f"{self.config['scheduler']['main_sched']['hour']} hour "
+                                   f"{self.config['scheduler']['main_sched']['minute']} minute")
         self.main_scheduler.start()
 
     def _add_scheduler_logger(self):
@@ -97,7 +100,6 @@ class Scheduler(cm.CommonModule):
 
         self._summarizer_job()
 
-        # sql text parquet 파일 분리해내서 그부분만 돌수 있게 처리 추가
         self._sql_text_merge_job()
 
     def _extractor_job(self):

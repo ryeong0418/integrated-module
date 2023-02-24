@@ -12,7 +12,7 @@ from sql.sql_text_merge_sql import InterMaxSqlTextMergeQuery, SaSqlTextMergeQuer
 from sql.extract_sql import InterMaxExtractQuery, MaxGaugeExtractorQuery
 from sql.summarizer_sql import SummarizerQuery,InterMaxGaugeSummarizerQuery
 from sql.common_sql import CommonSql
-
+from sql.extract_sql import Ae_Dev_Query
 
 class CommonTarget:
 
@@ -204,63 +204,88 @@ class MaxGaugeTarget(CommonTarget):
 
     def _set_insert_ora_session_info(self):
         date_conditions = TargetUtils.set_maxgauge_date(self.config['args']['s_date'], self.config['args']['interval'])
-        for date in date_conditions:
-            table_suffix_dict = {'table_suffix': date}
-            query = MaxGaugeExtractorQuery.SELECT_ORA_SESSION_INFO
-            detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
-            table_name = TableConstants.AE_SESSION_INFO
-            try:
-                self._excute_insert_maxgauge_detail_data(detail_query, table_name)
-            except Exception as e:
-                self.logger.exception(e)
+        ae_db_info_query = CommonSql.SELECT_AE_DB_INFO
+        ae_db_info_name = TableConstants.AE_DB_INFO
+        df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, ae_db_info_query, ae_db_info_name)
+        for i, name in df.values:
+            db_id = str(i).zfill(3)
+            for date in date_conditions:
+                table_suffix_dict = {'instance_name': name, 'partition_key':date+db_id}
+                query = MaxGaugeExtractorQuery.SELECT_ORA_SESSION_INFO
+                detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
+                table_name = TableConstants.AE_SESSION_INFO
+                try:
+                    self._excute_insert_maxgauge_detail_data(detail_query, table_name)
+                except Exception as e:
+                    self.logger.exception(e)
 
     def _set_insert_ora_session_stat(self):
         date_conditions = TargetUtils.set_maxgauge_date(self.config['args']['s_date'], self.config['args']['interval'])
-        for date in date_conditions:
-            table_suffix_dict = {'table_suffix': date}
-            query = MaxGaugeExtractorQuery.SELECT_ORA_SESSION_STAT
-            detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
-            table_name = TableConstants.AE_SESSION_STAT
-            try:
-                self._excute_insert_maxgauge_detail_data(detail_query, table_name)
-            except Exception as e:
-                self.logger.exception(e)
+        ae_db_info_query = CommonSql.SELECT_AE_DB_INFO
+        ae_db_info_name = TableConstants.AE_DB_INFO
+        df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, ae_db_info_query, ae_db_info_name)
+        for i, name in df.values:
+            db_id = str(i).zfill(3)
+            for date in date_conditions:
+                table_suffix_dict = {'instance_name': name, 'partition_key':date+db_id}
+                query = MaxGaugeExtractorQuery.SELECT_ORA_SESSION_STAT
+                detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
+                table_name = TableConstants.AE_SESSION_STAT
+                try:
+                    self._excute_insert_maxgauge_detail_data(detail_query, table_name)
+                except Exception as e:
+                    self.logger.exception(e)
 
     def _set_insert_apm_sql_list(self):
         date_conditions = TargetUtils.set_maxgauge_date(self.config['args']['s_date'], self.config['args']['interval'])
-        for date in date_conditions:
-            table_suffix_dict = {'table_suffix': date}
-            query = MaxGaugeExtractorQuery.SELECT_APM_SQL_LIST
-            detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
-            table_name = TableConstants.AE_DB_SQL_TEXT
-            try:
-                self._excute_insert_maxgauge_detail_data(detail_query, table_name)
-            except Exception as e:
-                self.logger.exception(e)
+        ae_db_info_query = CommonSql.SELECT_AE_DB_INFO
+        ae_db_info_name = TableConstants.AE_DB_INFO
+        df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, ae_db_info_query, ae_db_info_name)
+        for i, name in df.values:
+            db_id = str(i).zfill(3)
+            for date in date_conditions:
+                table_suffix_dict = {'instance_name': name, 'partition_key':date+db_id}
+                query = MaxGaugeExtractorQuery.SELECT_APM_SQL_LIST
+                detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
+                table_name = TableConstants.AE_DB_SQL_TEXT
+                try:
+                    self._excute_insert_maxgauge_detail_data(detail_query, table_name)
+                except Exception as e:
+                    self.logger.exception(e)
 
     def _set_insert_ora_sql_stat_10(self):
         date_conditions = TargetUtils.set_maxgauge_date(self.config['args']['s_date'], self.config['args']['interval'])
-        for date in date_conditions:
-            table_suffix_dict = {'table_suffix': date}
-            query = MaxGaugeExtractorQuery.SELECT_ORA_SQL_STAT_10
-            detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
-            table_name = TableConstants.AE_SQL_STAT_10MIN
-            try:
-                self._excute_insert_maxgauge_detail_data(detail_query, table_name)
-            except Exception as e:
-                self.logger.exception(e)
+        ae_db_info_query = CommonSql.SELECT_AE_DB_INFO
+        ae_db_info_name = TableConstants.AE_DB_INFO
+        df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, ae_db_info_query, ae_db_info_name)
+        for i, name in df.values:
+            db_id = str(i).zfill(3)
+            for date in date_conditions:
+                table_suffix_dict = {'instance_name': name, 'partition_key':date+db_id}
+                query = MaxGaugeExtractorQuery.SELECT_ORA_SQL_STAT_10
+                detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
+                table_name = TableConstants.AE_SQL_STAT_10MIN
+                try:
+                    self._excute_insert_maxgauge_detail_data(detail_query, table_name)
+                except Exception as e:
+                    self.logger.exception(e)
 
     def _set_insert_ora_sql_wait_10(self):
         date_conditions = TargetUtils.set_maxgauge_date(self.config['args']['s_date'], self.config['args']['interval'])
-        for date in date_conditions:
-            table_suffix_dict = {'table_suffix': date}
-            query = MaxGaugeExtractorQuery.SELECT_ORA_SQL_WAIT_10
-            detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
-            table_name = TableConstants.AE_SQL_WAIT_10MIN
-            try:
-                self._excute_insert_maxgauge_detail_data(detail_query, table_name)
-            except Exception as e:
-                self.logger.exception(e)
+        ae_db_info_query = CommonSql.SELECT_AE_DB_INFO
+        ae_db_info_name = TableConstants.AE_DB_INFO
+        df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, ae_db_info_query, ae_db_info_name)
+        for i, name in df.values:
+            db_id = str(i).zfill(3)
+            for date in date_conditions:
+                table_suffix_dict = {'instance_name': name, 'partition_key':date+db_id}
+                query = MaxGaugeExtractorQuery.SELECT_ORA_SQL_WAIT_10
+                detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
+                table_name = TableConstants.AE_SQL_WAIT_10MIN
+                try:
+                    self._excute_insert_maxgauge_detail_data(detail_query, table_name)
+                except Exception as e:
+                    self.logger.exception(e)
 
     def _excute_insert_maxgauge_detail_data(self, query, table_name):
         df = TargetUtils.get_target_data_by_query(self.logger, self.mg_conn, query, table_name,)

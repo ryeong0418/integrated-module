@@ -8,8 +8,9 @@ from psycopg2 import errors
 from psycopg2.errorcodes import DUPLICATE_TABLE
 from datetime import datetime, timedelta
 
-from src.common.constants import SystemConstants
+from src.common.constants import SystemConstants,TableConstants
 from src.common.timelogger import TimeLogger
+from sql.extract_sql import Ae_Dev_Query
 
 
 class SystemUtils:
@@ -165,6 +166,15 @@ class SystemUtils:
         :return: 파일 이름 list
         """
         return [x for x in os.listdir(path) if str(x).startswith(prefix) and str(x).endswith(suffix)]
+
+    @staticmethod
+    def db_id_call(ae_db):
+
+        ae_db_info_query = Ae_Dev_Query.SELECT_AE_DB_INFO
+        table_name=TableConstants.AE_DB_INFO
+        df=TargetUtils.get_target_data_by_query(ae_db,ae_db_info_query,table_name)
+        # print(df)
+
 
 
 class TargetUtils:

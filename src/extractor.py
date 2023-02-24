@@ -13,11 +13,11 @@ class Extractor(cm.CommonModule):
     def main_process(self):
         self.logger.debug('extractor')
 
-        if self.config['intermax_repo']['use']:
-            self.logger.debug("Intermax extractor")
-            self.imt = InterMaxTarget(self.logger, self.config)
-            self.imt.init_process()
-            self.imt._insert_intermax_detail_data()
+        # if self.config['intermax_repo']['use']:
+        #     self.logger.debug("Intermax extractor")
+        #     self.imt = InterMaxTarget(self.logger, self.config)
+        #     self.imt.init_process()
+        #     self.imt._insert_intermax_detail_data()
 
         if self.config['maxgauge_repo']['use']:
             self.logger.debug("maxgauge extractor")

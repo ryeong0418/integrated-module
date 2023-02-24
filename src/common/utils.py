@@ -10,7 +10,6 @@ from datetime import datetime, timedelta
 
 from src.common.constants import SystemConstants,TableConstants
 from src.common.timelogger import TimeLogger
-from sql.extract_sql import Ae_Dev_Query
 
 
 class SystemUtils:

@@ -201,9 +201,3 @@ class MaxGaugeExtractorQuery:
             """
     )
 
-
-class Ae_Dev_Query:
-
-    SELECT_AE_DB_INFO = (
-            "select * from ae_db_info"
-    )

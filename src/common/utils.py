@@ -167,15 +167,6 @@ class SystemUtils:
         """
         return [x for x in os.listdir(path) if str(x).startswith(prefix) and str(x).endswith(suffix)]
 
-    @staticmethod
-    def db_id_call(ae_db):
-
-        ae_db_info_query = Ae_Dev_Query.SELECT_AE_DB_INFO
-        table_name=TableConstants.AE_DB_INFO
-        df=TargetUtils.get_target_data_by_query(ae_db,ae_db_info_query,table_name)
-        # print(df)
-
-
 
 class TargetUtils:
 

@@ -8,6 +8,7 @@ from apscheduler.schedulers.background import BackgroundScheduler, BlockingSched
 from src import common_module as cm
 from src.extractor import Extractor
 from src.summarizer import Summarizer
+from src.sql_text_merge import SqlTextMerge
 from src.common.constants import SystemConstants
 from src.common.utils import SystemUtils
 from resources.logger_manager import Logger
@@ -119,7 +120,11 @@ class Scheduler(cm.CommonModule):
 
     def _sql_text_merge_job(self):
         self.scheduler_logger.info(f"_sql_text_merge_job start")
-        time.sleep(5)
+
+        stm = SqlTextMerge(self.scheduler_logger)
+        stm.set_config(self.config)
+        stm.main_process()
+
         self.scheduler_logger.info(f"_sql_text_merge_job end")
 
     def _update_config_custom_values(self):

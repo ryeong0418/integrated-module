@@ -156,6 +156,17 @@ class SystemUtils:
             pass
 
     @staticmethod
+    def get_date_by_interval(interval, fmt="%Y%m%d"):
+        """
+        interval에 따른 날짜를 구하기 위한 함수 
+        :param interval: 필요한 날짜 interval (ex, 어제 -1, 내일 1)
+        :param fmt: return 포맷 (기본 : yyyymmdd)
+        :return: interval 날짜
+        """
+        now = datetime.now()
+        return (now + timedelta(days=interval)).strftime(fmt)
+
+    @staticmethod
     def get_filenames_from_path(path: str, prefix: str = '', suffix: str = ''):
         """
         path에 모든 파일 이름을 가져오는 함수

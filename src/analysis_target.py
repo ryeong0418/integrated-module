@@ -12,7 +12,7 @@ from sql.sql_text_merge_sql import InterMaxSqlTextMergeQuery, SaSqlTextMergeQuer
 from sql.extract_sql import InterMaxExtractQuery, MaxGaugeExtractorQuery
 from sql.summarizer_sql import SummarizerQuery,InterMaxGaugeSummarizerQuery
 from sql.common_sql import CommonSql
-from sql.extract_sql import Ae_Dev_Query
+
 
 class CommonTarget:
 
@@ -99,7 +99,6 @@ class InterMaxTarget(CommonTarget):
 
     def insert_ae_sql_text(self, filtered_df):
         table_name = TableConstants.AE_SQL_TEXT
-
         TargetUtils.default_insert_data(self.logger, self.analysis_engine, table_name, filtered_df)
 
     def insert_intermax_detail_data(self):

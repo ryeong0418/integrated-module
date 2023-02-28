@@ -65,6 +65,12 @@ class InterMaxTarget(CommonTarget):
 
         self._set_insert_xapm_db_info()
 
+        self._set_insert_xapm_was_stat_summary()
+
+        self._set_insert_xapm_jvm_stat_summary()
+
+        self._set_insert_xapm_os_stat_osm()
+
     def _set_insert_xapm_was_info(self):
         query = InterMaxInitializeQuery.SELECT_XAPM_WAS_INFO
         table_name = TableConstants.AE_WAS_INFO
@@ -83,6 +89,21 @@ class InterMaxTarget(CommonTarget):
     def _set_insert_xapm_db_info(self):
         query = InterMaxInitializeQuery.SELECT_XAPM_DB_INFO
         table_name = TableConstants.AE_WAS_DB_INFO
+        self._excute_insert_intermax_meta(query, table_name)
+
+    def _set_insert_xapm_was_stat_summary(self):
+        query = InterMaxInitializeQuery.SELECT_XAPM_WAS_STAT_SUMMARY
+        table_name = TableConstants.AE_WAS_STAT_SUMMARY
+        self._excute_insert_intermax_meta(query, table_name)
+
+    def _set_insert_xapm_jvm_stat_summary(self):
+        query = InterMaxInitializeQuery.SELECT_XAPM_JVM_STAT_SUMMARY
+        table_name = TableConstants.AE_JVM_STAT_SUMMARY
+        self._excute_insert_intermax_meta(query, table_name)
+
+    def _set_insert_xapm_os_stat_osm(self):
+        query = InterMaxInitializeQuery.SELECT_XAPM_OS_STAT_OSM
+        table_name = TableConstants.AE_WAS_OS_STAT_OSM
         self._excute_insert_intermax_meta(query, table_name)
 
     def _excute_insert_intermax_meta(self, query, table_name):
@@ -115,6 +136,7 @@ class InterMaxTarget(CommonTarget):
             self._set_insert_xapm_txn_sql_detail(table_suffix_dict,delete_query,date)
 
             self._set_insert_xapm_txn_sql_fetch(table_suffix_dict,delete_query,date)
+
 
     def _set_insert_xapm_txn_detail(self, table_suffix_dict, delete_query, date, table_name=TableConstants.AE_TXN_DETAIL):
         query = InterMaxExtractQuery.SELECT_XAPM_TXN_DETAIL

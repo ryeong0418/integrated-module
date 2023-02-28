@@ -21,7 +21,7 @@ class Extractor(cm.CommonModule):
 
         if self.config['maxgauge_repo']['use']:
             self.logger.debug("maxgauge extractor")
-            self.mgt= MaxGaugeTarget(self.logger, self.config)
+            self.mgt = MaxGaugeTarget(self.logger, self.config)
             self.mgt.init_process()
             self.mgt.insert_maxgauge_detail_data()
 

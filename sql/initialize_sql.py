@@ -22,7 +22,7 @@ class InterMaxInitializeQuery:
                 business_id int4 NULL,
                 business_name varchar(256) NULL,
                 modified_time timestamp NULL,
-                create_dt timestamp default current_timestamp,
+                create_dt timestamp with time zone default current_timestamp,
                 create_id varchar(20) default 'system' not NULL
             )
         """,
@@ -31,7 +31,7 @@ class InterMaxInitializeQuery:
                 was_id int4 NULL,
                 was_name varchar(128) NULL,
                 host_name varchar(64) NULL,
-                create_dt timestamp default current_timestamp,
+                create_dt timestamp with time zone default current_timestamp,
                 create_id varchar(20) default 'system' not NULL
             )
         """,
@@ -41,7 +41,7 @@ class InterMaxInitializeQuery:
                 sql_id varchar(40) NULL,
                 sql_text_100 varchar(100) NULL,
                 sql_text text NULL,
-                create_dt timestamp default current_timestamp,
+                create_dt timestamp with time zone default current_timestamp,
                 create_id varchar(20) default 'system' not NULL       
             )
         """,
@@ -56,7 +56,7 @@ class InterMaxInitializeQuery:
                 host_ip varchar(16) NULL,
                 sid varchar(64) NULL,
                 lsnr_port int8 NULL,
-                create_dt timestamp default current_timestamp,
+                create_dt timestamp with time zone default current_timestamp,
                 create_id varchar(20) default 'system' not NULL
             )
         """,
@@ -81,7 +81,7 @@ class InterMaxInitializeQuery:
                 exception int4 NULL,
                 remote_count int4 NULL,
                 remote_elapse int4 NULL,
-                create_dt timestamp default current_timestamp,
+                create_dt timestamp with time zone default current_timestamp,
                 create_id varchar(20) default 'system' not NULL
             )
         """,
@@ -101,7 +101,7 @@ class InterMaxInitializeQuery:
                     sid int4 NULL,
                     sql_seq int4 NULL,
                     cursor_id int8 NULL,
-                    create_dt timestamp default current_timestamp,
+                    create_dt timestamp with time zone default current_timestamp,
                     create_id varchar(20) default 'system' not NULL
             )
         """,
@@ -117,7 +117,7 @@ class InterMaxInitializeQuery:
                     fetch_time int4 NULL,
                     fetch_time_max int4 NULL,
                     jdbc_fetch_count int4 NULL,
-                    create_dt timestamp default current_timestamp,
+                    create_dt timestamp with time zone default current_timestamp,
                     create_id varchar(20) default 'system' not NULL                     
             )
         """
@@ -195,7 +195,7 @@ class MaxGaugeInitializeQuery:
                 BUSINESS_NAME VARCHAR(64) ,
                 IS_MASTER_RTS VARCHAR(1),
                 BATCH_JOB_YN VARCHAR(1),
-                create_dt timestamp default current_timestamp,
+                create_dt timestamp with time zone default current_timestamp,
                 create_id varchar(20) default 'system' not NULL  
             )
         """,
@@ -207,7 +207,7 @@ class MaxGaugeInitializeQuery:
                 SQL_UID VARCHAR(48) NULL,	    
                 SEQ INT2 NULL,
                 SQL_TEXT VARCHAR(4000) NULL,
-                create_dt timestamp default current_timestamp,
+                create_dt timestamp with time zone default current_timestamp,
                 create_id varchar(20) default 'system' not NULL
             )
         """,
@@ -228,7 +228,7 @@ class MaxGaugeInitializeQuery:
                 WAS_ID INT8 NULL,
                 TXN_NAME VARCHAR(64) NULL,
                 TID INT8 NULL,
-                create_dt timestamp default current_timestamp,
+                create_dt timestamp with time zone default current_timestamp,
                 create_id varchar(20) default 'system' not NULL
             )
         """,
@@ -254,7 +254,7 @@ class MaxGaugeInitializeQuery:
                 PHYSICAL_READS INT8 NULL,
                 REDO_SIZE INT8 NULL,
                 EXECUTION_COUNT INT8 NULL,
-                create_dt timestamp default current_timestamp,
+                create_dt timestamp with time zone default current_timestamp,
                 create_id varchar(20) default 'system' not NULL
             )
         """,
@@ -277,7 +277,7 @@ class MaxGaugeInitializeQuery:
                 EVENT_VERSION INT2 NULL,
                 EVENT_NAME VARCHAR(64) NULL,
                 WAIT_CLASS VARCHAR(64) NULL,
-                create_dt timestamp default current_timestamp,
+                create_dt timestamp with time zone default current_timestamp,
                 create_id varchar(20) default 'system' not NULL
             )
         """,
@@ -299,7 +299,7 @@ class MaxGaugeInitializeQuery:
                     cpid varchar(24) NULL,
                     program varchar(128) NULL,
                     session_type int8 NULL,
-                    create_dt timestamp default current_timestamp,
+                    create_dt timestamp with time zone default current_timestamp,
                     create_id varchar(20) default 'system' not NULL
                 )            
         """
@@ -344,7 +344,7 @@ class SaInitializeQuery:
                 db_sql_uid varchar(40) null,
                 sql_text_100 varchar(100) null,
                 state_code varchar(100) null,
-                create_dt timestamp default current_timestamp,
+                create_dt timestamp with time zone default current_timestamp,
                 create_id varchar(20) default 'system' not NULL
             )
         """,
@@ -388,7 +388,7 @@ class SaInitializeQuery:
                 sql_elapse_sum int4 NULL,
                 sql_elapse_avg int4 NULL,
                 sql_elapse_max int4 NULL,
-                create_dt timestamp default current_timestamp,
+                create_dt timestamp with time zone default current_timestamp,
                 create_id varchar(20) default 'system' not NULL                                
             )
         """,
@@ -410,7 +410,7 @@ class SaInitializeQuery:
             execute_args varchar(100) null,
             result varchar(1) not null,
             result_msg varchar(100) not null,
-            create_dt timestamp default current_timestamp,
+            create_dt timestamp with time zone default current_timestamp,
             create_id varchar(20) default 'system' not null
         )
         """

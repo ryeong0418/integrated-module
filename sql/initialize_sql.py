@@ -253,38 +253,6 @@ class InterMaxInitializeQuery:
         "select db_id, host_name, instance_name, instance_alias , db_type, host_ip, sid, lsnr_port from xapm_db_info"
     )
 
-    # 23.02.27 신규 테이블 추가
-
-    SELECT_XAPM_WAS_STAT_SUMMARY = (
-        """ select   time, was_id, active_users, max_active_users, active_txns, max_active_txns, db_sessions, 
-                     max_db_sessions, active_db_sessions, max_active_db_sessions, jvm_cpu_usage, max_jvm_cpu_usage, 
-                     jvm_free_heap, max_jvm_free_heap, jvm_heap_size, max_jvm_heap_size, jvm_used_heap, 
-                     max_jvm_used_heap, jvm_thread_count, max_jvm_thread_count, jvm_gc_count, max_jvm_gc_count,
-                     max_txn_end_count, sum_txn_end_count, txn_elapse, max_txn_elapse, sql_exec_count, 
-                     max_sql_exec_count, sql_elapse, max_sql_elapse, sql_prepare_count, max_sql_prepare_count, 
-                     sql_fetch_count, max_sql_fetch_count 
-            from xapm_was_stat_summary 
-        """
-    )
-
-    # xapm_jvm_stat_summary column 일부 삭제
-
-    SELECT_XAPM_JVM_STAT_SUMMARY = (
-        """
-            select  time, was_id, compiles, max_compiles, compile_time, max_compile_time, class_count, 
-                    max_class_count, loaded, max_loaded, class_time, max_class_time, jvm_gc_count
-            from xapm_jvm_stat_summary
-        """
-    )
-
-    SELECT_XAPM_OS_STAT_OSM = (
-        """
-            select  time, host_id, host_ip, host_name, os_cpu_sys, os_cpu_user, os_cpu_io, os_free_memory,
-                    os_total_memory, swap_free, swap_total
-            from xapm_os_stat_osm        
-        """
-    )
-
 
 class MaxGaugeInitializeQuery:
 

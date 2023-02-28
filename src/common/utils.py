@@ -177,6 +177,10 @@ class SystemUtils:
         """
         return [x for x in os.listdir(path) if str(x).startswith(prefix) and str(x).endswith(suffix)]
 
+    @staticmethod
+    def get_now_timestamp(format='%Y%m%d%H%M%S'):
+        return datetime.now().strftime(format)
+
 
 class TargetUtils:
 

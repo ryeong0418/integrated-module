@@ -208,7 +208,7 @@ class InterMaxInitializeQuery:
         """,
         # 23.02.27 테이블 신규 추가 AE_WAS_OS_STAT_OSM
         """
-            CREATE TABLE AE_WAS_OS_STAT_OSM=(
+            CREATE TABLE AE_WAS_OS_STAT_OSM(
                 time timestamp NULL,
                 host_id int8 NULL,
                 host_ip	varchar NULL,

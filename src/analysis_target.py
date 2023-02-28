@@ -366,6 +366,7 @@ class SaTarget(CommonTarget):
             date_dict = {'StartDate': pair[0], 'EndDate': pair[1]}
             query = SummarizerQuery.DDL_ae_txn_detail_summary_temp_SQL
             ae_txn_detail_summary_temp_SQL= SystemUtils.sql_replace_to_dict(query, date_dict)
+
             try:
                 TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, ae_txn_detail_summary_temp_SQL)
             except Exception as e:
@@ -377,6 +378,7 @@ class SaTarget(CommonTarget):
             date_dict = {'StartDate': pair[0], 'EndDate': pair[1]}
             query = SummarizerQuery.DDL_ae_txn_sql_detail_summary_temp_SQL
             ae_txn_sql_detail_summary_temp_SQL = SystemUtils.sql_replace_to_dict(query, date_dict)
+
             try:
                 TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, ae_txn_sql_detail_summary_temp_SQL)
             except Exception as e:
@@ -388,6 +390,7 @@ class SaTarget(CommonTarget):
             date_dict = {'StartDate': pair[0], 'EndDate': pair[1]}
             query = InterMaxGaugeSummarizerQuery.WAS_DB_JOIN
             join_query = SystemUtils.sql_replace_to_dict(query, date_dict)
+
 
             try:
                 table_name = TableConstants.AE_TXN_SQL_SUMMARY

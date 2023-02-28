@@ -1,6 +1,6 @@
 import os
 
-from src.common.enum import ModuleFactoryEnum
+from src.common.enum_module import ModuleFactoryEnum
 from src.common.utils import SystemUtils
 
 class ModuleFactory:

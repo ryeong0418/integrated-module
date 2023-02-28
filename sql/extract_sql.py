@@ -62,6 +62,12 @@ class InterMaxExtractQuery:
             """
     )
 
+    DELETE_INTERMAX_QUERY = (
+            """
+                delete from #(table_name) where to_char(time,'yyyymmdd')='#(date)'
+            """
+    )
+
 
 class MaxGaugeExtractorQuery:
 
@@ -201,3 +207,8 @@ class MaxGaugeExtractorQuery:
             """
     )
 
+    DELETE_MAXGAUGE_QUERY = (
+            """
+                delete from #(table_name) where partition_key = #(partition_key)
+            """
+    )

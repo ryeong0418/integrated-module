@@ -32,5 +32,6 @@
 			"hour": "1",
 			"minute": "0"
 		}
-	}
+	},
+	"sql_debug_flag": false
 }

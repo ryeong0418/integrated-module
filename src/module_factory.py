@@ -1,7 +1,7 @@
 import os
 
-from src.common.enum_module import ModuleFactoryEnum
 from src.common.utils import SystemUtils
+
 
 class ModuleFactory:
 
@@ -18,10 +18,10 @@ class ModuleFactory:
         """
 
         try:
-            self.logger.info(f"request process : {ModuleFactoryEnum[process].value}")
+            self.logger.info(f"request process : {process}")
             self.logger.info("*" * 79)
-            module_name = ModuleFactoryEnum[process].value #initialize
-            class_name = SystemUtils.to_camel_case(module_name) #Initialize
+            module_name = process
+            class_name = SystemUtils.to_camel_case(module_name)
 
             module_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -39,7 +39,7 @@ class ModuleFactory:
 
         except Exception as e:
             self.logger.exception(
-                f"target_class invalid. Please check module and class name in src.. Terminated.."
+                f"target_class invalid. Please check module and class name in src.. Terminated.. \n {e}"
             )
             exit()
         else:

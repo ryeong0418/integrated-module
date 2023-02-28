@@ -1,9 +1,10 @@
-import time
 from typing import Optional
 from sqlalchemy import Integer, String, Sequence
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
+
+from src.common.enum_module import MessageEnum
 
 
 class Base(DeclarativeBase):
@@ -16,14 +17,14 @@ class ExecuteLogModel(Base):
 
     seq: Mapped[int] = mapped_column(Sequence('seq_execute_log_id'), primary_key=True)
     execute_name: Mapped[str] = mapped_column(String(20))
-    execute_start_dt: Mapped[str] = mapped_column(String(20))
-    execute_end_dt: Mapped[str] = mapped_column(String(20))
-    execute_elapsed_time: Mapped[int] = mapped_column(Integer)
+    execute_start_dt: Mapped[str] = mapped_column(String(14))
+    execute_end_dt: Mapped[Optional[str]] = mapped_column(String(14))
+    execute_elapsed_time: Mapped[Optional[int]] = mapped_column(Integer)
     execute_args: Mapped[Optional[str]] = mapped_column(String(100))
     result: Mapped[str] = mapped_column(String(1))
     result_code: Mapped[str] = mapped_column(String(4))
     result_msg: Mapped[str] = mapped_column(String(100))
-    create_id: Mapped[Optional[str]] = mapped_column(String(20))
+    create_id: Mapped[str] = mapped_column(String(20))
 
     def __init__(self, execute_name, execute_start_dt, execute_args=''):
         """
@@ -39,21 +40,21 @@ class ExecuteLogModel(Base):
         self.execute_args = execute_args
         self.result = 'N'
         self.result_code = 'E001'
-        self.result_msg = '비정상종료'
+        self.result_msg = MessageEnum[self.result_code].value
         self.create_id = 'system'
 
     def __repr__(self):
         return "<ExecuteLogModel(seq='{}', execute_name='{}', execute_start_dt='{}', execute_end_dt='{}', " \
-               "execute_elapsed_time='{}', execute_args='{}', result='{}', result_msg='{}', create_id='{}')>"\
+               "execute_elapsed_time='{}', execute_args='{}', " \
+               "result='{}', result_code='{}', result_msg='{}', create_id='{}')>"\
                 .format(self.seq, self.execute_name, self.execute_start_dt, self.execute_end_dt,
-                        self.execute_elapsed_time, self.execute_args, self.result, self.result_msg, self.create_id)
+                        self.execute_elapsed_time, self.execute_args,
+                        self.result, self.result_code, self.result_msg, self.create_id)
 
 
 if __name__ == '__main__':
-    from src.sql.crud import DataBase
+    from src.sql.database import DataBase
     from resources.config_manager import Config
-
-    print(time.time())
 
     config = Config('local').get_config()
 

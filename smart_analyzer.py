@@ -8,10 +8,11 @@ from pathlib import Path
 from src.common.utils import SystemUtils
 from src.common.constants import SystemConstants
 from src.common.timelogger import TimeLogger
-from src.common.enum import ModuleFactoryEnum
+from src.common.enum_module import ModuleFactoryEnum
+from src.common.enum_module import MessageEnum
 
 from src.module_factory import ModuleFactory
-from src.sql.crud import DataBase
+from src.sql.database import DataBase
 from src.sql.model import ExecuteLogModel
 
 from resources.config_manager import Config
@@ -19,7 +20,6 @@ from resources.logger_manager import Logger
 
 
 def main_process():
-    start_tm = time.time()
     sys.setrecursionlimit(10**7)
 
     home = os.path.dirname(os.path.abspath(__file__))
@@ -34,6 +34,7 @@ def main_process():
 
     config = Config(env).get_config()
 
+    start_tm = time.time()
     if process != 'i':
         db = DataBase(config)
         elm = ExecuteLogModel(ModuleFactoryEnum[process].value, SystemUtils.get_now_timestamp(), str(vars(args)))
@@ -52,21 +53,23 @@ def main_process():
     logger.info("*" * 79)
 
     result = 'N'
-    result_code = 'E999'
 
     try:
         fmf = ModuleFactory(logger)
-        instance = fmf.get_module_instance(process)
+        instance = fmf.get_module_instance(ModuleFactoryEnum[process].value)
         instance.set_config(config)
 
         with TimeLogger(f'{instance.__class__.__name__}', logger):
             instance.main_process()
 
         result = 'Y'
-        result_code = 'I000'
+        result_code = 'I001'
+        result_msg = MessageEnum[result_code].value
 
     except Exception as e:
         logger.exception(e)
+        result_code = 'E999'
+        result_code = str(e)
 
     finally:
         result_dict = dict()
@@ -74,6 +77,7 @@ def main_process():
         result_dict['execute_end_dt'] = SystemUtils.get_now_timestamp()
         result_dict['execute_elapsed_time'] = time.time() - start_tm
         result_dict['result_code'] = result_code
+        result_dict['result_msg'] = result_msg
 
         if process != 'i':
             with db.session_scope() as session:

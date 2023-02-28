@@ -8,7 +8,9 @@ from src.common.utils import TargetUtils
 class DataBase:
 
     def __init__(self, config):
-        self.engine = create_engine(TargetUtils.get_engine_template(config['analysis_repo']), echo=True)
+        sql_debug_flag = config['sql_debug_flag'] if config['sql_debug_flag'] is not None else True
+
+        self.engine = create_engine(TargetUtils.get_engine_template(config['analysis_repo']), echo=sql_debug_flag)
         self.Session = sessionmaker(bind=self.engine)
 
     @contextmanager

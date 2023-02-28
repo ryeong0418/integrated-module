@@ -507,8 +507,8 @@ class SaInitializeQuery:
         CREATE TABLE AE_EXECUTE_LOG (
             seq bigint not null,
             execute_name varchar(20) not null,
-            execute_start_dt varchar(20) not null,
-            execute_end_dt varchar(20) null,
+            execute_start_dt varchar(14) not null,
+            execute_end_dt varchar(14) null,
             execute_elapsed_time integer null,
             execute_args varchar(100) null,
             result varchar(1) not null,

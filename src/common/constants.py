@@ -59,3 +59,11 @@ class TableConstants:
     AE_JVM_STAT_SUMMARY = "ae_jvm_stat_summary"
     AE_WAS_OS_STAT_OSM = "ae_was_os_stat_osm"
     AE_EXCUTE_LOG = "ae_excute_log"
+
+
+class ResultConstants:
+    SUCCESS = 'S'
+    FAIL = 'F'
+    ERROR = 'E'
+    PROGRESS = 'P'
+

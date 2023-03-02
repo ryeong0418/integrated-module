@@ -8,3 +8,15 @@ class ModuleFactoryEnum(Enum):
     v = "visualization"
     b = "scheduler"
     m = "sql_text_merge"
+
+
+class MessageEnum(Enum):
+
+    # 정상 메세지 I
+    I001 = '정상처리완료'
+
+    # 경고 메세지 W
+    W001 = '진행중'
+
+    # 에러 메세지 E
+    E001 = '비정상종료'

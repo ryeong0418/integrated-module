@@ -6,11 +6,14 @@ import platform
 from apscheduler.schedulers.background import BackgroundScheduler, BlockingScheduler
 
 from src import common_module as cm
+from src.sql.database import DataBase
+from src.sql.model import ExecuteLogModel
 from src.extractor import Extractor
 from src.summarizer import Summarizer
 from src.sql_text_merge import SqlTextMerge
-from src.common.constants import SystemConstants
+from src.common.constants import SystemConstants, ResultConstants
 from src.common.utils import SystemUtils
+from src.common.enum_module import ModuleFactoryEnum, MessageEnum
 from resources.logger_manager import Logger
 
 CRON = 'cron'
@@ -94,13 +97,39 @@ class Scheduler(cm.CommonModule):
         self.main_scheduler.shutdown()
 
     def _main_job(self):
+        start_tm = time.time()
+
+        db = DataBase(self.config)
+        elm = ExecuteLogModel(ModuleFactoryEnum[self.config['args']['proc']].value,
+                              SystemUtils.get_now_timestamp(), str(self.config['args']), 'batch')
+
+        with db.session_scope() as session:
+            session.add(elm)
+
+        result = ResultConstants.FAIL
         self._update_config_custom_values()
 
-        self._extractor_job()
+        try:
+            self._extractor_job()
 
-        self._summarizer_job()
+            self._summarizer_job()
 
-        self._sql_text_merge_job()
+            self._sql_text_merge_job()
+
+            result = ResultConstants.SUCCESS
+            result_code = 'I001'
+            result_msg = MessageEnum[result_code].value
+        except Exception as e:
+            self.logger.exception(e)
+            result = ResultConstants.ERROR
+            result_code = 'E999'
+            result_msg = str(e)
+        finally:
+            result_dict = SystemUtils.set_update_execute_log(result, start_tm, result_code, result_msg)
+
+            with db.session_scope() as session:
+                session.query(ExecuteLogModel).filter(ExecuteLogModel.seq == f'{elm.seq}').update(result_dict)
+                session.commit()
 
     def _extractor_job(self):
         self.scheduler_logger.info(f"_extractor_job start")

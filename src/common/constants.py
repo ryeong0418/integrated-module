@@ -56,3 +56,11 @@ class TableConstants:
     AE_TXN_SQL_SUMMARY = "ae_txn_sql_summary"
 
     AE_EXCUTE_LOG = "ae_excute_log"
+
+
+class ResultConstants:
+    SUCCESS = 'S'
+    FAIL = 'F'
+    ERROR = 'E'
+    PROGRESS = 'P'
+

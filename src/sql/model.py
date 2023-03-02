@@ -5,6 +5,7 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 
 from src.common.enum_module import MessageEnum
+from src.common.constants import ResultConstants
 
 
 class Base(DeclarativeBase):
@@ -26,7 +27,7 @@ class ExecuteLogModel(Base):
     result_msg: Mapped[str] = mapped_column(String(100))
     create_id: Mapped[str] = mapped_column(String(20))
 
-    def __init__(self, execute_name, execute_start_dt, execute_args=''):
+    def __init__(self, execute_name, execute_start_dt, execute_args='', create_id='system'):
         """
         Execute Log를 저장하기 위한 Model
         :param execute_name: 수행 기능 명
@@ -38,10 +39,10 @@ class ExecuteLogModel(Base):
         self.execute_end_dt = None
         self.execute_elapsed_time = 0
         self.execute_args = execute_args
-        self.result = 'P'
+        self.result = ResultConstants.PROGRESS
         self.result_code = 'W001'
         self.result_msg = MessageEnum[self.result_code].value
-        self.create_id = 'system'
+        self.create_id = create_id
 
     def __repr__(self):
         return "<ExecuteLogModel(seq='{}', execute_name='{}', execute_start_dt='{}', execute_end_dt='{}', " \

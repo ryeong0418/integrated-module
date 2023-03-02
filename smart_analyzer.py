@@ -6,10 +6,9 @@ from pprint import pformat
 from pathlib import Path
 
 from src.common.utils import SystemUtils
-from src.common.constants import SystemConstants
+from src.common.constants import SystemConstants, ResultConstants
 from src.common.timelogger import TimeLogger
-from src.common.enum_module import ModuleFactoryEnum
-from src.common.enum_module import MessageEnum
+from src.common.enum_module import ModuleFactoryEnum, MessageEnum
 
 from src.module_factory import ModuleFactory
 from src.sql.database import DataBase
@@ -35,7 +34,7 @@ def main_process():
     config = Config(env).get_config()
 
     start_tm = time.time()
-    if process != 'i':
+    if process != 'i' or process != 'b':
         db = DataBase(config)
         elm = ExecuteLogModel(ModuleFactoryEnum[process].value, SystemUtils.get_now_timestamp(), str(vars(args)))
 
@@ -52,7 +51,7 @@ def main_process():
     logger.info(f"Module config :\n {pformat(config)}")
     logger.info("*" * 79)
 
-    result = 'F'
+    result = ResultConstants.FAIL
 
     try:
         fmf = ModuleFactory(logger)
@@ -62,20 +61,20 @@ def main_process():
         with TimeLogger(f'{instance.__class__.__name__}', logger):
             instance.main_process()
 
-        result = 'S'
+        result = ResultConstants.SUCCESS
         result_code = 'I001'
         result_msg = MessageEnum[result_code].value
 
     except Exception as e:
         logger.exception(e)
-        result = 'E'
+        result = ResultConstants.ERROR
         result_code = 'E999'
         result_msg = str(e)
 
     finally:
         result_dict = SystemUtils.set_update_execute_log(result, start_tm, result_code, result_msg)
 
-        if process != 'i':
+        if process != 'i' or process != 'b':
             with db.session_scope() as session:
                 session.query(ExecuteLogModel).filter(ExecuteLogModel.seq == f'{elm.seq}').update(result_dict)
                 session.commit()

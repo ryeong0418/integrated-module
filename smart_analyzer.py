@@ -52,7 +52,7 @@ def main_process():
     logger.info(f"Module config :\n {pformat(config)}")
     logger.info("*" * 79)
 
-    result = 'N'
+    result = 'F'
 
     try:
         fmf = ModuleFactory(logger)
@@ -62,22 +62,18 @@ def main_process():
         with TimeLogger(f'{instance.__class__.__name__}', logger):
             instance.main_process()
 
-        result = 'Y'
+        result = 'S'
         result_code = 'I001'
         result_msg = MessageEnum[result_code].value
 
     except Exception as e:
         logger.exception(e)
+        result = 'E'
         result_code = 'E999'
-        result_code = str(e)
+        result_msg = str(e)
 
     finally:
-        result_dict = dict()
-        result_dict['result'] = result
-        result_dict['execute_end_dt'] = SystemUtils.get_now_timestamp()
-        result_dict['execute_elapsed_time'] = time.time() - start_tm
-        result_dict['result_code'] = result_code
-        result_dict['result_msg'] = result_msg
+        result_dict = SystemUtils.set_update_execute_log(result, start_tm, result_code, result_msg)
 
         if process != 'i':
             with db.session_scope() as session:

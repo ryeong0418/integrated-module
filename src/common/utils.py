@@ -2,13 +2,14 @@ import importlib.util
 import argparse
 import os
 import pandas as pd
+import time
 
 from pathlib import Path
 from psycopg2 import errors
 from psycopg2.errorcodes import DUPLICATE_TABLE
 from datetime import datetime, timedelta
 
-from src.common.constants import SystemConstants,TableConstants
+from src.common.constants import SystemConstants
 from src.common.timelogger import TimeLogger
 
 
@@ -177,8 +178,32 @@ class SystemUtils:
         return [x for x in os.listdir(path) if str(x).startswith(prefix) and str(x).endswith(suffix)]
 
     @staticmethod
-    def get_now_timestamp(format='%Y%m%d%H%M%S'):
-        return datetime.now().strftime(format)
+    def get_now_timestamp(fmt='%Y%m%d%H%M%S'):
+        """
+        현재 시간 timestamp 함수
+        :param fmt: 포맷 optional (기본 : %Y%m%d%H%M%S)
+        :return: 현재 시간 str (기본 14 자리)
+        """
+        return datetime.now().strftime(fmt)
+
+    @staticmethod
+    def set_update_execute_log(result, start_tm, result_code, result_msg) -> dict:
+        """
+        ae_execute_log 저장 하기 위한 함수
+        :param result: 기능 동작 결과
+        :param start_tm: 기능 시작 시간
+        :param result_code: 기능 동작 결과 코드
+        :param result_msg: 기능 동작 결과 메세지
+        :return: 결과 dict
+        """
+        result_dict = dict()
+        result_dict['result'] = result
+        result_dict['execute_end_dt'] = SystemUtils.get_now_timestamp()
+        result_dict['execute_elapsed_time'] = time.time() - start_tm
+        result_dict['result_code'] = result_code
+        result_dict['result_msg'] = result_msg
+
+        return result_dict
 
 
 class TargetUtils:

@@ -38,8 +38,8 @@ class ExecuteLogModel(Base):
         self.execute_end_dt = None
         self.execute_elapsed_time = 0
         self.execute_args = execute_args
-        self.result = 'N'
-        self.result_code = 'E001'
+        self.result = 'P'
+        self.result_code = 'W001'
         self.result_msg = MessageEnum[self.result_code].value
         self.create_id = 'system'
 

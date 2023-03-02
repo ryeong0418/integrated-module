@@ -116,6 +116,12 @@ class InterMaxTarget(CommonTarget):
 
             self._set_insert_xapm_txn_sql_fetch(table_suffix_dict,delete_query,date)
 
+            self._set_insert_xapm_was_stat_summary(table_suffix_dict,delete_query,date)
+
+            self._set_insert_xapm_jvm_stat_summmary(table_suffix_dict,delete_query,date)
+
+            self._set_insert_xapm_os_stat_summary(table_suffix_dict,delete_query,date)
+
     def _set_insert_xapm_txn_detail(self, table_suffix_dict, delete_query, date, table_name=TableConstants.AE_TXN_DETAIL):
         query = InterMaxExtractQuery.SELECT_XAPM_TXN_DETAIL
         detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
@@ -150,6 +156,45 @@ class InterMaxTarget(CommonTarget):
         delete_dict = {'table_name': table_name, 'date': date}
         im_delete_query = SystemUtils.sql_replace_to_dict(delete_query, delete_dict)
         TargetUtils.default_sa_execute_query(self.logger,self.sa_conn, im_delete_query)
+
+        try:
+            self._excute_insert_intermax_detail_data(detail_query, table_name)
+        except Exception as e:
+            self.logger.exception(e)
+
+    def _set_insert_xapm_was_stat_summary(self,table_suffix_dict,delete_query,date, table_name=TableConstants.AE_WAS_STAT_SUMMARY):
+        query = InterMaxExtractQuery.SELECT_XAPM_WAS_STAT_SUMMARY
+        detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
+
+        delete_dict = {'table_name': table_name, 'date': date}
+        im_delete_query = SystemUtils.sql_replace_to_dict(delete_query, delete_dict)
+        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, im_delete_query)
+
+        try:
+            self._excute_insert_intermax_detail_data(detail_query, table_name)
+        except Exception as e:
+            self.logger.exception(e)
+
+    def _set_insert_xapm_jvm_stat_summmary(self, table_suffix_dict, delete_query, date, table_name=TableConstants.AE_JVM_STAT_SUMMARY):
+        query = InterMaxExtractQuery.SELECT_XAPM_JVM_STAT_SUMMARY
+        detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
+
+        delete_dict = {'table_name': table_name, 'date': date}
+        im_delete_query = SystemUtils.sql_replace_to_dict(delete_query, delete_dict)
+        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, im_delete_query)
+
+        try:
+            self._excute_insert_intermax_detail_data(detail_query, table_name)
+        except Exception as e:
+            self.logger.exception(e)
+
+    def _set_insert_xapm_os_stat_summary(self, table_suffix_dict, delete_query, date, table_name=TableConstants.AE_WAS_OS_STAT_OSM):
+        query = InterMaxExtractQuery.SELECT_XAPM_OS_STAT_OSM
+        detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
+
+        delete_dict = {'table_name': table_name, 'date': date}
+        im_delete_query = SystemUtils.sql_replace_to_dict(delete_query, delete_dict)
+        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, im_delete_query)
 
         try:
             self._excute_insert_intermax_detail_data(detail_query, table_name)

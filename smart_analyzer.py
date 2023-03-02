@@ -34,7 +34,7 @@ def main_process():
     config = Config(env).get_config()
 
     start_tm = time.time()
-    if process != 'i' or process != 'b':
+    if process != 'i' and process != 'b':
         db = DataBase(config)
         elm = ExecuteLogModel(ModuleFactoryEnum[process].value, SystemUtils.get_now_timestamp(), str(vars(args)))
 
@@ -74,7 +74,7 @@ def main_process():
     finally:
         result_dict = SystemUtils.set_update_execute_log(result, start_tm, result_code, result_msg)
 
-        if process != 'i' or process != 'b':
+        if process != 'i' and process != 'b':
             with db.session_scope() as session:
                 session.query(ExecuteLogModel).filter(ExecuteLogModel.seq == f'{elm.seq}').update(result_dict)
                 session.commit()

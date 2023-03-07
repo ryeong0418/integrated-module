@@ -513,7 +513,7 @@ class SaInitializeQuery:
             execute_args varchar(100) null,
             result varchar(1) not null,
             result_code varchar(4) not NULL,
-            result_msg varchar(100) not null,
+            result_msg varchar(2000) not null,
             create_dt timestamp with time zone default current_timestamp,
             create_id varchar(20) default 'system' not null
         )

@@ -69,7 +69,7 @@ def main_process():
         logger.exception(e)
         result = ResultConstants.ERROR
         result_code = 'E999'
-        result_msg = str(e)
+        result_msg = str(e)[:2000]
 
     finally:
         result_dict = SystemUtils.set_update_execute_log(result, start_tm, result_code, result_msg)

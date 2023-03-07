@@ -22,7 +22,7 @@ class SystemConstants:
     LOGGER_PATH = 'logs'
 
     # db sql text parquet 파일명
-    DB_SQL_TEXT_FILE_NAME = 'export_ae_db_sql_text'
+    DB_SQL_TEXT_FILE_NAME = 'ae_db_sql_text'
     DB_SQL_TEXT_FILE_SUFFIX = '.parquet'
 
     # export 폴더명
@@ -55,4 +55,15 @@ class TableConstants:
     AE_SQL_WAIT_10MIN = "ae_sql_wait_10min"
     AE_TXN_SQL_SUMMARY = "ae_txn_sql_summary"
 
+    AE_WAS_STAT_SUMMARY = "ae_was_stat_summary"
+    AE_JVM_STAT_SUMMARY = "ae_jvm_stat_summary"
+    AE_WAS_OS_STAT_OSM = "ae_was_os_stat_osm"
     AE_EXCUTE_LOG = "ae_excute_log"
+
+
+class ResultConstants:
+    SUCCESS = 'S'
+    FAIL = 'F'
+    ERROR = 'E'
+    PROGRESS = 'P'
+

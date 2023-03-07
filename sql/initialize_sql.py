@@ -21,14 +21,18 @@ class InterMaxInitializeQuery:
                 txn_name varchar(256) NULL,
                 business_id int4 NULL,
                 business_name varchar(256) NULL,
-                modified_time timestamp NULL
+                modified_time timestamp NULL,
+                create_dt timestamp with time zone default current_timestamp,
+                create_id varchar(20) default 'system' not NULL
             )
         """,
         """ 
             CREATE TABLE AE_WAS_INFO (
                 was_id int4 NULL,
                 was_name varchar(128) NULL,
-                host_name varchar(64) NULL
+                host_name varchar(64) NULL,
+                create_dt timestamp with time zone default current_timestamp,
+                create_id varchar(20) default 'system' not NULL
             )
         """,
         # 22.07.13 테이블 명칭 변경 AE_APM_SQL_TEXT -> AE_WAS_SQL_TEXT
@@ -36,7 +40,9 @@ class InterMaxInitializeQuery:
             CREATE TABLE AE_WAS_SQL_TEXT (
                 sql_id varchar(40) NULL,
                 sql_text_100 varchar(100) NULL,
-                sql_text text NULL                
+                sql_text text NULL,
+                create_dt timestamp with time zone default current_timestamp,
+                create_id varchar(20) default 'system' not NULL       
             )
         """,
         # 22.07.15 테이블 신규 추가 AE_WAS_DB_INFO
@@ -49,7 +55,9 @@ class InterMaxInitializeQuery:
                 host_name varchar(64) NULL,
                 host_ip varchar(16) NULL,
                 sid varchar(64) NULL,
-                lsnr_port int8 NULL
+                lsnr_port int8 NULL,
+                create_dt timestamp with time zone default current_timestamp,
+                create_id varchar(20) default 'system' not NULL
             )
         """,
         # 22.08.01 jdbc_fetch_count 컬럼 추가
@@ -73,7 +81,7 @@ class InterMaxInitializeQuery:
                 exception int4 NULL,
                 remote_count int4 NULL,
                 remote_elapse int4 NULL,
-                create_dt timestamp default current_timestamp,
+                create_dt timestamp with time zone default current_timestamp,
                 create_id varchar(20) default 'system' not NULL
             )
         """,
@@ -93,7 +101,7 @@ class InterMaxInitializeQuery:
                     sid int4 NULL,
                     sql_seq int4 NULL,
                     cursor_id int8 NULL,
-                    create_dt timestamp default current_timestamp,
+                    create_dt timestamp with time zone default current_timestamp,
                     create_id varchar(20) default 'system' not NULL
             )
         """,
@@ -109,9 +117,112 @@ class InterMaxInitializeQuery:
                     fetch_time int4 NULL,
                     fetch_time_max int4 NULL,
                     jdbc_fetch_count int4 NULL,
-                    create_dt timestamp default current_timestamp,
+                    create_dt timestamp with time zone default current_timestamp,
                     create_id varchar(20) default 'system' not NULL                     
             )
+        """,
+        # 23.02.27 테이블 신규 추가 AE_WAS_STAT_SUMMARY
+        """
+            CREATE TABLE AE_WAS_STAT_SUMMARY(
+                "time" timestamp NULL,
+                was_id int4 NULL,
+                active_users float8 NULL,
+                max_active_users int4 NULL,
+                active_txns float8 NULL,
+                max_active_txns int4 NULL,
+                db_sessions float8 NULL,
+                max_db_sessions int4 NULL,
+                active_db_sessions float8 NULL,
+                max_active_db_sessions int4 NULL,
+                jvm_cpu_usage float8 NULL,
+                max_jvm_cpu_usage int8 NULL,
+                jvm_free_heap float8 NULL,
+                max_jvm_free_heap int8 NULL,
+                jvm_heap_size float8 NULL,
+                max_jvm_heap_size int8 NULL,
+                jvm_used_heap float8 NULL,
+                max_jvm_used_heap int8 NULL,
+                jvm_thread_count float8 NULL,
+                max_jvm_thread_count int8 NULL,
+                jvm_gc_count float8 NULL,
+                max_jvm_gc_count int8 NULL,
+                max_txn_end_count int8 NULL,
+                sum_txn_end_count int8 NULL,
+                txn_elapse float8 NULL,
+                max_txn_elapse int4 NULL,
+                sql_exec_count float8 NULL,
+                max_sql_exec_count int8 NULL,
+                sql_elapse float8 NULL,
+                max_sql_elapse int4 NULL,
+                sql_prepare_count float8 NULL,
+                max_sql_prepare_count int8 NULL,
+                sql_fetch_count float8 NULL,
+                max_sql_fetch_count int8 NULL,
+                create_dt timestamp default current_timestamp,
+                create_id varchar(20) default 'system' not NULL 
+            )
+        """,
+        # 23.02.27 테이블 신규 추가 AE_JVM_STAT_SUMMARY
+        """
+            CREATE TABLE AE_JVM_STAT_SUMMARY(
+                time timestamp NULL,
+                was_id int4 NULL,
+                compiles float8 NULL,
+                max_compiles int8 NULL,
+                compile_time float8 NULL,
+                max_compile_time int8 NULL,
+                class_count	float8 NULL,
+                max_class_count	int8 NULL,
+                loaded float8 NULL,
+                max_loaded int8 NULL,
+                class_time float8 NULL,
+                max_class_time int8 NULL,
+                eden_size_avg float8 NULL,
+                eden_size_max int8 NULL,
+                eden_capacity_avg float8 NULL,
+                eden_capacity_max int8 NULL,
+                eden_used_avg float8 NULL,
+                eden_used_max int8 NULL,
+                old_size_avg float8 NULL,
+                old_size_max int8 NULL,
+                old_capacity_avg float8 NULL,
+                old_capacity_max int8 NULL,
+                old_used_avg float8 NULL,
+                old_used_max int8 NULL,
+                perm_size_avg float8 NULL,
+                perm_size_max int8 NULL,
+                perm_capacity_avg float8 NULL,
+                perm_capacity_max int8 NULL,
+                perm_used_avg float8 NULL,
+                perm_used_max int8 NULL,
+                jvm_gc_count float8 NULL,
+                total_gc_count int8 NULL,
+                tatal_gc_time int8 NULL,
+                minor_gc_count int8 NULL,
+                minor_gc_time int8 NULL,
+                major_gc_count int8 NULL,
+                major_gc_time int8 NULL,
+                create_dt timestamp default current_timestamp,
+                create_id varchar(20) default 'system' not NULL      
+            )
+        """,
+        # 23.02.27 테이블 신규 추가 AE_WAS_OS_STAT_OSM
+        """
+            CREATE TABLE AE_WAS_OS_STAT_OSM(
+                time timestamp NULL,
+                host_id int8 NULL,
+                host_ip	varchar NULL,
+                host_name varchar NULL,
+                os_cpu_sys int8 NULL,
+                os_cpu_user int8 NULL,
+                os_cpu_io int8 NULL,
+                os_free_memory int8 NULL,
+                os_total_memory int8 NULL,
+                swap_free int8 NULL,
+                swap_total int8 NULL,
+                create_dt timestamp default current_timestamp,
+                create_id varchar(20) default 'system' not NULL  
+            )   
         """
     )
 
@@ -186,7 +297,9 @@ class MaxGaugeInitializeQuery:
                 RAC_INST_NUMBER INT8 ,
                 BUSINESS_NAME VARCHAR(64) ,
                 IS_MASTER_RTS VARCHAR(1),
-                BATCH_JOB_YN VARCHAR(1)  
+                BATCH_JOB_YN VARCHAR(1),
+                create_dt timestamp with time zone default current_timestamp,
+                create_id varchar(20) default 'system' not NULL  
             )
         """,
         # 22.07.13 테이블 명칭 변경 AE_SQL_LIST -> AE_DB_SQL_TEXT
@@ -196,7 +309,9 @@ class MaxGaugeInitializeQuery:
                 DB_ID INT2 NULL,
                 SQL_UID VARCHAR(48) NULL,	    
                 SEQ INT2 NULL,
-                SQL_TEXT VARCHAR(4000) NULL
+                SQL_TEXT VARCHAR(4000) NULL,
+                create_dt timestamp with time zone default current_timestamp,
+                create_id varchar(20) default 'system' not NULL
             )
         """,
         """
@@ -216,7 +331,7 @@ class MaxGaugeInitializeQuery:
                 WAS_ID INT8 NULL,
                 TXN_NAME VARCHAR(64) NULL,
                 TID INT8 NULL,
-                create_dt timestamp default current_timestamp,
+                create_dt timestamp with time zone default current_timestamp,
                 create_id varchar(20) default 'system' not NULL
             )
         """,
@@ -242,7 +357,7 @@ class MaxGaugeInitializeQuery:
                 PHYSICAL_READS INT8 NULL,
                 REDO_SIZE INT8 NULL,
                 EXECUTION_COUNT INT8 NULL,
-                create_dt timestamp default current_timestamp,
+                create_dt timestamp with time zone default current_timestamp,
                 create_id varchar(20) default 'system' not NULL
             )
         """,
@@ -265,7 +380,7 @@ class MaxGaugeInitializeQuery:
                 EVENT_VERSION INT2 NULL,
                 EVENT_NAME VARCHAR(64) NULL,
                 WAIT_CLASS VARCHAR(64) NULL,
-                create_dt timestamp default current_timestamp,
+                create_dt timestamp with time zone default current_timestamp,
                 create_id varchar(20) default 'system' not NULL
             )
         """,
@@ -287,7 +402,7 @@ class MaxGaugeInitializeQuery:
                     cpid varchar(24) NULL,
                     program varchar(128) NULL,
                     session_type int8 NULL,
-                    create_dt timestamp default current_timestamp,
+                    create_dt timestamp with time zone default current_timestamp,
                     create_id varchar(20) default 'system' not NULL
                 )            
         """
@@ -318,9 +433,9 @@ class SaInitializeQuery:
     # AE_TXN_SQL_SUMMARY
     #
     ###############################################################
-    # Sa Function Lists
+    # Sa Sequence
     ###############################################################
-    # sql_full(p_dbid integer, p_parti bigint, p_sql_uid character varying)
+    # seq_execute_log_id
     #
     ###############################################################
 
@@ -331,7 +446,9 @@ class SaInitializeQuery:
                 was_sql_id varchar(40) NULL,	
                 db_sql_uid varchar(40) null,
                 sql_text_100 varchar(100) null,
-                state_code varchar(100) null
+                state_code varchar(100) null,
+                create_dt timestamp with time zone default current_timestamp,
+                create_id varchar(20) default 'system' not NULL
             )
         """,
         # 22.07.28 ae_txn_sql_summary 테이블 신규 추가
@@ -374,42 +491,32 @@ class SaInitializeQuery:
                 sql_elapse_sum int4 NULL,
                 sql_elapse_avg int4 NULL,
                 sql_elapse_max int4 NULL,
-                create_dt timestamp default current_timestamp,
-                create_id varchar(20) default 'system' not NULL
-                                
+                create_dt timestamp with time zone default current_timestamp,
+                create_id varchar(20) default 'system' not NULL                                
             )
         """,
-        # 22.07.27  sql_full 펑션 추가
-        """ 
-            CREATE OR REPLACE FUNCTION sql_full(p_dbid integer, p_parti bigint, p_sql_uid character varying)
-            RETURNS text AS
-            $BODY$
-                declare 
-                rTab1 record;
-                rText text;
-                v_parti bigint;
-                v_sql_uid character varying(48);
-                v_sql_text varchar(4000);
-
-                begin
-                rText :=' ';
-                for rTab1 in
-                select substr(replace( x.sql_text, chr(12), chr(10) ), 1, length( x.sql_text ))  col1 
-                from ae_db_sql_text x
-                where x.db_id = $1
-                and x.partition_key = $2
-                and x.sql_uid = $3
-                order by x.seq		
-                loop
-                rText :=rText||rTab1.col1||'';
-                end loop;
-                return rText;
-                end;
-            $BODY$
-            LANGUAGE plpgsql VOLATILE
-            COST 100;
-            ALTER FUNCTION sql_full(integer, bigint, character varying)
-            OWNER TO postgres;
+        """
+        CREATE SEQUENCE seq_execute_log_id
+        INCREMENT 1
+        START 1
+        MINVALUE 1
+        MAXVALUE 9223372036854775807
+        CACHE 1;        
+        """,
+        """
+        CREATE TABLE AE_EXECUTE_LOG (
+            seq bigint not null,
+            execute_name varchar(20) not null,
+            execute_start_dt varchar(14) not null,
+            execute_end_dt varchar(14) null,
+            execute_elapsed_time integer null,
+            execute_args varchar(100) null,
+            result varchar(1) not null,
+            result_code varchar(4) not NULL,
+            result_msg varchar(100) not null,
+            create_dt timestamp with time zone default current_timestamp,
+            create_id varchar(20) default 'system' not null
+        )
         """
     )
 

@@ -1,16 +1,15 @@
 import importlib.util
 import argparse
 import os
-import psycopg2 as db
+import pandas as pd
+import time
+
 from pathlib import Path
 from psycopg2 import errors
 from psycopg2.errorcodes import DUPLICATE_TABLE
-from pandas.io.sql import DatabaseError
-import sqlalchemy
-import pandas as pd
 from datetime import datetime, timedelta
-from src.common.constants import SystemConstants
 
+from src.common.constants import SystemConstants
 from src.common.timelogger import TimeLogger
 
 
@@ -69,7 +68,6 @@ class SystemUtils:
         parser.add_argument('--proc', required=True)
         parser.add_argument('--s_date')
         parser.add_argument('--interval')
-        parser.add_argument('--sub_proc')
 
         args = parser.parse_args()
         return args
@@ -139,6 +137,56 @@ class SystemUtils:
         else:
             with pd.ExcelWriter(excel_file, mode='a', engine='openpyxl', if_sheet_exists='replace') as writer:
                 df.to_excel(writer, sheet_name=sheet_name_txt, index=False)
+
+    @staticmethod
+    def get_date_by_interval(interval, fmt="%Y%m%d"):
+        """
+        interval에 따른 날짜를 구하기 위한 함수 
+        :param interval: 필요한 날짜 interval (ex, 어제 -1, 내일 1)
+        :param fmt: return 포맷 (기본 : yyyymmdd)
+        :return: interval 날짜
+        """
+        now = datetime.now()
+        return (now + timedelta(days=interval)).strftime(fmt)
+
+    @staticmethod
+    def get_filenames_from_path(path: str, prefix: str = '', suffix: str = ''):
+        """
+        path에 모든 파일 이름을 가져오는 함수
+        :param path: 파일 이름을 가져오려는 절대 경로
+        :param prefix: 시작이 prefix를 포함하는 파일 (optional)
+        :param suffix: 끝이 suffix를 포함하는 파일 (optional)
+        :return: 파일 이름 list
+        """
+        return [x for x in os.listdir(path) if str(x).startswith(prefix) and str(x).endswith(suffix)]
+
+    @staticmethod
+    def get_now_timestamp(fmt='%Y%m%d%H%M%S'):
+        """
+        현재 시간 timestamp 함수
+        :param fmt: 포맷 optional (기본 : %Y%m%d%H%M%S)
+        :return: 현재 시간 str (기본 14 자리)
+        """
+        return datetime.now().strftime(fmt)
+
+    @staticmethod
+    def set_update_execute_log(result, start_tm, result_code, result_msg) -> dict:
+        """
+        ae_execute_log 저장 하기 위한 함수
+        :param result: 기능 동작 결과
+        :param start_tm: 기능 시작 시간
+        :param result_code: 기능 동작 결과 코드
+        :param result_msg: 기능 동작 결과 메세지
+        :return: 결과 dict
+        """
+        result_dict = dict()
+        result_dict['result'] = result
+        result_dict['execute_end_dt'] = SystemUtils.get_now_timestamp()
+        result_dict['execute_elapsed_time'] = time.time() - start_tm
+        result_dict['result_code'] = result_code
+        result_dict['result_msg'] = result_msg
+
+        return result_dict
 
 
 class TargetUtils:

@@ -119,7 +119,7 @@ class SystemUtils:
         return sql_query
 
     @staticmethod
-    def visualization_data_processing(df):
+    def data_processing(df):
         df.columns = map(lambda x: str(x).upper(), df.columns)
         df = df.apply(pd.to_numeric, errors='ignore')
 
@@ -129,31 +129,14 @@ class SystemUtils:
         return df
 
     @staticmethod
-    def excel_export(excel_path, sql_name, df):
-
-        now_day = datetime.now()
-        prtitionDate = now_day.strftime('%y%m%d')
-        sheet_name_txt = sql_name.split('.')[0]
-        excel_file = excel_path + "/" + sheet_name_txt + "_" + prtitionDate + '.xlsx'
+    def excel_export(excel_file, sheet_name_txt, df):
 
         if not os.path.exists(excel_file):
             with pd.ExcelWriter(excel_file, mode='w', engine='openpyxl') as writer:
-                df.to_excel(writer, sheet_name=sheet_name_txt[0], index=False)
-
+                df.to_excel(writer, sheet_name=sheet_name_txt, index=False)
         else:
             with pd.ExcelWriter(excel_file, mode='a', engine='openpyxl', if_sheet_exists='replace') as writer:
-                df.to_excel(writer, sheet_name=sheet_name_txt[0], index=False)
-
-    @staticmethod
-    def folder_check(root):
-
-        if not os.path.exists(root + '/' + SystemConstants.SQL_PATH):
-            os.makedirs(root + '/' + SystemConstants.SQL_PATH)
-
-        if not os.path.exists(root + '/' + SystemConstants.CSV_PATH):
-            os.makedirs(root + '/' + SystemConstants.CSV_PATH)
-        else:
-            pass
+                df.to_excel(writer, sheet_name=sheet_name_txt, index=False)
 
     @staticmethod
     def get_date_by_interval(interval, fmt="%Y%m%d"):

@@ -101,6 +101,17 @@ class InterMaxTarget(CommonTarget):
         table_name = TableConstants.AE_SQL_TEXT
         TargetUtils.default_insert_data(self.logger, self.analysis_engine, table_name, filtered_df)
 
+    def _set_insert_xapm_txn_detail(self):
+        date_conditions = TargetUtils.set_intermax_date(self.config['args']['s_date'], self.config['args']['interval'])
+        for date in date_conditions:
+            table_suffix_dict = {'table_suffix': date}
+            query = InterMaxExtractQuery.SELECT_XAPM_TXN_DETAIL
+            detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
+            table_name = TableConstants.AE_TXN_DETAIL
+            try:
+                self._excute_insert_intermax_detail_data(detail_query, table_name)
+            except Exception as e:
+                self.logger.exception(e)
 
     def insert_intermax_detail_data(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
@@ -203,6 +214,8 @@ class InterMaxTarget(CommonTarget):
 
     def _excute_insert_intermax_detail_data(self, query, table_name):
         df = TargetUtils.get_target_data_by_query(self.logger, self.im_conn, query, table_name)
+        #print(df.drop_duplicates(['tid'], inplace=True))
+        # df.drop_duplicates(['tid'],inplace=True)
         TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
 

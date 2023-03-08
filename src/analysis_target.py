@@ -1,9 +1,9 @@
-import os
 import pandas as pd
 import psycopg2 as db
 import psycopg2.extras
 
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import IntegrityError
 
 from src.common.utils import TargetUtils, SystemUtils
 from src.common.constants import TableConstants
@@ -449,7 +449,6 @@ class SaTarget(CommonTarget):
             query = InterMaxGaugeSummarizerQuery.WAS_DB_JOIN
             join_query = SystemUtils.sql_replace_to_dict(query, date_dict)
 
-
             try:
                 table_name = TableConstants.AE_TXN_SQL_SUMMARY
                 inter_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, join_query, table_name)
@@ -470,7 +469,17 @@ class SaTarget(CommonTarget):
 
     def insert_merged_result(self, merged_df):
         table_name = TableConstants.AE_SQL_TEXT
-        TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, merged_df)
+
+        for i in range(len(merged_df)):
+            try:
+                merged_df.iloc[i:i+1].to_sql(table_name, if_exists='append',
+                                             con=self.analysis_engine, schema='public', index=False)
+            except IntegrityError as ie:
+                pass
+            except Exception as e:
+                self.logger.exception(e)
+
+                # TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, merged_df)
 
     def get_ae_db_info(self):
         query = CommonSql.SELECT_AE_DB_INFO

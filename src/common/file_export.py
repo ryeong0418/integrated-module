@@ -66,3 +66,45 @@ class ParquetFile:
             self.logger.info(f"{file_name} Deleting..")
             os.remove(file_name)
             self.logger.info(f"{file_name} Deleted OK")
+
+
+if __name__ == "__main__":
+    from src.common.constants import SystemConstants, TableConstants
+    from resources.logger_manager import Logger
+    from resources.config_manager import Config
+    from src.analysis_target import SaTarget
+
+    no_need_table = {
+        'ae_db_info',
+    }
+
+    home = Path(os.path.dirname(os.path.abspath(__file__))).parent.parent
+
+    env = SystemUtils.get_environment_variable()
+
+    log_dir = str(Path(home) / SystemConstants.LOGGER_PATH)
+
+    logger = Logger(env).get_default_logger(log_dir, SystemConstants.ETC_LOG_FILE_NAME)
+
+    config = Config(env).get_config()
+
+    pf = ParquetFile(logger, config)
+
+    table_list = [v for k, v in TableConstants().__class__.__dict__.items() if not k.startswith('_')]
+    table_list = [table for table in table_list if table not in no_need_table]
+
+    export_parquet_root_path = f'{home}/{SystemConstants.EXPORT_ETC_PATH}'
+
+    st = SaTarget(logger, config)
+    st.init_process()
+
+    for table in table_list:
+
+        file_name = f"{table}{SystemConstants.DB_SQL_TEXT_FILE_SUFFIX}"
+
+        pf.remove_parquet(export_parquet_root_path, file_name)
+
+        # 이부분은 for문 필요 chunksize 만큼
+        df = st.get_table_data(table)
+
+        pf.make_parquet_by_df(df, export_parquet_root_path, file_name)

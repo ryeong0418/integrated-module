@@ -8,3 +8,9 @@ class CommonSql:
         ORDER BY db_id asc
         """
     )
+
+    SELECT_TABLE = (
+        """
+        SELECT * FROM #(table)
+        """
+    )

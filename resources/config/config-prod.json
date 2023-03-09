@@ -33,5 +33,6 @@
 			"minute": "0"
 		}
 	},
-	"sql_debug_flag": false
+	"sql_debug_flag": false,
+	"sql_merge_text_chunksize": 10000
 }

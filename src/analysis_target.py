@@ -476,15 +476,19 @@ class SaTarget(CommonTarget):
 
     def insert_merged_result(self, merged_df):
         table_name = TableConstants.AE_SQL_TEXT
+        total_len = 0
 
         for i in range(len(merged_df)):
             try:
                 merged_df.iloc[i:i+1].to_sql(table_name, if_exists='append', con=self.analysis_engine,
                                              schema='public', index=False)
+                total_len += 1
             except IntegrityError:
                 pass
             except Exception as e:
                 self.logger.exception(e)
+
+        self.logger.info(f"Matching Data except duplicate, Insert rows : {total_len}")
 
     def get_ae_db_info(self):
         query = CommonSql.SELECT_AE_DB_INFO

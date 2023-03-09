@@ -25,8 +25,11 @@ class CommonTarget:
         self.mg_conn_str = TargetUtils.get_db_conn_str(config['maxgauge_repo'])
 
         self.analysis_engine_template = TargetUtils.get_engine_template(config['analysis_repo'])
+        self.im_engine_template = TargetUtils.get_engine_template(config['intermax_repo'])
 
         self.analysis_engine = None
+        self.im_engine = None
+
         self.im_conn = None
         self.mg_conn = None
         self.sa_conn = None
@@ -39,6 +42,9 @@ class InterMaxTarget(CommonTarget):
     def init_process(self):
         self.im_conn = db.connect(self.im_conn_str)
         self.analysis_engine = create_engine(self.analysis_engine_template)
+
+    def create_im_engine(self):
+        self.im_engine = create_engine(self.im_engine_template)
 
     def __del__(self):
         if self.im_conn:
@@ -92,10 +98,11 @@ class InterMaxTarget(CommonTarget):
         meta_df = TargetUtils.get_target_data_by_query(self.logger, self.im_conn, query, table_name,)
         TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, meta_df)
 
-    def get_xapm_sql_text(self):
+    def get_xapm_sql_text(self, chunksize):
         query = InterMaxSqlTextMergeQuery.SELECT_XAPM_SQL_TEXT
 
-        return pd.read_sql(query, self.im_conn)
+        conn = self.im_engine.connect().execution_options(stream_results=True,)
+        return pd.read_sql_query(text(query), conn, chunksize=chunksize)
 
     def insert_ae_sql_text(self, filtered_df):
         table_name = TableConstants.AE_SQL_TEXT
@@ -472,14 +479,12 @@ class SaTarget(CommonTarget):
 
         for i in range(len(merged_df)):
             try:
-                merged_df.iloc[i:i+1].to_sql(table_name, if_exists='append',
-                                             con=self.analysis_engine, schema='public', index=False)
-            except IntegrityError as ie:
+                merged_df.iloc[i:i+1].to_sql(table_name, if_exists='append', con=self.analysis_engine,
+                                             schema='public', index=False)
+            except IntegrityError:
                 pass
             except Exception as e:
                 self.logger.exception(e)
-
-                # TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, merged_df)
 
     def get_ae_db_info(self):
         query = CommonSql.SELECT_AE_DB_INFO
@@ -488,6 +493,3 @@ class SaTarget(CommonTarget):
         df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, query, table_name, )
         df['lpad_db_id'] = df['db_id'].astype('str').str.pad(3, side='left', fillchar='0')
         return df
-
-
-

@@ -1,5 +1,4 @@
 import itertools
-import os
 import numpy as np
 import pandas as pd
 import sqlparse
@@ -25,6 +24,8 @@ class SqlTextMerge(cm.CommonModule):
         self.mgt = None
         self.CHUNKSIZE = 10000
         self.export_parquet_root_path = None
+        # Sql Text 전처리 및 매치 모드 분리 (str, token)
+        self.MATCH_MODE = 'token'
 
     def parallelize(self, data, func, num_of_processes=4):
         data_split = np.array_split(data, num_of_processes)
@@ -41,6 +42,10 @@ class SqlTextMerge(cm.CommonModule):
             self.logger.error(f"intermax_repo or maxgauge_repo use false.. please check config")
             return
 
+        if self.MATCH_MODE != 'str' and self.MATCH_MODE != 'token':
+            self.logger.error(f"MATCH_MODE no insert.. please check sql_text_merge.py near Line 28 ")
+            return
+
         self.st = SaTarget(self.logger, self.config)
         self.st.init_process()
 
@@ -55,9 +60,9 @@ class SqlTextMerge(cm.CommonModule):
     def _sql_text_merge(self):
         # self.st.drop_table_for_sql_text_merge()
 
-        # self.imt = InterMaxTarget(self.logger, self.config)
-        # self.imt.init_process()
-        # xapm_sql_df = self.imt.get_xapm_sql_text()
+        self.imt = InterMaxTarget(self.logger, self.config)
+        self.imt.init_process()
+        self.imt.create_im_engine()
 
         export_filename_suffixs = self._get_export_filename_suffix()
         export_filenames = []
@@ -66,9 +71,15 @@ class SqlTextMerge(cm.CommonModule):
         export_filenames = list(itertools.chain(*export_filenames))
 
         insert_result_columns = ['sql_id', 'sql_uid', 'sql_text_100', ]
+        default_merge_column = ['sql_text_len']
+        token_mode_merge_column = ['first_token', 'last_token']
+
+        if self.MATCH_MODE == 'token':
+            default_merge_column.extend(token_mode_merge_column)
 
         # InterMax DB 바라보게 추후 바꿔야함
-        for ae_was_df in self.st.get_ae_was_sql_text(chunksize=self.CHUNKSIZE):
+        # for ae_was_df in self.st.get_ae_was_sql_text(chunksize=self.CHUNKSIZE):
+        for ae_was_df in self.imt.get_xapm_sql_text(chunksize=self.CHUNKSIZE):
             result_df_list = []
 
             ae_was_df = self._preprocessing(ae_was_df)
@@ -79,23 +90,23 @@ class SqlTextMerge(cm.CommonModule):
             for filename in export_filenames:
                 ae_db_sql_df = pd.read_parquet(f'{self.export_parquet_root_path}/{filename}')
 
-                merge_df = pd.merge(ae_was_df, ae_db_sql_df, on='sql_text_len', how='inner')
+                merge_df = pd.merge(ae_was_df, ae_db_sql_df, on=default_merge_column, how='inner')
 
-                self.logger.info(f"merge_df pandas data memory (deep) : "
-                                 f"{SystemUtils.byte_transform(merge_df.memory_usage(deep=True).sum(), 'm')} Mb")
+                if self.MATCH_MODE == 'token':
+                    merge_df['sp_sql_text_y'] = merge_df['sp_sql_text_y'].apply(list)
 
-                merge_df['compare'] = np.where((merge_df['sp_sql_text_x'] == merge_df['sp_sql_text_y']), 1, 0)
-
+                merge_df['compare'] = np.where(merge_df['sp_sql_text_x'] == merge_df['sp_sql_text_y'], 1, 0)
                 merge_df = merge_df[merge_df['compare'] == 1]
 
                 result_df_list.append(merge_df[insert_result_columns])
 
             self.logger.info('end of all export file compare')
-
             result_df = pd.concat(result_df_list, ignore_index=True)
 
             if len(result_df) == 0:
                 continue
+            else:
+                self.logger.info(f"Matching Data Length : {len(result_df)}")
 
             self._insert_merged_result(result_df)
 
@@ -117,20 +128,25 @@ class SqlTextMerge(cm.CommonModule):
 
                 pf.remove_parquet(self.export_parquet_root_path, parquet_file_name)
 
-                with TimeLogger(f"Make_parquet_file_ae_db_sql_text (date - {date}, db_id - {db_id}) : ", self.logger):
-                    for df in self.st.get_ae_db_sql_text_1seq(partition_key, chunksize=self.CHUNKSIZE):
-                        if len(df) == 0:
-                            break
+                pqwriter = None
 
+                with TimeLogger(f"Make_parquet_file_ae_db_sql_text (date:{date}, db_id:{db_id}),elapsed ", self.logger):
+                    for df in self.st.get_ae_db_sql_text_1seq(partition_key, chunksize=self.CHUNKSIZE):
                         results = self.st.get_ae_db_sql_text_by_1seq(df, chunksize=self.CHUNKSIZE)
 
                         grouping_df = self._reconstruct_by_grouping(results)
                         grouping_df = self._preprocessing(grouping_df)
 
-                        pf.make_parquet_by_df(grouping_df, self.export_parquet_root_path, parquet_file_name)
+                        if pqwriter is None:
+                            pqwriter = pf.get_pqwriter(self.export_parquet_root_path, parquet_file_name, grouping_df)
+
+                        pf.make_parquet_by_df(grouping_df, pqwriter)
                         total_row_cnt += len(grouping_df)
 
-                    self.logger.info(f"Total export data count (date - {date}, db_id - {db_id}) : {total_row_cnt}")
+                    self.logger.info(f"Total export data count : {total_row_cnt} rows")
+
+                if pqwriter:
+                    pqwriter.close()
 
     def _insert_merged_result(self, result_df):
         result_df.rename(columns={'sql_id': 'was_sql_id'}, inplace=True)
@@ -149,7 +165,7 @@ class SqlTextMerge(cm.CommonModule):
     def _preprocessing(self, xapm_sql_df):
         # 메모리 문제로 타겟 컬럼과 도착지 컬럼을 같게(None) 줘야할수도 있을듯
         xapm_sql_df = self._remove_unnecess_char(xapm_sql_df, 'sql_text')
-        xapm_sql_df = self._split_parse_sql_text(xapm_sql_df, 'sql_text', 'sp_sql_text')
+        xapm_sql_df = self._split_parse_sql_text(xapm_sql_df, 'sql_text', 'sp_sql_text', self.MATCH_MODE)
 
         # xapm_sql_df = self._set_common_sql_format(xapm_sql_df, 'sql_text')
         # xapm_sql_df = self._parse_sql_text(xapm_sql_df, 'sql_text', 'p_sql_text')
@@ -157,10 +173,19 @@ class SqlTextMerge(cm.CommonModule):
         return xapm_sql_df
 
     @staticmethod
-    def _split_parse_sql_text(xapm_sql_df, target_c: str, dest_c: str):
-        xapm_sql_df[dest_c] = xapm_sql_df[target_c].str.split(r"\s+")
-        xapm_sql_df[dest_c] = xapm_sql_df[dest_c].apply(str)
+    def _split_parse_sql_text(xapm_sql_df, target_c: str, dest_c: str, match_mode: str):
+        dest_c = target_c if dest_c is None else dest_c
+
+        xapm_sql_df[dest_c] = xapm_sql_df[target_c].str.lower().str.split(r"\s+")
+
+        if match_mode == 'token':
+            xapm_sql_df['first_token'] = xapm_sql_df[dest_c].apply(lambda x: x[0])
+            xapm_sql_df['last_token'] = xapm_sql_df[dest_c].apply(lambda x: x[-1])
+        elif match_mode == 'str':
+            xapm_sql_df[dest_c] = xapm_sql_df[dest_c].apply(str)
+
         xapm_sql_df['sql_text_len'] = xapm_sql_df[dest_c].apply(len)
+
         return xapm_sql_df
 
     @staticmethod

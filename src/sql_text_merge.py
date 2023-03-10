@@ -24,7 +24,7 @@ class SqlTextMerge(cm.CommonModule):
         self.CHUNKSIZE = 10000
         self.export_parquet_root_path = None
         # Sql Text 전처리 및 매치 모드 분리 (str, token)
-        self.MATCH_MODE = 'str'
+        self.MATCH_MODE = 'token'
 
     # def parallelize(self, data, func, num_of_processes=4):
     #     data_split = np.array_split(data, num_of_processes)
@@ -35,8 +35,6 @@ class SqlTextMerge(cm.CommonModule):
     #     return data
 
     def main_process(self):
-        self.logger.debug("SqlTextMerge main_process start")
-
         if not self.config['intermax_repo']['use'] and not self.config['maxgauge_repo']['use']:
             self.logger.error(f"intermax_repo or maxgauge_repo use false.. please check config")
             return
@@ -55,8 +53,6 @@ class SqlTextMerge(cm.CommonModule):
 
         self._sql_text_merge()
 
-        self.logger.debug("SqlTextMerge main_process end")
-
     def _sql_text_merge(self):
         # self.st.drop_table_for_sql_text_merge()
 
@@ -73,6 +69,7 @@ class SqlTextMerge(cm.CommonModule):
         insert_result_columns = ['sql_id', 'sql_uid', 'sql_text_100', ]
         default_merge_column = ['sql_text_len']
         token_mode_merge_column = ['first_token', 'last_token']
+        total_match_len = 0
 
         if self.MATCH_MODE == 'token':
             default_merge_column.extend(token_mode_merge_column)
@@ -83,6 +80,7 @@ class SqlTextMerge(cm.CommonModule):
             result_df_list = []
 
             ae_was_df = self._preprocessing(ae_was_df)
+            ae_was_df['sql_text'].apply(np.array)
 
             # 메모리 축소 10000 라인 기준 20kb 수준
             # ae_was_df['sql_text_len'] = ae_was_df['sql_text_len'].astype('int32')
@@ -92,12 +90,16 @@ class SqlTextMerge(cm.CommonModule):
 
                 merge_df = pd.merge(ae_was_df, ae_db_sql_df, on=default_merge_column, how='inner')
 
-                if self.MATCH_MODE == 'token':
-                    merge_df['sp_sql_text_y'] = merge_df['sp_sql_text_y'].apply(list)
+                if len(merge_df) == 0:
+                    continue
 
-                merge_df['compare'] = np.where(merge_df['sp_sql_text_x'] == merge_df['sp_sql_text_y'], 1, 0)
-                merge_df = merge_df[merge_df['compare'] == 1]
+                if self.MATCH_MODE == 'str':
+                    merge_df['compare'] = np.where(merge_df['sql_text_x'] == merge_df['sql_text_y'], True, False)
+                elif self.MATCH_MODE == 'token':
+                    merge_df['compare'] = [True if np.array_equal(sql, sql2) else False
+                                           for sql, sql2 in zip(merge_df['sql_text_x'], merge_df['sql_text_y'])]
 
+                merge_df = merge_df[merge_df['compare']]
                 result_df_list.append(merge_df[insert_result_columns])
 
             self.logger.info('End of all export file compare')
@@ -106,9 +108,12 @@ class SqlTextMerge(cm.CommonModule):
             if len(result_df) == 0:
                 continue
             else:
+                total_match_len += len(result_df)
                 self.logger.info(f"Matching Data Length : {len(result_df)}")
 
             self._insert_merged_result(result_df)
+
+        self.logger.info(f"Final Total match count {total_match_len}")
 
     def _export_db_sql_text(self):
         pf = ParquetFile(self.logger, self.config)
@@ -167,11 +172,11 @@ class SqlTextMerge(cm.CommonModule):
     def _preprocessing(self, xapm_sql_df):
         # 메모리 문제로 타겟 컬럼과 도착지 컬럼을 같게(None) 줘야할수도 있을듯
         xapm_sql_df = self._remove_unnecess_char(xapm_sql_df, 'sql_text')
-        xapm_sql_df = self._split_parse_sql_text(xapm_sql_df, 'sql_text', 'sp_sql_text', self.MATCH_MODE)
+        xapm_sql_df = self._split_parse_sql_text(xapm_sql_df, 'sql_text', None, self.MATCH_MODE)
         return xapm_sql_df
 
     @staticmethod
-    def _split_parse_sql_text(xapm_sql_df, target_c: str, dest_c: str, match_mode: str):
+    def _split_parse_sql_text(xapm_sql_df: pd.DataFrame, target_c: str, dest_c: str, match_mode: str):
         dest_c = target_c if dest_c is None else dest_c
 
         xapm_sql_df[dest_c] = xapm_sql_df[target_c].str.lower().str.split(r"\s+")
@@ -182,7 +187,7 @@ class SqlTextMerge(cm.CommonModule):
         elif match_mode == 'str':
             xapm_sql_df[dest_c] = xapm_sql_df[dest_c].apply(str)
 
-        xapm_sql_df['sql_text_len'] = xapm_sql_df[dest_c].apply(len)
+        xapm_sql_df['sql_text_len'] = xapm_sql_df[dest_c].apply(len).astype(np.int32)
 
         return xapm_sql_df
 

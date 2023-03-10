@@ -28,7 +28,7 @@ class ParquetFile:
         :param parquet_file_name: 추출하려는 파일 이름 Optinal (for log)
         :return:
         """
-        self.index = 1 if self.index > 30 else self.index
+        self.index = 1 if self.index > 10 else self.index
         df_volume = f"{SystemUtils.byte_transform(df.memory_usage(deep=True).sum(), 'm')} Mb"
 
         pqwriter.write_table(pa.Table.from_pandas(df))
@@ -60,4 +60,5 @@ class ParquetFile:
         """
         Path(file_path).mkdir(exist_ok=True, parents=True)
         self.target_file_name = f"{file_path}/{file_name}"
+        self.index = 1
         return pq.ParquetWriter(self.target_file_name, pa.Table.from_pandas(df).schema, compression="gzip")

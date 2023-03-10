@@ -25,6 +25,7 @@ class SqlTextMerge(cm.CommonModule):
         self.export_parquet_root_path = None
         # Sql Text 전처리 및 매치 모드 분리 (str, token)
         self.MATCH_MODE = 'token'
+        self.sql_match_sensitive = 3
 
     # def parallelize(self, data, func, num_of_processes=4):
     #     data_split = np.array_split(data, num_of_processes)
@@ -48,6 +49,7 @@ class SqlTextMerge(cm.CommonModule):
 
         self.export_parquet_root_path = f'{self.config["home"]}/{SystemConstants.EXPORT_PARQUET_PATH}'
         self.CHUNKSIZE = self.config['sql_merge_text_chunksize']
+        self.sql_match_sensitive = self.config['sql_match_sensitive']
 
         self._export_db_sql_text()
 
@@ -68,36 +70,34 @@ class SqlTextMerge(cm.CommonModule):
 
         insert_result_columns = ['sql_id', 'sql_uid', 'sql_text_100', ]
         default_merge_column = ['sql_text_len']
-        token_mode_merge_column = ['first_token', 'last_token']
+        first_token_merge_column = ['first_token']
+        last_token_merge_column = [f"last_token{i}" for i in range(1, self.sql_match_sensitive * 50 + 1)]
+
         total_match_len = 0
 
         if self.MATCH_MODE == 'token':
-            default_merge_column.extend(token_mode_merge_column)
+            default_merge_column = default_merge_column + first_token_merge_column + last_token_merge_column
 
         # InterMax DB 바라보게 추후 바꿔야함
-        # for ae_was_df in self.st.get_ae_was_sql_text(chunksize=self.CHUNKSIZE):
-        for ae_was_df in self.imt.get_xapm_sql_text(chunksize=self.CHUNKSIZE):
+        for ae_was_df in self.st.get_ae_was_sql_text(chunksize=self.CHUNKSIZE):
+        # for ae_was_df in self.imt.get_xapm_sql_text(chunksize=self.CHUNKSIZE):
             result_df_list = []
 
             ae_was_df = self._preprocessing(ae_was_df)
             ae_was_df['sql_text'].apply(np.array)
 
-            # 메모리 축소 10000 라인 기준 20kb 수준
-            # ae_was_df['sql_text_len'] = ae_was_df['sql_text_len'].astype('int32')
-
             for filename in export_filenames:
                 ae_db_sql_df = pd.read_parquet(f'{self.export_parquet_root_path}/{filename}')
 
                 merge_df = pd.merge(ae_was_df, ae_db_sql_df, on=default_merge_column, how='inner')
-
                 if len(merge_df) == 0:
                     continue
 
                 if self.MATCH_MODE == 'str':
                     merge_df['compare'] = np.where(merge_df['sql_text_x'] == merge_df['sql_text_y'], True, False)
                 elif self.MATCH_MODE == 'token':
-                    merge_df['compare'] = [True if np.array_equal(sql, sql2) else False
-                                           for sql, sql2 in zip(merge_df['sql_text_x'], merge_df['sql_text_y'])]
+                    merge_df['compare'] = [True if np.array_equal(was_sql, db_sql) else False
+                                           for was_sql, db_sql in zip(merge_df['sql_text_x'], merge_df['sql_text_y'])]
 
                 merge_df = merge_df[merge_df['compare']]
                 result_df_list.append(merge_df[insert_result_columns])
@@ -172,22 +172,23 @@ class SqlTextMerge(cm.CommonModule):
     def _preprocessing(self, xapm_sql_df):
         # 메모리 문제로 타겟 컬럼과 도착지 컬럼을 같게(None) 줘야할수도 있을듯
         xapm_sql_df = self._remove_unnecess_char(xapm_sql_df, 'sql_text')
-        xapm_sql_df = self._split_parse_sql_text(xapm_sql_df, 'sql_text', None, self.MATCH_MODE)
+        xapm_sql_df = self._split_parse_sql_text(xapm_sql_df, 'sql_text', self.MATCH_MODE, self.sql_match_sensitive)
         return xapm_sql_df
 
     @staticmethod
-    def _split_parse_sql_text(xapm_sql_df: pd.DataFrame, target_c: str, dest_c: str, match_mode: str):
-        dest_c = target_c if dest_c is None else dest_c
-
-        xapm_sql_df[dest_c] = xapm_sql_df[target_c].str.lower().str.split(r"\s+")
+    def _split_parse_sql_text(xapm_sql_df: pd.DataFrame, target_c: str, match_mode: str, sql_match_sensitive):
+        xapm_sql_df[target_c] = xapm_sql_df[target_c].str.lower().str.split(r"\s+")
 
         if match_mode == 'token':
-            xapm_sql_df['first_token'] = xapm_sql_df[dest_c].apply(lambda x: x[0])
-            xapm_sql_df['last_token'] = xapm_sql_df[dest_c].apply(lambda x: x[-1])
-        elif match_mode == 'str':
-            xapm_sql_df[dest_c] = xapm_sql_df[dest_c].apply(str)
+            xapm_sql_df['first_token'] = xapm_sql_df[target_c].apply(lambda x: x[0])
 
-        xapm_sql_df['sql_text_len'] = xapm_sql_df[dest_c].apply(len).astype(np.int32)
+            for i in range(1, sql_match_sensitive * 50 + 1):
+                xapm_sql_df[f'last_token{i}'] = xapm_sql_df[target_c].apply(lambda x: x[-i] if len(x) > i+1 else None)
+
+        elif match_mode == 'str':
+            xapm_sql_df[target_c] = xapm_sql_df[target_c].apply(str)
+
+        xapm_sql_df['sql_text_len'] = xapm_sql_df[target_c].apply(len).astype(np.int32)
 
         return xapm_sql_df
 

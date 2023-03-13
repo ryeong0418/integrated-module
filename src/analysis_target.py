@@ -409,13 +409,13 @@ class SaTarget(CommonTarget):
         conn = self.analysis_engine.connect().execution_options(stream_results=True,)
         return pd.read_sql_query(text(query), conn, chunksize=chunksize)
 
-    def get_ae_db_sql_text_1seq(self, partition_key, chunksize):
+    def get_ae_db_sql_text_by_1seq(self, partition_key, chunksize):
         replace_dict = {'partition_key': partition_key}
         query = SystemUtils.sql_replace_to_dict(SaSqlTextMergeQuery.SELECT_AE_DB_SQL_TEXT_1SEQ, replace_dict)
 
         return pd.read_sql_query(query, self.sa_conn, chunksize=chunksize)
 
-    def get_ae_db_sql_text_by_1seq(self, df, chunksize):
+    def get_all_ae_db_sql_text_by_1seq(self, df, chunksize):
         query_with_data = SaSqlTextMergeQuery.SELECT_AE_DB_SQL_TEXT_WITH_DATA
 
         params = tuple(df.itertuples(index=False, name=None))
@@ -498,7 +498,8 @@ class SaTarget(CommonTarget):
         df['lpad_db_id'] = df['db_id'].astype('str').str.pad(3, side='left', fillchar='0')
         return df
 
-    def get_table_data(self, table):
+    def get_table_data(self, table, chunksize):
         query = SystemUtils.sql_replace_to_dict(CommonSql.SELECT_TABLE, {'table': table})
-        return TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, query, table)
 
+        conn = self.analysis_engine.connect().execution_options(stream_results=True, )
+        return pd.read_sql_query(text(query), conn, chunksize=chunksize)

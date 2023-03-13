@@ -135,11 +135,11 @@ class SqlTextMerge(cm.CommonModule):
                 pqwriter = None
 
                 with TimeLogger(f"Make_parquet_file_ae_db_sql_text (date:{date}, db_id:{db_id}),elapsed ", self.logger):
-                    for df in self.st.get_ae_db_sql_text_1seq(partition_key, chunksize=self.CHUNKSIZE):
+                    for df in self.st.get_ae_db_sql_text_by_1seq(partition_key, chunksize=self.CHUNKSIZE):
                         if len(df) == 0:
                             break
 
-                        results = self.st.get_ae_db_sql_text_by_1seq(df, chunksize=self.CHUNKSIZE)
+                        results = self.st.get_all_ae_db_sql_text_by_1seq(df, chunksize=self.CHUNKSIZE)
 
                         grouping_df = self._reconstruct_by_grouping(results)
                         grouping_df = self._preprocessing(grouping_df)

@@ -239,4 +239,7 @@ resources/**/*-local.json
 # export file
 export_file/
 
+# package lib
+package/setup
+
 # End of https://www.toptal.com/developers/gitignore/api/windows,pycharm,python

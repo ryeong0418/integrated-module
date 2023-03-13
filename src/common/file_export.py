@@ -16,42 +16,25 @@ class ParquetFile:
         self.config = config
         self.DOT = "."
         self.index = 1
+        self.target_file_name = None
 
-    def make_parquet_by_df(self, df, export_path, parquet_file_name):
+    def make_parquet_by_df(self, df, pqwriter: pq.ParquetWriter):
         """
         DataFrame을 parquet 파일로 만들기 위한 함수
-        연속으로 호출 시 첫번째 파일 생성 이후 계속 append 된다.
+        같은 pqwriter로 호출 하게되면 계속 append 된다.
+        다른 파일 생성 시 get_pqwriter 함수로 재 생성한 후 사용
         :param df: 타겟 데이터 프레임
-        :param export_path: 추출하려는 파일의 디렉토리
-        :param parquet_file_name: 추출하려는 파일 이름
+        :param pqwriter: parquet 파일 writer 객체
+        :param parquet_file_name: 추출하려는 파일 이름 Optinal (for log)
         :return:
         """
-        Path(export_path).mkdir(exist_ok=True, parents=True)
-
-        parquet_name = f"{export_path}/{parquet_file_name}"
-
+        self.index = 1 if self.index > 10 else self.index
         df_volume = f"{SystemUtils.byte_transform(df.memory_usage(deep=True).sum(), 'm')} Mb"
 
-        self.index = 1 if self.index > 30 else self.index
+        pqwriter.write_table(pa.Table.from_pandas(df))
 
-        if not os.path.isfile(parquet_name):
-            df.to_parquet(parquet_name, engine='fastparquet')
-            self.logger.info(f"{parquet_file_name} file create and export ({df_volume}) {self.DOT * self.index}")
-        else:
-            df.to_parquet(parquet_name, engine='fastparquet', append=True)
-            self.logger.info(f"{parquet_file_name} file append and export ({df_volume}) {self.DOT * self.index}")
-
+        self.logger.info(f"{self.target_file_name} file export ({df_volume}) {self.DOT * self.index}")
         self.index += 1
-
-    def make(self, df, export_path, parquet_file_name):
-        export_path = f"{self.config['home']}/{export_path}"
-        Path(export_path).mkdir(exist_ok=True, parents=True)
-
-        parquet_name = f"{export_path}/{parquet_file_name}"
-
-        table = pa.Table.from_pandas(df)
-
-        pq.write_table(table, f'{parquet_name}')
 
     def remove_parquet(self, file_path, file_name):
         """
@@ -63,6 +46,19 @@ class ParquetFile:
         file_name = f"{file_path}/{file_name}"
 
         if os.path.isfile(file_name):
-            self.logger.info(f"{file_name} Deleting..")
+            self.logger.debug(f"{file_name} Deleting..")
             os.remove(file_name)
             self.logger.info(f"{file_name} Deleted OK")
+
+    def get_pqwriter(self, file_path, file_name, df):
+        """
+        parquet writer 객체 생성 함수
+        :param file_path: parquet 파일 생성 path
+        :param file_name: parquet 파일 생성 이름
+        :param df: schema를 위한 target df
+        :return: pqwriter
+        """
+        Path(file_path).mkdir(exist_ok=True, parents=True)
+        self.target_file_name = f"{file_path}/{file_name}"
+        self.index = 1
+        return pq.ParquetWriter(self.target_file_name, pa.Table.from_pandas(df).schema, compression="gzip")

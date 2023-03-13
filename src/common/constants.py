@@ -14,6 +14,7 @@ class SystemConstants:
 
     # logger master 파일 이름
     MASTER_LOG_FILE_NAME = 'master'
+    ETC_LOG_FILE_NAME = 'etc'
 
     # logger scheduler 파일 이름
     SCHEDULER_LOG_FILE_NAME = 'scheduler'
@@ -27,6 +28,7 @@ class SystemConstants:
 
     # export 폴더명
     EXPORT_PARQUET_PATH = 'export/parquet'
+    EXPORT_ETC_PATH = 'export/etc'
 
     #sql path
     SQL_PATH = 'export/sql_csv/sql'
@@ -58,7 +60,7 @@ class TableConstants:
     AE_WAS_STAT_SUMMARY = "ae_was_stat_summary"
     AE_JVM_STAT_SUMMARY = "ae_jvm_stat_summary"
     AE_WAS_OS_STAT_OSM = "ae_was_os_stat_osm"
-    AE_EXCUTE_LOG = "ae_excute_log"
+    AE_EXECUTE_LOG = "ae_execute_log"
 
 
 class ResultConstants:
@@ -66,4 +68,3 @@ class ResultConstants:
     FAIL = 'F'
     ERROR = 'E'
     PROGRESS = 'P'
-

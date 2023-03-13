@@ -497,3 +497,8 @@ class SaTarget(CommonTarget):
         df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, query, table_name, )
         df['lpad_db_id'] = df['db_id'].astype('str').str.pad(3, side='left', fillchar='0')
         return df
+
+    def get_table_data(self, table):
+        query = SystemUtils.sql_replace_to_dict(CommonSql.SELECT_TABLE, {'table': table})
+        return TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, query, table)
+

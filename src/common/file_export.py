@@ -95,12 +95,25 @@ if __name__ == "__main__":
     st.init_process()
 
     for table in table_list:
+        table_total_len = 0
 
         file_name = f"{table}{SystemConstants.DB_SQL_TEXT_FILE_SUFFIX}"
 
         pf.remove_parquet(export_parquet_root_path, file_name)
+        pqwriter = None
 
         # 이부분은 for문 필요 chunksize 만큼
-        df = st.get_table_data(table)
+        for df in st.get_table_data(table, chunksize=100000):
+            if len(df) == 0:
+                break
 
-        pf.make_parquet_by_df(df, export_parquet_root_path, file_name)
+            if pqwriter is None:
+                pqwriter = pf.get_pqwriter(export_parquet_root_path, file_name, df)
+
+            pf.make_parquet_by_df(df, pqwriter)
+            table_total_len += len(df)
+
+        if pqwriter:
+            pqwriter.close()
+
+        logger.info(f"{table} table export data row count : {table_total_len}")

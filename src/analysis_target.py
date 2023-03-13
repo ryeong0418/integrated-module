@@ -214,8 +214,6 @@ class InterMaxTarget(CommonTarget):
 
     def _excute_insert_intermax_detail_data(self, query, table_name):
         df = TargetUtils.get_target_data_by_query(self.logger, self.im_conn, query, table_name)
-        #print(df.drop_duplicates(['tid'], inplace=True))
-        # df.drop_duplicates(['tid'],inplace=True)
         TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
 

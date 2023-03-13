@@ -12,7 +12,6 @@ from datetime import datetime, timedelta
 from src.common.constants import SystemConstants
 from src.common.timelogger import TimeLogger
 
-
 class SystemUtils:
 
     @staticmethod

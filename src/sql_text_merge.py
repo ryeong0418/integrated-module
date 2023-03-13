@@ -25,7 +25,7 @@ class SqlTextMerge(cm.CommonModule):
         self.export_parquet_root_path = None
         # Sql Text 전처리 및 매치 모드 분리 (str, token)
         self.MATCH_MODE = 'token'
-        self.sql_match_sensitive = 3
+        self.sql_match_sensitive = 5
 
     # def parallelize(self, data, func, num_of_processes=4):
     #     data_split = np.array_split(data, num_of_processes)
@@ -48,8 +48,8 @@ class SqlTextMerge(cm.CommonModule):
         self.st.init_process()
 
         self.export_parquet_root_path = f'{self.config["home"]}/{SystemConstants.EXPORT_PARQUET_PATH}'
-        self.CHUNKSIZE = self.config['sql_merge_text_chunksize']
-        self.sql_match_sensitive = self.config['sql_match_sensitive']
+        self.CHUNKSIZE = self.config('sql_merge_text_chunksize', 10000)
+        self.sql_match_sensitive = self.config('sql_match_sensitive', 5)
 
         self._export_db_sql_text()
 
@@ -79,8 +79,8 @@ class SqlTextMerge(cm.CommonModule):
             default_merge_column = default_merge_column + first_token_merge_column + last_token_merge_column
 
         # InterMax DB 바라보게 추후 바꿔야함
-        for ae_was_df in self.st.get_ae_was_sql_text(chunksize=self.CHUNKSIZE):
-        # for ae_was_df in self.imt.get_xapm_sql_text(chunksize=self.CHUNKSIZE):
+        # for ae_was_df in self.st.get_ae_was_sql_text(chunksize=self.CHUNKSIZE):
+        for ae_was_df in self.imt.get_xapm_sql_text(chunksize=self.CHUNKSIZE):
             result_df_list = []
 
             ae_was_df = self._preprocessing(ae_was_df)

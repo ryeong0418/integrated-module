@@ -35,5 +35,5 @@
 	},
 	"sql_debug_flag": false,
 	"sql_merge_text_chunksize": 10000,
-	"sql_match_sensitive": 3
+	"sql_match_sensitive": 5
 }

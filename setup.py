@@ -35,9 +35,9 @@ setup(
     },
     package_data={
         "resources": ['*/*-prod.json'],
-        "": ['../*.py',
-             '../export/sql_csv/sql/*.txt',
-             '../package/requirements.txt',
-             '../package/setup/*']
+        "": ['../export/sql_csv/sql/*.txt',
+             '../package/setup/*',
+             '../bin/*.sh',
+             '../*.bat']
     }
 )

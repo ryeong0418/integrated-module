@@ -1,3 +1,6 @@
 #! /bin/bash
 source ../.venv/bin/activate
-cd ../&& python  smart_analyzer.py --proc b
+echo 'python virtual environment activating..'
+sleep 1
+nohup python ../smart_analyzer.py --proc b &
+deactivate

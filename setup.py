@@ -3,7 +3,7 @@ import os
 import time
 
 from setuptools import setup, find_packages
-from src.pypackage_meta import __title__, __version__
+from src.meta.pypackage_meta import __title__, __version__
 
 with open('README.md', 'r', encoding='utf-8') as f:
     readme = f.read()
@@ -35,9 +35,9 @@ setup(
     },
     package_data={
         "resources": ['*/*-prod.json'],
-        "": ['../*.py',
-             '../export/sql_csv/sql/*.txt',
-             '../package/requirements.txt',
-             '../package/setup/*']
+        "": ['../export/sql_csv/sql/*.txt',
+             '../package/setup/*',
+             '../bin/*.sh',
+             '../*.bat']
     }
 )

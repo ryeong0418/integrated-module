@@ -1,0 +1,2 @@
+include smart_analyzer.py
+include package/requirements.txt

@@ -5,7 +5,8 @@
 		"port": 0,
 		"sid": "",
 		"user": "",
-		"password": ""
+		"password": "",
+		"use": true
 	},
 	"maxgauge_repo": {
 		"db_type": "",
@@ -13,7 +14,8 @@
 		"port": 0,
 		"sid": "",
 		"user": "",
-		"password": ""
+		"password": "",
+		"use": true
 	},
 	"analysis_repo": {
 		"db_type": "",

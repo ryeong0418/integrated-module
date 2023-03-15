@@ -242,4 +242,7 @@ export_file/
 # package lib
 package/setup
 
+# tests
+tests/
+
 # End of https://www.toptal.com/developers/gitignore/api/windows,pycharm,python

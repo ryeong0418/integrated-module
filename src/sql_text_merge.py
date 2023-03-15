@@ -1,7 +1,6 @@
 import itertools
 import numpy as np
 import pandas as pd
-import sqlparse
 import re
 
 from datetime import datetime, timedelta
@@ -48,8 +47,8 @@ class SqlTextMerge(cm.CommonModule):
         self.st.init_process()
 
         self.export_parquet_root_path = f'{self.config["home"]}/{SystemConstants.EXPORT_PARQUET_PATH}'
-        self.CHUNKSIZE = self.config('sql_merge_text_chunksize', 10000)
-        self.sql_match_sensitive = self.config('sql_match_sensitive', 5)
+        self.CHUNKSIZE = self.config.get('sql_merge_text_chunksize', 10000)
+        self.sql_match_sensitive = self.config.get('sql_match_sensitive', 5)
 
         self._export_db_sql_text()
 
@@ -103,7 +102,7 @@ class SqlTextMerge(cm.CommonModule):
                 result_df_list.append(merge_df[insert_result_columns])
 
             self.logger.info('End of all export file compare')
-            result_df = pd.concat(result_df_list, ignore_index=True)
+            result_df = pd.concat(result_df_list, ignore_index=True) if len(result_df_list) > 0 else pd.DataFrame()
 
             if len(result_df) == 0:
                 continue
@@ -210,10 +209,10 @@ class SqlTextMerge(cm.CommonModule):
         dest_c = target_c if dest_c is None else dest_c
 
         df[dest_c] = df[target_c].apply(
-            lambda x: sqlparse.parse(
-                x
-                # sqlparse.format(x, keyword_case='upper', identifier_case='upper', strip_comments=True)
-            )
+            # lambda x: sqlparse.parse(
+            #     x
+            #     # sqlparse.format(x, keyword_case='upper', identifier_case='upper', strip_comments=True)
+            # )
         )
 
         return df

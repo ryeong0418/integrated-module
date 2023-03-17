@@ -36,6 +36,10 @@ class SystemConstants:
     #csv_path
     CSV_PATH = 'export/sql_csv/csv'
 
+    # batch_pid_tmp
+    TMP_PATH = 'tmp'
+    PID_TMP_FILE_NAME = 'pid.tmp'
+
 
 class TableConstants:
     AE_WAS_INFO = "ae_was_info"

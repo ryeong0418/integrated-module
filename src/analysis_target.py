@@ -390,18 +390,6 @@ class SaTarget(CommonTarget):
         querys = SaInitializeQuery.DDL_SQL
         TargetUtils.create_and_check_table(self.logger, self.sa_conn, querys, None)
 
-    def drop_table_for_sql_text_merge(self):
-        query = SaSqlTextMergeQuery.DROP_TABLE_AE_SQL_TEXT
-
-        try:
-            cursor = self.sa_conn.cursor()
-            cursor.execute(query)
-
-        except Exception as e:
-            self.logger.exception(e)
-        finally:
-            self.sa_conn.commit()
-
     def get_ae_was_sql_text(self, chunksize):
         query = SaSqlTextMergeQuery.SELECT_AE_WAS_SQL_TEXT
         conn = self.analysis_engine.connect().execution_options(stream_results=True,)

@@ -26,14 +26,6 @@ class SqlTextMerge(cm.CommonModule):
         self.MATCH_MODE = 'token'
         self.sql_match_sensitive = 5
 
-    # def parallelize(self, data, func, num_of_processes=4):
-    #     data_split = np.array_split(data, num_of_processes)
-    #     pool = Pool(num_of_processes)
-    #     data = pd.concat(pool.map(func, data_split))
-    #     pool.close()
-    #     pool.join()
-    #     return data
-
     def main_process(self):
         if not self.config['intermax_repo']['use'] and not self.config['maxgauge_repo']['use']:
             self.logger.error(f"intermax_repo or maxgauge_repo use false.. please check config")
@@ -55,8 +47,9 @@ class SqlTextMerge(cm.CommonModule):
         self._sql_text_merge()
 
     def _sql_text_merge(self):
-        # self.st.drop_table_for_sql_text_merge()
-
+        """
+        was sql text - db sql text match
+        """
         self.imt = InterMaxTarget(self.logger, self.config)
         self.imt.init_process()
         self.imt.create_im_engine()
@@ -115,6 +108,9 @@ class SqlTextMerge(cm.CommonModule):
         self.logger.info(f"Final Total match count {total_match_len}")
 
     def _export_db_sql_text(self):
+        """
+        db sql text 재조합 및 parquet 파일 추출 함수
+        """
         pf = ParquetFile(self.logger, self.config)
 
         ae_db_info_df = self.st.get_ae_db_info()
@@ -163,19 +159,32 @@ class SqlTextMerge(cm.CommonModule):
 
     @staticmethod
     def _reconstruct_by_grouping(results):
+        """
+        db sql text 재조합을 위한 함수
+        :param results: seq가 동일한 데이터들의 전체 리스트
+        :return: 재조합된 데이터프레임
+        """
         results_df = pd.DataFrame(results, columns=['sql_text', 'partition_key', 'sql_uid', 'seq'])
         results_df = results_df.groupby(['sql_uid', 'partition_key'], as_index=False).agg({'sql_text': ''.join})
         results_df.drop(columns='partition_key', inplace=True)
         return results_df
 
-    def _preprocessing(self, xapm_sql_df):
-        # 메모리 문제로 타겟 컬럼과 도착지 컬럼을 같게(None) 줘야할수도 있을듯
+    def _preprocessing(self, xapm_sql_df):        
         xapm_sql_df = self._remove_unnecess_char(xapm_sql_df, 'sql_text')
         xapm_sql_df = self._split_parse_sql_text(xapm_sql_df, 'sql_text', self.MATCH_MODE, self.sql_match_sensitive)
         return xapm_sql_df
 
     @staticmethod
     def _split_parse_sql_text(xapm_sql_df: pd.DataFrame, target_c: str, match_mode: str, sql_match_sensitive):
+        """
+        match_mode별 sql text match를 위한 전처리
+        :param xapm_sql_df: 대상 데이터 프레임
+        :param target_c: 타겟 컬럼
+        :param match_mode: match_mode (str : sql_text 공백 split str, 
+                                    token : sql_text split 첫번째 토큰/마지막 토큰/전체길이/-sql_match_sensitive 길이 토큰 추출)
+        :param sql_match_sensitive: sql_match의 merge에 사용할 컬럼의 갯수
+        :return: 전처리된 데이터 프레임
+        """
         xapm_sql_df[target_c] = xapm_sql_df[target_c].str.lower().str.split(r"\s+")
 
         if match_mode == 'token':
@@ -193,6 +202,13 @@ class SqlTextMerge(cm.CommonModule):
 
     @staticmethod
     def _remove_unnecess_char(df, target_c: str, dest_c: str = None):
+        """
+        정규식을 이용한 /t, /n, /r 치환 함수
+        :param df: 원본 데이터프레임
+        :param target_c: 대상 타겟 컬럼
+        :param dest_c: 목적지 컬럼 (optional) if None target_c
+        :return: 치환된 데이터프레임
+        """
         dest_c = target_c if dest_c is None else dest_c
 
         repls = {r'\\t': ' ', r'\\n': ' ', r'\\r': ' ', '\t': ' ', '\n': ' ', '\r': ' '}
@@ -204,43 +220,11 @@ class SqlTextMerge(cm.CommonModule):
         )
         return df
 
-    @staticmethod
-    def _parse_sql_text(df, target_c: str, dest_c: str = None):
-        dest_c = target_c if dest_c is None else dest_c
-
-        df[dest_c] = df[target_c].apply(
-            # lambda x: sqlparse.parse(
-            #     x
-            #     # sqlparse.format(x, keyword_case='upper', identifier_case='upper', strip_comments=True)
-            # )
-        )
-
-        return df
-
-    @staticmethod
-    def _set_token_compare_info(df, target_c):
-        df['total_len'] = df[target_c].apply(
-            lambda x: len(x[0].tokens)
-        )
-        df['first_token'] = df[target_c].apply(
-            lambda x: str(x[0].tokens[0])
-        )
-        df['last_token_len'] = df[target_c].apply(
-            lambda x: len(x[0].tokens[-1].tokens) if getattr(x[0].tokens[-1], 'tokens', False) else 1
-        )
-        df['last_token'] = df[target_c].apply(
-            lambda x: str(x[0].tokens[-1])
-        )
-        df['sql_text'] = df[target_c].apply(
-            SqlTextMerge._tokens_flatten
-        )
-        return df
-
-    @staticmethod
-    def _tokens_flatten(x):
-        return tuple(str(t) for t in x[0].tokens if str(t).strip() != '')
-
     def _get_export_filename_suffix(self):
+        """
+        db sql text export 파일 날짜 접미사 추출 함수
+        :return: 날짜 list
+        """
         prefix = []
 
         for i in range(0, int(self.config['args']['interval'])):

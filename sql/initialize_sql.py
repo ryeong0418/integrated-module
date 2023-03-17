@@ -448,7 +448,8 @@ class SaInitializeQuery:
                 sql_text_100 varchar(100) null,
                 state_code varchar(100) null,
                 create_dt timestamp with time zone default current_timestamp,
-                create_id varchar(20) default 'system' not NULL
+                create_id varchar(20) default 'system' not NULL,
+                constraint pk_ae_sql_text primary key (was_sql_id, db_sql_uid)
             )
         """,
         # 22.07.28 ae_txn_sql_summary 테이블 신규 추가

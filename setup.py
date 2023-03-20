@@ -34,7 +34,7 @@ setup(
         "resources": "resources"
     },
     package_data={
-        "resources": ['*/*-prod.json'],
+        "resources": ['*/*-prod.json', '*/*-dev.json'],
         "": ['../export/sql_csv/sql/*.txt',
              '../package/setup/*',
              '../bin/*.sh',

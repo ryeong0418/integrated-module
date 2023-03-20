@@ -129,7 +129,6 @@ class SystemUtils:
 
     @staticmethod
     def excel_export(excel_file, sheet_name_txt, df):
-
         if not os.path.exists(excel_file):
             with pd.ExcelWriter(excel_file, mode='w', engine='openpyxl') as writer:
                 df.to_excel(writer, sheet_name=sheet_name_txt, index=False)

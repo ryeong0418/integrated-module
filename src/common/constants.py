@@ -31,10 +31,10 @@ class SystemConstants:
     EXPORT_ETC_PATH = 'export/etc'
 
     #sql path
-    SQL_PATH = 'export/sql_csv/sql'
+    SQL_PATH = 'export/sql_excel/sql'
 
-    #csv_path
-    CSV_PATH = 'export/sql_csv/csv'
+    #excel_path
+    EXCEL_PATH = 'export/sql_excel/excel'
 
 
 class TableConstants:

@@ -32,7 +32,7 @@
 		},
 		"main_sched": {
 			"hour": "1",
-			"minute": "0"
+			"minute": "5"
 		}
 	},
 	"sql_debug_flag": true,

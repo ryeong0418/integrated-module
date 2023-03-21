@@ -4,7 +4,6 @@ import os
 import platform
 
 from apscheduler.schedulers.background import BackgroundScheduler, BlockingScheduler
-
 from src import common_module as cm
 from src.sql.database import DataBase
 from src.sql.model import ExecuteLogModel

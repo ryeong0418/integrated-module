@@ -7,6 +7,7 @@ from src.analysis_target import SaTarget
 from src.common.constants import SystemConstants
 from src.common.utils import SystemUtils
 from datetime import datetime
+import re
 
 
 class Visualization(cm.CommonModule):
@@ -30,30 +31,25 @@ class Visualization(cm.CommonModule):
         Path(excel_path).mkdir(exist_ok=True, parents=True)
 
         sql_name_list = os.listdir(query_folder)
-        sql_name_list_sort = sorted(sql_name_list,key=lambda x: (x[0:3]))
+        sql_split = [i.split(" ") for i in sql_name_list]
+        sql_split_sort = sorted(sql_split, key=lambda x: (int(x[0].split("-")[0]), int(x[0].split("-")[1])))
+        sql_name_list_sort = [" ".join(i) for i in sql_split_sort]
 
         for sql_name in sql_name_list_sort:
             sql_query = SystemUtils.get_file_in_path(query_folder, sql_name)
             df = self.st.sql_query_convert_df(sql_query)
             result_df = SystemUtils.data_processing(df)
             sheet_name_txt = sql_name.split('.')[0]
-
             now_day = datetime.now()
             prtitionDate = now_day.strftime('%y%m%d')
+            sql_number = sheet_name_txt.split(' ')[0].split('-')[1]
 
-            if sheet_name_txt[2] == '1':
+            if sql_number == '1' and len(sql_number) == 1:
                 excel_file = excel_path + "/" + sheet_name_txt + "_" + prtitionDate + '.xlsx'
                 SystemUtils.excel_export(excel_file, sheet_name_txt, result_df)
 
             else:
-                sheet_name = sheet_name_txt
-                xlsx_file_list = glob.glob(excel_path+"/**.xlsx")
+                SystemUtils.excel_export(excel_file, sheet_name_txt, result_df)
 
-                for i in xlsx_file_list:
-                    excel_file_name = i.split('\\')[-1]
-                    excel_date = excel_file_name.split('_')[-1].split(".")[0]
-
-                    if sheet_name[0] == excel_file_name[0] and excel_date == prtitionDate:
-                        SystemUtils.excel_export(i, sheet_name, result_df)
 
 

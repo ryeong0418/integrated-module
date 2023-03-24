@@ -70,9 +70,35 @@ if __name__ == "__main__":
     from resources.config_manager import Config
     from src.analysis_target import SaTarget
 
-    no_need_table = {
-        'ae_db_info',
-    }
+    chunksize = 100000
+
+    args = SystemUtils.get_file_export_args()
+
+    no_need_table = [
+        # TableConstants.AE_WAS_INFO,
+        # TableConstants.AE_WAS_DB_INFO,
+        # TableConstants.AE_TXN_NAME,
+        # TableConstants.AE_WAS_SQL_TEXT,
+        #
+        # TableConstants.AE_DB_INFO,
+        # TableConstants.AE_DB_SQL_TEXT,
+        # TableConstants.AE_SQL_TEXT,
+        #
+        # TableConstants.AE_TXN_DETAIL,
+        # TableConstants.AE_TXN_SQL_DETAIL,
+        # TableConstants.AE_TXN_SQL_FETCH,
+        #
+        # TableConstants.AE_SESSION_INFO,
+        # TableConstants.AE_SESSION_STAT,
+        # TableConstants.AE_SQL_STAT_10MIN,
+        # TableConstants.AE_SQL_WAIT_10MIN,
+        # TableConstants.AE_TXN_SQL_SUMMARY,
+        #
+        # TableConstants.AE_WAS_STAT_SUMMARY,
+        # TableConstants.AE_JVM_STAT_SUMMARY,
+        # TableConstants.AE_WAS_OS_STAT_OSM,
+        # TableConstants.AE_EXECUTE_LOG,
+    ]
 
     home = Path(os.path.dirname(os.path.abspath(__file__))).parent.parent
 
@@ -94,26 +120,49 @@ if __name__ == "__main__":
     st = SaTarget(logger, config)
     st.init_process()
 
-    for table in table_list:
-        table_total_len = 0
+    if args.proc is None:
+        for table in table_list:
+            table_total_len = 0
 
-        file_name = f"{table}{SystemConstants.DB_SQL_TEXT_FILE_SUFFIX}"
+            file_name = f"{table}{SystemConstants.PARQUET_FILE_EXT}"
 
-        pf.remove_parquet(export_parquet_root_path, file_name)
-        pqwriter = None
+            pf.remove_parquet(export_parquet_root_path, file_name)
+            pqwriter = None
 
-        # 이부분은 for문 필요 chunksize 만큼
-        for df in st.get_table_data(table, chunksize=100000):
-            if len(df) == 0:
-                break
+            query = st.get_table_data_query(table)
 
-            if pqwriter is None:
-                pqwriter = pf.get_pqwriter(export_parquet_root_path, file_name, df)
+            for df in st.get_table_data(query, chunksize=chunksize):
+                if len(df) == 0:
+                    break
 
-            pf.make_parquet_by_df(df, pqwriter)
-            table_total_len += len(df)
+                df[df.select_dtypes("object").columns] = df.select_dtypes("object").fillna("")
 
-        if pqwriter:
-            pqwriter.close()
+                if pqwriter is None:
+                    pqwriter = pf.get_pqwriter(export_parquet_root_path, file_name, df)
 
-        logger.info(f"{table} table export data row count : {table_total_len}")
+                pf.make_parquet_by_df(df, pqwriter)
+                table_total_len += len(df)
+
+            if pqwriter:
+                pqwriter.close()
+
+            logger.info(f"{table} table parquet export data, row count : {table_total_len}")
+
+    elif args.proc == 'insert':
+
+        file_list = os.listdir(export_parquet_root_path)
+
+        table_list = [str(file).split('.')[0] for file in file_list]
+        logger.info(f"Insert Target Table List : {table_list}")
+
+        for table in table_list:
+            parquet_file = pq.ParquetFile(f"{export_parquet_root_path}/{table}{SystemConstants.PARQUET_FILE_EXT}")
+            insert_data = 0
+
+            for batch in parquet_file.iter_batches(batch_size=chunksize):
+
+                df = batch.to_pandas()
+                insert_data += len(df)
+                st.insert_target_table_by_dump(table, df)
+
+            logger.info(f"{table} table parquet data insert completed, row count {insert_data}")

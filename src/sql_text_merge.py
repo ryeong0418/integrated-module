@@ -124,7 +124,7 @@ class SqlTextMerge(cm.CommonModule):
                 partition_key = f"{date}{db_id}"
 
                 parquet_file_name = f"{SystemConstants.DB_SQL_TEXT_FILE_NAME}" \
-                                    f"_{partition_key}{SystemConstants.DB_SQL_TEXT_FILE_SUFFIX}"
+                                    f"_{partition_key}{SystemConstants.PARQUET_FILE_EXT}"
 
                 pf.remove_parquet(self.export_parquet_root_path, parquet_file_name)
                 pqwriter = None

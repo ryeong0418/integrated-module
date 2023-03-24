@@ -24,7 +24,9 @@ class SystemConstants:
 
     # db sql text parquet 파일명
     DB_SQL_TEXT_FILE_NAME = 'ae_db_sql_text'
-    DB_SQL_TEXT_FILE_SUFFIX = '.parquet'
+
+    # parquet 파일 확장자
+    PARQUET_FILE_EXT = '.parquet'   
 
     # export 폴더명
     EXPORT_PARQUET_PATH = 'export/parquet'

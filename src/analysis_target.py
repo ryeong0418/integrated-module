@@ -484,8 +484,39 @@ class SaTarget(CommonTarget):
         df['lpad_db_id'] = df['db_id'].astype('str').str.pad(3, side='left', fillchar='0')
         return df
 
-    def get_table_data(self, table, chunksize):
-        query = SystemUtils.sql_replace_to_dict(CommonSql.SELECT_TABLE, {'table': table})
+    def get_table_data_query(self, table):
+        """
+        분석 모듈 DB Dump시 parquet export 할 테이블의 쿼리를 만드는 함수
+        parquet export 시 데이터의 타입을 체크하는데 export 할 데이터를 가져올때 int 타입 컬럼의 모든 값이 Nan일 경우 select 시
+        float 타입으로 변경된다. 따라서 Nan일 경우를 대비해 DB에서 select 시 coalesce 함수를 씌어서 0으로 치환하기 위한 쿼리로 변경한다.
+        timestamp가 Nan일 경우 parquet 파일 변환 시 빈값이고 DB에 Insert시 timestamp 타입에 빈값을 넣으면서 오류가 나서
+        timestamp가 빈값이면 now()로 데이터를 치환 시킨다.
+        :param table: export할 테이블 str
+        :return: select query
+        """
+        query = SystemUtils.sql_replace_to_dict(CommonSql.SELECT_TABLE_COLUMN_TYPE, {'table': table})
 
+        cols = pd.read_sql(query, self.sa_conn)
+
+        num_col_type_list = ['int', 'double', 'float']
+        time_col_type_list = ['time']
+        sel_list = []
+
+        for idx, row in cols.iterrows():
+            if any(num_str in row['data_type'] for num_str in num_col_type_list):
+                sel_list.append(f"coalesce({row['column_name']}, 0) as {row['column_name']}")
+            elif any(num_str in row['data_type'] for num_str in time_col_type_list):
+                sel_list.append(f"coalesce({row['column_name']}, now()) as {row['column_name']}")
+            else:
+                sel_list.append(row['column_name'])
+
+        sel = ",".join(sel_list)
+
+        return f"SELECT {sel} FROM {table}"
+
+    def get_table_data(self, query, chunksize):
         conn = self.analysis_engine.connect().execution_options(stream_results=True, )
-        return pd.read_sql_query(text(query), conn, chunksize=chunksize)
+        return pd.read_sql_query(text(query), conn, chunksize=chunksize, coerce_float=False)
+
+    def insert_target_table_by_dump(self, table, df):
+        TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table, df)

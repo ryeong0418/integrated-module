@@ -186,6 +186,19 @@ class SystemUtils:
 
         return result_dict
 
+    @staticmethod
+    def get_file_export_args():
+        """
+        파일 추출 및 적재 기능 args
+        proc :  no value - export, 'insert' - db insert
+        :return: args
+        """
+        parser = argparse.ArgumentParser(description="File Export Args")
+
+        parser.add_argument('--proc')
+        args = parser.parse_args()
+        return args
+
 
 class TargetUtils:
 

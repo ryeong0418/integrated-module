@@ -9,8 +9,11 @@ class CommonSql:
         """
     )
 
-    SELECT_TABLE = (
+    SELECT_TABLE_COLUMN_TYPE = (
         """
-        SELECT * FROM #(table)
+        SELECT column_name, data_type 
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+        AND table_name = '#(table)'        
         """
     )

@@ -1,69 +1,75 @@
-# AE Group WAS&DB Data Analysis Using Python
+# Integrated technology Group WAS&DB Data Analysis
 
-개발 환경 구성하기 
-1. python 설치 하기 
-2. Visual Studio Code 설치하기
-3. git-scm 설치하기 
-* https://oequalsto0.tistory.com/entry/python-%EA%B0%9C%EB%B0%9C%ED%99%98%EA%B2%BD-%EA%B5%AC%EC%B6%95%ED%95%98%EA%B8%B02-github
+Exem Was/DB 통합 분석 데이터 분석기
 
-* python 필수 모듈 Install 리스트
-  - pip install psycopg2
-  - pip install pandas
-  - pip install sqlalchemy
-  - pip install pyarrow 
-  - pip install xlwt
-  - pip install openpyxl
-  - pip install sqlparse
-  
-* 원격저장소 정보 가져오기
- 1) 원격 저장소에서 코드 가져오기 
-    -> git clone https://github.com/PJH0310/ae.git
-    이후 자신이 작업할 Branch를 만들고 해당 branch에서 하단 내용을 수행하여 main(원격저장소)에 있는 로직을 로컬저장소에 저장한다.
-    (branch 작업 코드는 제일 하단 내용 참고)
- 2) 원격저장소 main 코드를 내 branch 로컬저장소로 가져오기 
-    -> 로컬 브랜치로 접속된 상태에서 git pull origin main 
+## Required Software
 
-*반영하기 전 초기 설정 
-   1) git config --global user.email "fabulos@naver.com"
-   2) git config --global user.name "shpark75"
+- python >= 3.8.10
+- postgresql >= 13.3
 
-* 반영하는 방법 (로컬저장소)
-  1) 자신이 작업하는 branch 에서 -> git add . 
-  2) -> git commit -m "반영내용" 수행 (작업을 수행하는 디렉토리 하위만 Commit 됨)
-  3) -> git push origin 브랜치명 수행 
+## Settings
 
-* 반영하는 방법 (원격저장소)
-  1) 자신이 작업하는 branch 에서 
-     -> git add . 
-     -> git commit -m "반영내용"
-     -> git push origin shpark
+- 설치한 postgresql에 분석 모듈에서 사용할 Database 생성
+- 분석에 사용될 연동 정보 설정 (/resource/config/config-prod.json)
 
-  2) main brach 로 접속 후 merge 작업 수행 
-     -> git checkout main 
-     -> git merge (브랜치 명)
-     -> git push
+## Install
+### 파이썬 가상환경 생성 및 라이브러리 설치
 
-     예시 
-         * My Local branch에 반영
+- Windows
+```shell
+/0_install-offline.bat (offline 환경)
+/0_install-online.bat (online 환경)
+```
 
-         git add .
-         git commit -m "반영내용"
-         git push origin shpark
+- UNIX
+```shell
+/bin/0_install-offline.sh (offline 환경)
+/bin/0_install-online.sh (online 환경)
+```
 
-         * Main branch에 반영
+## Usage
 
-         git checkout main
-         git merge shpark
-         git push
+1. Initialize (분석 모듈 Table 생성 & 메타 정보 저장)
+```shell
+/1_initialize.bat (Windows)
+/bin/1_initialize.sh (UNIX)
+```
 
-* 내가 작업한 로직이 로컬저장소, 원격저장소에서 동일한지 확인하는 방법
-   1) git status 를 통해 빨간색으로 표기된 부분은 일치하지 않는다
+2. Extractor (분석 데이터 추출 및 저장)
+```shell
+/2_extractor.bat {시작날짜} {기간} (Windows)
+/bin/2_extractor.sh {시작날짜} {기간} (UNIX)
+```
 
-* Branch 사용방법 (자신이 작업할 branch 를 만들어 작업하고 로컬저장소에 저장된 데이터를 원격 저장소로 저장하기 위해서는 병합하기 명령어를 사용한다.)
-  1) Branch 생성 -> git branch [name]
-  2) Branch 목록 보기 -> git branch
-  3) 지정한 Branch 삭제 -> git branch -d [name]
-  4) 로컬저장소의 Branch를 전환 -> git checkout [name]
+3. Summarizer (분석 데이터 취합 및 저장)
+```shell
+/3_summarizer.bat {시작날짜} {기간} (Windows)
+/bin/3_summarizer.sh {시작날짜} {기간} (UNIX)
+```
 
-  참고 URL : https://ifuwanna.tistory.com/283
-   
+4. SqlTextMerge (Was/DB Sql Text Match)
+```shell
+/4_sqltextmerge.bat {시작날짜} {기간} (Windows)
+/bin/4_sqltextmerge.sh {시작날짜} {기간} (UNIX)
+```
+
+5. Visualization (분석 데이터 추출)
+```shell
+/5_visualization.bat (Windows)
+/bin/5_visualization.sh (UNIX)
+```
+
+6. Scheduler (분석 데이터 추출/취합/Sql Text Match 동작 스케쥴러 (하루전) - Background Execute)
+```shell
+/6_batch.bat (Windows)
+/bin/6_batch.sh (UNIX)
+```
+
+## Extra Function
+
+- DB export/import
+```shell
+파이썬 가상환경 활성화 후
+python -m src.common.file_export (export)
+python -m src.common.file_export --proc insert  (import)
+```

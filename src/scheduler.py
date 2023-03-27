@@ -98,17 +98,17 @@ class Scheduler(cm.CommonModule):
     def _main_job(self):
         start_tm = time.time()
 
-        db = DataBase(self.config)
-        elm = ExecuteLogModel(ModuleFactoryEnum[self.config['args']['proc']].value,
-                              SystemUtils.get_now_timestamp(), str(self.config['args']), 'batch')
-
-        with db.session_scope() as session:
-            session.add(elm)
-
-        result = ResultConstants.FAIL
-        self._update_config_custom_values()
-
         try:
+            db = DataBase(self.config)
+            elm = ExecuteLogModel(ModuleFactoryEnum[self.config['args']['proc']].value,
+                                  SystemUtils.get_now_timestamp(), str(self.config['args']), 'batch')
+
+            with db.session_scope() as session:
+                session.add(elm)
+
+            result = ResultConstants.FAIL
+            self._update_config_custom_values()
+
             self._extractor_job()
 
             self._summarizer_job()
@@ -159,7 +159,7 @@ class Scheduler(cm.CommonModule):
 
     def _update_config_custom_values(self):
         custom_values = dict()
-        custom_values['args'] = {'s_date': SystemUtils.get_date_by_interval(-1, fmt="%Y%m%d"), 'interval': 1}
+        custom_values['args'] = {'s_date': SystemUtils.get_date_by_interval(-1, fmt="%Y%m%d"), 'interval': 1, 'proc': 'b'}
         self.config.update(custom_values)
 
     def _is_alive_logging_job(self):

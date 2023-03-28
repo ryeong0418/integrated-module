@@ -39,7 +39,7 @@ class SqlTextMerge(cm.CommonModule):
         self.st.init_process()
 
         self.export_parquet_root_path = f'{self.config["home"]}/{SystemConstants.EXPORT_PARQUET_PATH}'
-        self.CHUNKSIZE = self.config.get('sql_merge_text_chunksize', 10000)
+        self.CHUNKSIZE = self.config.get('data_handling_chunksize', 10000)
         self.sql_match_sensitive = self.config.get('sql_match_sensitive', 5)
 
         self._export_db_sql_text()

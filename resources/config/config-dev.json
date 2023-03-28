@@ -36,6 +36,6 @@
 		}
 	},
 	"sql_debug_flag": true,
-	"sql_merge_text_chunksize": 10000,
+	"data_handling_chunksize": 10000,
 	"sql_match_sensitive": 5
 }

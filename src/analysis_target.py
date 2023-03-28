@@ -26,9 +26,11 @@ class CommonTarget:
 
         self.analysis_engine_template = TargetUtils.get_engine_template(config['analysis_repo'])
         self.im_engine_template = TargetUtils.get_engine_template(config['intermax_repo'])
+        self.mg_engine_template = TargetUtils.get_engine_template(config['maxgauge_repo'])
 
         self.analysis_engine = None
         self.im_engine = None
+        self.mg_engine = None
 
         self.im_conn = None
         self.mg_conn = None
@@ -36,12 +38,15 @@ class CommonTarget:
 
         self.sa_cursor = None
 
+        self.chunksize = self.config['data_handling_chunksize']
+
 
 class InterMaxTarget(CommonTarget):
 
     def init_process(self):
         self.im_conn = db.connect(self.im_conn_str)
         self.analysis_engine = create_engine(self.analysis_engine_template)
+        self.im_engine = create_engine(self.im_engine_template)
 
     def create_im_engine(self):
         self.im_engine = create_engine(self.im_engine_template)
@@ -220,14 +225,17 @@ class InterMaxTarget(CommonTarget):
             self.logger.exception(e)
 
     def _excute_insert_intermax_detail_data(self, query, table_name):
-        df = TargetUtils.get_target_data_by_query(self.logger, self.im_conn, query, table_name)
-        TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
+        im_conn = self.im_engine.connect().execution_options(stream_results=True)
+        get_read_sql_query = pd.read_sql_query(text(query),im_conn,chunksize=self.chunksize*10)
+        for df in get_read_sql_query:
+            TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
 
 class MaxGaugeTarget(CommonTarget):
     def init_process(self):
         self.mg_conn = db.connect(self.mg_conn_str)
         self.analysis_engine = create_engine(self.analysis_engine_template)
+        self.mg_engine = create_engine(self.mg_engine_template)
 
     def __del__(self):
         if self.mg_conn:
@@ -362,8 +370,10 @@ class MaxGaugeTarget(CommonTarget):
             self.logger.exception(e)
 
     def _excute_insert_maxgauge_detail_data(self, query, table_name):
-        df = TargetUtils.get_target_data_by_query(self.logger, self.mg_conn, query, table_name,)
-        TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
+        mg_conn = self.mg_engine.connect().execution_options(stream_results=True)
+        get_read_sql_query = pd.read_sql_query(text(query),mg_conn,chunksize=self.chunksize*10)
+        for df in get_read_sql_query:
+            TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
 
 class SaTarget(CommonTarget):

@@ -38,6 +38,8 @@ class CommonTarget:
 
         self.sa_cursor = None
 
+        self.chunksize = self.config['data_handling_chunksize']
+
 
 class InterMaxTarget(CommonTarget):
 
@@ -223,9 +225,8 @@ class InterMaxTarget(CommonTarget):
             self.logger.exception(e)
 
     def _excute_insert_intermax_detail_data(self, query, table_name):
-
         im_conn = self.im_engine.connect().execution_options(stream_results=True)
-        get_read_sql_query = pd.read_sql_query(text(query),im_conn,chunksize=self.config['data_handling_chunksize'])
+        get_read_sql_query = pd.read_sql_query(text(query),im_conn,chunksize=self.chunksize*10)
         for df in get_read_sql_query:
             TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
@@ -370,7 +371,7 @@ class MaxGaugeTarget(CommonTarget):
 
     def _excute_insert_maxgauge_detail_data(self, query, table_name):
         mg_conn = self.mg_engine.connect().execution_options(stream_results=True)
-        get_read_sql_query = pd.read_sql_query(text(query),mg_conn,chunksize=self.config['data_handling_chunksize'])
+        get_read_sql_query = pd.read_sql_query(text(query),mg_conn,chunksize=self.chunksize*10)
         for df in get_read_sql_query:
             TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 

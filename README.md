@@ -41,10 +41,10 @@ Exem Was/DB 통합 분석 데이터 분석기
 /bin/2_extractor.sh {시작날짜} {기간} (UNIX)
 ```
 
-3. Summarizer (분석 데이터 취합 및 저장)
+3. Summarizer (분석 데이터 취합 및 저장, 시작 날짜에 대한 데이터 summary)
 ```shell
-/3_summarizer.bat {시작날짜} {기간} (Windows)
-/bin/3_summarizer.sh {시작날짜} {기간} (UNIX)
+/3_summarizer.bat {시작날짜} (Windows)
+/bin/3_summarizer.sh {시작날짜} (UNIX)
 ```
 
 4. SqlTextMerge (Was/DB Sql Text Match)
@@ -71,5 +71,5 @@ Exem Was/DB 통합 분석 데이터 분석기
 ```shell
 파이썬 가상환경 활성화 후
 python -m src.common.file_export (export)
-python -m src.common.file_export --proc insert  (import)
+python -m src.common.file_export --proc insert (import)
 ```

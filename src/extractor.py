@@ -1,5 +1,5 @@
 from src import common_module as cm
-from src.analysis_target import InterMaxTarget, MaxGaugeTarget, SaTarget
+from src.analysis_target import InterMaxTarget, MaxGaugeTarget
 
 
 class Extractor(cm.CommonModule):

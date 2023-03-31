@@ -9,8 +9,8 @@ from psycopg2 import errors
 from psycopg2.errorcodes import DUPLICATE_TABLE
 from datetime import datetime, timedelta
 
-from src.common.constants import SystemConstants
 from src.common.timelogger import TimeLogger
+
 
 class SystemUtils:
 

@@ -86,10 +86,10 @@ class InterMaxTarget(CommonTarget):
         table_name = TableConstants.AE_TXN_NAME
         self._excute_insert_intermax_meta(query, table_name)
 
-    def _set_insert_xapm_sql_text(self):
-        query = InterMaxInitializeQuery.SELECT_XAPM_SQL_TEXT
-        table_name = TableConstants.AE_WAS_SQL_TEXT
-        self._excute_insert_intermax_meta(query, table_name)
+    # def _set_insert_xapm_sql_text(self):
+    #     query = InterMaxInitializeQuery.SELECT_XAPM_SQL_TEXT
+    #     table_name = TableConstants.AE_WAS_SQL_TEXT
+    #     self._excute_insert_intermax_meta(query, table_name)
 
     def _set_insert_xapm_db_info(self):
         query = InterMaxInitializeQuery.SELECT_XAPM_DB_INFO
@@ -132,6 +132,16 @@ class InterMaxTarget(CommonTarget):
             self._set_insert_xapm_jvm_stat_summmary(table_suffix_dict,delete_query,date)
 
             self._set_insert_xapm_os_stat_summary(table_suffix_dict,delete_query,date)
+
+        self._set_insert_xapm_sql_text()
+
+    def _set_insert_xapm_sql_text(self):
+
+        self._create_dblink_query()
+
+        self._dblink_connect()
+
+        self._insert_new_xapm_sql_text()
 
     def _set_insert_xapm_txn_detail(self, table_suffix_dict, delete_query, date, table_name=TableConstants.AE_TXN_DETAIL):
         query = InterMaxExtractQuery.SELECT_XAPM_TXN_DETAIL
@@ -218,6 +228,26 @@ class InterMaxTarget(CommonTarget):
         for df in get_read_sql_query:
             TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
+    def _create_dblink_query(self):
+        create_dblink_query = CommonSql.CREATE_DBLINK
+        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, create_dblink_query)
+
+    def _dblink_connect(self):
+        dblink_connect_query = CommonSql.DBLINK_CONNECT
+        intermax_db_info = {'intermax_db_info':self.im_conn_str} #dbname=intermax host=10.10.48.173 port=5432 user=intermax password=intermaxc
+        dblink_query = SystemUtils.sql_replace_to_dict(dblink_connect_query,intermax_db_info)
+        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, dblink_query) #dblink_connect_query 실행
+
+    def _insert_new_xapm_sql_text(self):
+        sql_id_query = CommonSql.SELECT_SQL_ID
+        intermax_db_info = {'intermax_db_info': self.im_conn_str}
+        select_sql_id_query = SystemUtils.sql_replace_to_dict(sql_id_query, intermax_db_info)
+        sa_conn = self.analysis_engine.connect().execution_options(stream_results=True)
+        get_read_sql = pd.read_sql_query(text(select_sql_id_query),sa_conn,chunksize=self.chunksize*10)
+        table_name = TableConstants.AE_WAS_SQL_TEXT
+
+        for df in get_read_sql:
+            TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
 class MaxGaugeTarget(CommonTarget):
     def init_process(self):

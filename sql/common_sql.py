@@ -17,3 +17,20 @@ class CommonSql:
         AND table_name = '#(table)'        
         """
     )
+
+    CREATE_DBLINK = (
+        """CREATE extension dblink """
+    )
+
+    DBLINK_CONNECT = (
+        """SELECT dblink_connect('#(intermax_db_info)')"""
+    )
+
+    SELECT_SQL_ID = (
+        """
+        select * from dblink('#(intermax_db_info)','select sql_id,sql_text_100,sql_text from xapm_sql_text') 
+        AS t(sql_id varchar, sql_text_100 varchar, sql_text varchar) 
+        where sql_id not in (select sql_id from ae_was_sql_text);
+        """
+
+    )

@@ -68,6 +68,8 @@ class InterMaxTarget(CommonTarget):
     def insert_intermax_meta(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
 
+        self._create_dblink_query()
+
         self._set_insert_xapm_was_info()
 
         self._set_insert_xapm_txn_name()
@@ -136,8 +138,6 @@ class InterMaxTarget(CommonTarget):
         self._set_insert_xapm_sql_text()
 
     def _set_insert_xapm_sql_text(self):
-
-        self._create_dblink_query()
 
         self._dblink_connect()
 
@@ -234,9 +234,9 @@ class InterMaxTarget(CommonTarget):
 
     def _dblink_connect(self):
         dblink_connect_query = CommonSql.DBLINK_CONNECT
-        intermax_db_info = {'intermax_db_info':self.im_conn_str} #dbname=intermax host=10.10.48.173 port=5432 user=intermax password=intermaxc
+        intermax_db_info = {'intermax_db_info':self.im_conn_str}
         dblink_query = SystemUtils.sql_replace_to_dict(dblink_connect_query,intermax_db_info)
-        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, dblink_query) #dblink_connect_query 실행
+        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, dblink_query)
 
     def _insert_new_xapm_sql_text(self):
         sql_id_query = CommonSql.SELECT_SQL_ID

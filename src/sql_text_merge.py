@@ -42,11 +42,9 @@ class SqlTextMerge(cm.CommonModule):
         self.CHUNKSIZE = self.config.get('data_handling_chunksize', 10000)
         self.sql_match_sensitive = self.config.get('sql_match_sensitive', 5)
 
-        self.st.extract_sql_text(chunksize=self.CHUNKSIZE)
+        self._export_db_sql_text()
 
-        # self._export_db_sql_text()
-        #
-        # self._sql_text_merge()
+        self._sql_text_merge()
 
     def _sql_text_merge(self):
         """

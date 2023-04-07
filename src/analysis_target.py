@@ -561,7 +561,7 @@ class SaTarget(CommonTarget):
 
             sa_conn = self.analysis_engine.connect().execution_options(stream_results=True)
             get_read_sql = pd.read_sql_query(text(sql_id_and_sql_text),sa_conn,chunksize=chunksize)
-
+            return get_read_sql
 
 
 

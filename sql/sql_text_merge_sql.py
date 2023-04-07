@@ -43,3 +43,14 @@ class SaSqlTextMergeQuery:
             order by ae.partition_key asc, ae.sql_uid asc, ae.seq asc
         """
     )
+
+    SELECT_SQL_ID_AND_SQL_TEXT = (
+        """
+        SELECT ATSD.sql_id, AWST.sql_text, AWST.sql_text_100
+        FROM ae_txn_sql_detail ATSD, ae_was_sql_text AWST
+        WHERE ATSD.sql_id = AWST.sql_id
+        AND ATSD.TIME > '""" + "#(StartDate)" + """'::timestamp
+        and ATSD.TIME < '""" + "#(EndDate)" + """'::timestamp
+        GROUP BY ATSD.sql_id, AWST.sql_text,AWST.sql_text_100
+        """
+    )

@@ -71,8 +71,9 @@ class SqlTextMerge(cm.CommonModule):
             default_merge_column = default_merge_column + first_token_merge_column + last_token_merge_column
 
         # InterMax DB 바라보게 추후 바꿔야함
-        # for ae_was_df in self.st.get_ae_was_sql_text(chunksize=self.CHUNKSIZE):
-        for ae_was_df in self.imt.get_xapm_sql_text(chunksize=self.CHUNKSIZE):
+        #for ae_was_df in self.st.get_ae_was_sql_text(chunksize=self.CHUNKSIZE):
+        #for ae_was_df in self.imt.get_xapm_sql_text(chunksize=self.CHUNKSIZE):
+        for ae_was_df in self.st.extract_sql_text(chunksize=self.CHUNKSIZE):
             result_df_list = []
 
             ae_was_df = self._preprocessing(ae_was_df)

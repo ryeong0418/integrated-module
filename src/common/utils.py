@@ -3,6 +3,7 @@ import argparse
 import os
 import pandas as pd
 import time
+import itertools
 
 from pathlib import Path
 from psycopg2 import errors
@@ -10,6 +11,7 @@ from psycopg2.errorcodes import DUPLICATE_TABLE
 from datetime import datetime, timedelta
 
 from src.common.timelogger import TimeLogger
+from src.common.constants import SystemConstants
 
 
 class SystemUtils:
@@ -366,3 +368,5 @@ class TargetUtils:
             pairs.append(pair)
 
         return pairs
+
+

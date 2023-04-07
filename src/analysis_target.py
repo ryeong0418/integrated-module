@@ -12,6 +12,9 @@ from sql.sql_text_merge_sql import InterMaxSqlTextMergeQuery, SaSqlTextMergeQuer
 from sql.extract_sql import InterMaxExtractQuery, MaxGaugeExtractorQuery
 from sql.summarizer_sql import SummarizerQuery,InterMaxGaugeSummarizerQuery
 from sql.common_sql import CommonSql
+from datetime import datetime, timedelta
+
+from src.common.constants import SystemConstants
 
 
 class CommonTarget:
@@ -548,3 +551,24 @@ class SaTarget(CommonTarget):
 
     def insert_target_table_by_dump(self, table, df):
         TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table, df)
+
+    def extract_sql_text(self,chunksize):
+        pairs = TargetUtils.summarizer_set_date(self.config['args']['s_date'], self.config['args']['interval'])
+        for pair in pairs:
+            date_dict = {'StartDate': pair[0], 'EndDate': pair[1]}
+            query = SaSqlTextMergeQuery.SELECT_SQL_ID_AND_SQL_TEXT
+            sql_id_and_sql_text = SystemUtils.sql_replace_to_dict(query, date_dict)
+
+            sa_conn = self.analysis_engine.connect().execution_options(stream_results=True)
+            get_read_sql = pd.read_sql_query(text(sql_id_and_sql_text),sa_conn,chunksize=chunksize)
+
+
+
+
+
+
+
+
+
+
+

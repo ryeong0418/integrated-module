@@ -554,14 +554,24 @@ class SaTarget(CommonTarget):
 
     def extract_sql_text(self,chunksize):
         pairs = TargetUtils.summarizer_set_date(self.config['args']['s_date'], self.config['args']['interval'])
+
+        if self.config['args']['seconds'] is not None:
+            seconds = str(self.config['args']['seconds'])+'000'
+
+        else:
+            seconds = '0'
+
         for pair in pairs:
-            date_dict = {'StartDate': pair[0], 'EndDate': pair[1]}
+            date_dict = {'StartDate': pair[0], 'EndDate': pair[1], 'seconds': seconds}
             query = SaSqlTextMergeQuery.SELECT_SQL_ID_AND_SQL_TEXT
             sql_id_and_sql_text = SystemUtils.sql_replace_to_dict(query, date_dict)
+            print(sql_id_and_sql_text)
 
             sa_conn = self.analysis_engine.connect().execution_options(stream_results=True)
             get_read_sql = pd.read_sql_query(text(sql_id_and_sql_text),sa_conn,chunksize=chunksize)
             return get_read_sql
+
+
 
 
 

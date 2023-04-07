@@ -51,6 +51,7 @@ class SaSqlTextMergeQuery:
         WHERE ATSD.sql_id = AWST.sql_id
         AND ATSD.TIME > '""" + "#(StartDate)" + """'::timestamp
         and ATSD.TIME < '""" + "#(EndDate)" + """'::timestamp
+        and ATSD.elapsed_time >= #(seconds)
         GROUP BY ATSD.sql_id, AWST.sql_text,AWST.sql_text_100
         """
     )

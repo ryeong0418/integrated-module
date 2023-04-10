@@ -1,0 +1,1 @@
+select db_id, host_name, instance_name, instance_alias , db_type, host_ip, sid, lsnr_port from xapm_db_info

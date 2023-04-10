@@ -1,0 +1,12 @@
+CREATE TABLE AE_WAS_DB_INFO (
+    db_id int4 NULL,
+    instance_name varchar(64) NULL,
+    instance_alias varchar(100) NULL,
+    db_type varchar(16) NULL,
+    host_name varchar(64) NULL,
+    host_ip varchar(16) NULL,
+    sid varchar(64) NULL,
+    lsnr_port int8 NULL,
+    create_dt timestamp with time zone default current_timestamp,
+    create_id varchar(20) default 'system' not NULL
+)

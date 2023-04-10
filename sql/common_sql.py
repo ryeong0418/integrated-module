@@ -19,7 +19,7 @@ class CommonSql:
     )
 
     CREATE_DBLINK = (
-        """CREATE extension dblink """
+        """CREATE extension if not exists dblink """
     )
 
     DBLINK_CONNECT = (
@@ -33,4 +33,8 @@ class CommonSql:
         where sql_id not in (select sql_id from ae_was_sql_text);
         """
 
+    )
+
+    DELETE_TABLE_DEFAULT_QUERY = (
+        "delete from #(table_name)"
     )

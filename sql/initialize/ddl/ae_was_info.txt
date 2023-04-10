@@ -1,0 +1,7 @@
+CREATE TABLE AE_WAS_INFO (
+    was_id int4 NULL,
+    was_name varchar(128) NULL,
+    host_name varchar(64) NULL,
+    create_dt timestamp with time zone default current_timestamp,
+    create_id varchar(20) default 'system' not NULL
+)

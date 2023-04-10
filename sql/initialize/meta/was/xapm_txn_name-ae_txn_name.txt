@@ -1,0 +1,1 @@
+select txn_id, txn_name, business_id, business_name  from xapm_txn_name

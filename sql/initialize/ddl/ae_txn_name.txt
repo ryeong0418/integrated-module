@@ -1,0 +1,9 @@
+CREATE TABLE AE_TXN_NAME (
+    txn_id varchar(40) NULL,
+    txn_name varchar(256) NULL,
+    business_id int4 NULL,
+    business_name varchar(256) NULL,
+    modified_time timestamp NULL,
+    create_dt timestamp with time zone default current_timestamp,
+    create_id varchar(20) default 'system' not NULL
+)

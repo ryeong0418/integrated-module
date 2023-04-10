@@ -1,0 +1,15 @@
+CREATE TABLE AE_WAS_OS_STAT_OSM(
+    time timestamp NULL,
+    host_id int8 NULL,
+    host_ip	varchar NULL,
+    host_name varchar NULL,
+    os_cpu_sys int8 NULL,
+    os_cpu_user int8 NULL,
+    os_cpu_io int8 NULL,
+    os_free_memory int8 NULL,
+    os_total_memory int8 NULL,
+    swap_free int8 NULL,
+    swap_total int8 NULL,
+    create_dt timestamp default current_timestamp,
+    create_id varchar(20) default 'system' not NULL
+)

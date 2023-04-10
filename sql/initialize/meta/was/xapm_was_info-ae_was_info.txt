@@ -1,0 +1,1 @@
+select was_id, was_name, host_name from xapm_was_info

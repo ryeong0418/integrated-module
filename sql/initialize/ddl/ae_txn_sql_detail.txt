@@ -1,0 +1,16 @@
+CREATE TABLE AE_TXN_SQL_DETAIL (
+        tid int8 NULL,
+        "time" timestamp NULL,
+        txn_id varchar(40) NULL,
+        was_id int4 NULL,
+        sql_id varchar(40) NULL,
+        execute_count int4 NULL,
+        elapsed_time int4 NULL,
+        elapsed_time_max int4 NULL,
+        db_id int4 NULL,
+        sid int4 NULL,
+        sql_seq int4 NULL,
+        cursor_id int8 NULL,
+        create_dt timestamp with time zone default current_timestamp,
+        create_id varchar(20) default 'system' not NULL
+)

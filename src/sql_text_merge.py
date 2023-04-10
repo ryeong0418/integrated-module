@@ -43,7 +43,6 @@ class SqlTextMerge(cm.CommonModule):
         self.sql_match_sensitive = self.config.get('sql_match_sensitive', 5)
 
         self._export_db_sql_text()
-
         self._sql_text_merge()
 
     def _sql_text_merge(self):

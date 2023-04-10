@@ -14,8 +14,6 @@ from sql.summarizer_sql import SummarizerQuery,InterMaxGaugeSummarizerQuery
 from sql.common_sql import CommonSql
 from datetime import datetime, timedelta
 
-from src.common.constants import SystemConstants
-
 
 class CommonTarget:
 
@@ -42,6 +40,7 @@ class CommonTarget:
         self.sa_cursor = None
 
         self.chunksize = self.config['data_handling_chunksize']
+        self.sql_match_time = self.config['sql_match_time']
 
 
 class InterMaxTarget(CommonTarget):
@@ -552,23 +551,18 @@ class SaTarget(CommonTarget):
     def insert_target_table_by_dump(self, table, df):
         TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table, df)
 
-    def extract_sql_text(self,chunksize):
-        pairs = TargetUtils.summarizer_set_date(self.config['args']['s_date'], self.config['args']['interval'])
+    def extract_sql_text(self, chunksize):
 
-        if self.config['args']['seconds'] is not None:
-            seconds = str(self.config['args']['seconds'])+'000'
+        s_date = datetime.strptime(str(self.config['args']['s_date']),'%Y%m%d')
+        e_date = s_date + timedelta(days=int(self.config['args']['interval']))
 
-        else:
-            seconds = '0'
+        date_dict = {'StartDate': str(s_date), 'EndDate': str(e_date), 'seconds': str(self.sql_match_time)}
+        query = SaSqlTextMergeQuery.SELECT_SQL_ID_AND_SQL_TEXT
+        sql_id_and_sql_text = SystemUtils.sql_replace_to_dict(query, date_dict)
 
-        for pair in pairs:
-            date_dict = {'StartDate': pair[0], 'EndDate': pair[1], 'seconds': seconds}
-            query = SaSqlTextMergeQuery.SELECT_SQL_ID_AND_SQL_TEXT
-            sql_id_and_sql_text = SystemUtils.sql_replace_to_dict(query, date_dict)
-
-            sa_conn = self.analysis_engine.connect().execution_options(stream_results=True)
-            get_read_sql = pd.read_sql_query(text(sql_id_and_sql_text),sa_conn,chunksize=chunksize)
-            return get_read_sql
+        sa_conn = self.analysis_engine.connect().execution_options(stream_results=True)
+        get_read_sql = pd.read_sql_query(text(sql_id_and_sql_text),sa_conn,chunksize=chunksize)
+        return get_read_sql
 
 
 

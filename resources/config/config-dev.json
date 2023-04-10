@@ -21,7 +21,7 @@
 		"db_type": "postgres",
 		"host": "10.10.47.241",
 		"port": 5432,
-		"sid": "postgres",
+		"sid": "AEproject",
 		"user": "postgres",
 		"password": "postgres"
 	},
@@ -37,5 +37,6 @@
 	},
 	"sql_debug_flag": true,
 	"data_handling_chunksize": 10000,
-	"sql_match_sensitive": 5
+	"sql_match_sensitive": 5,
+	"sql_match_time": 0
 }

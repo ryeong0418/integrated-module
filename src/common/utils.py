@@ -69,7 +69,6 @@ class SystemUtils:
         parser.add_argument('--proc', required=True)
         parser.add_argument('--s_date')
         parser.add_argument('--interval')
-        parser.add_argument('--seconds')
 
         args = parser.parse_args()
         return args

@@ -46,12 +46,14 @@ class SaSqlTextMergeQuery:
 
     SELECT_SQL_ID_AND_SQL_TEXT = (
         """
-        SELECT ATSD.sql_id, AWST.sql_text, AWST.sql_text_100
-        FROM ae_txn_sql_detail ATSD, ae_was_sql_text AWST
-        WHERE ATSD.sql_id = AWST.sql_id
-        AND ATSD.TIME > '""" + "#(StartDate)" + """'::timestamp
-        and ATSD.TIME < '""" + "#(EndDate)" + """'::timestamp
-        and ATSD.elapsed_time >= #(seconds)
-        GROUP BY ATSD.sql_id, AWST.sql_text,AWST.sql_text_100
+        select AWST.sql_id, AWST.sql_text, AWST.sql_text_100
+        from ae_was_sql_text AWST
+        where exists (select 'X'
+                      from ae_txn_sql_detail ATSD
+                      where AWST.sql_id = ATSD.sql_id
+                      and ATSD.TIME >= '""" + "#(StartDate)" + """'::timestamp
+                      and ATSD.TIME < '""" + "#(EndDate)" + """'::timestamp
+                      and ATSD.elapsed_time >= #(seconds)
+        )
         """
     )

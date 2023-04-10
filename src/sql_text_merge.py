@@ -72,7 +72,7 @@ class SqlTextMerge(cm.CommonModule):
         # InterMax DB 바라보게 추후 바꿔야함
         #for ae_was_df in self.st.get_ae_was_sql_text(chunksize=self.CHUNKSIZE):
         #for ae_was_df in self.imt.get_xapm_sql_text(chunksize=self.CHUNKSIZE):
-        for ae_was_df in self.st.extract_sql_text(chunksize=self.CHUNKSIZE):
+        for ae_was_df in self.st.term_extract_sql_text(chunksize=self.CHUNKSIZE):
             result_df_list = []
 
             ae_was_df = self._preprocessing(ae_was_df)
@@ -95,7 +95,9 @@ class SqlTextMerge(cm.CommonModule):
                 result_df_list.append(merge_df[insert_result_columns])
 
             self.logger.info('End of all export file compare')
+
             result_df = pd.concat(result_df_list, ignore_index=True) if len(result_df_list) > 0 else pd.DataFrame()
+            result_df = result_df.drop_duplicates()
 
             if len(result_df) == 0:
                 continue

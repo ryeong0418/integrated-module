@@ -251,6 +251,7 @@ class InterMaxTarget(CommonTarget):
         for df in get_read_sql:
             TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
+
 class MaxGaugeTarget(CommonTarget):
     def init_process(self):
         self.mg_conn = db.connect(self.mg_conn_str)
@@ -551,7 +552,7 @@ class SaTarget(CommonTarget):
     def insert_target_table_by_dump(self, table, df):
         TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table, df)
 
-    def extract_sql_text(self, chunksize):
+    def term_extract_sql_text(self, chunksize):
 
         s_date = datetime.strptime(str(self.config['args']['s_date']),'%Y%m%d')
         e_date = s_date + timedelta(days=int(self.config['args']['interval']))
@@ -559,6 +560,7 @@ class SaTarget(CommonTarget):
         date_dict = {'StartDate': str(s_date), 'EndDate': str(e_date), 'seconds': str(self.sql_match_time)}
         query = SaSqlTextMergeQuery.SELECT_SQL_ID_AND_SQL_TEXT
         sql_id_and_sql_text = SystemUtils.sql_replace_to_dict(query, date_dict)
+        print(sql_id_and_sql_text)
 
         sa_conn = self.analysis_engine.connect().execution_options(stream_results=True)
         get_read_sql = pd.read_sql_query(text(sql_id_and_sql_text),sa_conn,chunksize=chunksize)

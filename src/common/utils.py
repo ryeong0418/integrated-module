@@ -220,39 +220,24 @@ class TargetUtils:
         )
 
     @staticmethod
-    def create_and_check_table(logger, conn, querys, check_query=None):
+    def create_table(logger, conn, ddl_query):
         """
         분석 모듈에서 사용할 테이블 생성 함수
         :param logger: logger
         :param conn: connect object
-        :param querys: 쿼리 (DDL)
-        :param check_query: 테이블 생성 체크 쿼리
+        :param ddl_query: 쿼리 (DDL)
         :return:
         """
         cur = conn.cursor()
 
-        for query in querys:
-            try:
-                cur.execute(query)
-
-            except errors.lookup(DUPLICATE_TABLE) as e:
-                logger.warn("This DDL Query DUPLICATE_TABLE.. SKIP")
-            except Exception as e:
-                logger.exception(f"{e}")
-            finally:
-                conn.commit()
-
-        if check_query is not None:
-            try:
-                cur.execute(check_query)
-                fetched_rows = cur.fetchall()
-            except Exception as e:
-                logger.exception(f"{e}")
-            finally:
-                cur.close()
-                conn.close()
-
-            logger.info(fetched_rows)
+        try:
+            cur.execute(ddl_query)
+        except errors.lookup(DUPLICATE_TABLE) as e:
+            logger.warn("This DDL Query DUPLICATE_TABLE.. SKIP")
+        except Exception as e:
+            logger.exception(f"{e}")
+        finally:
+            conn.commit()
 
     @staticmethod
     def get_engine_template(repo_info):

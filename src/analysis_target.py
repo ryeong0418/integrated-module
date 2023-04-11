@@ -6,8 +6,8 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import IntegrityError
 
 from src.common.utils import TargetUtils, SystemUtils
-from src.common.constants import TableConstants
-from sql.initialize_sql import InterMaxInitializeQuery, MaxGaugeInitializeQuery, SaInitializeQuery
+from src.common.constants import TableConstants, SystemConstants
+from src.common.enum_module import ModuleFactoryEnum
 from sql.sql_text_merge_sql import InterMaxSqlTextMergeQuery, SaSqlTextMergeQuery
 from sql.extract_sql import InterMaxExtractQuery, MaxGaugeExtractorQuery
 from sql.summarizer_sql import SummarizerQuery,InterMaxGaugeSummarizerQuery
@@ -42,6 +42,34 @@ class CommonTarget:
         self.chunksize = self.config['data_handling_chunksize']
         self.sql_match_time = self.config['sql_match_time']
 
+    def _insert_meta_data(self, target_infra):
+        meta_path = f"{self.config['home']}/" \
+                    f"{SystemConstants.SQL_PATH}/" \
+                    f"{ModuleFactoryEnum[self.config['args']['proc']].value}/" \
+                    f"{SystemConstants.META_PATH}/" \
+                    f"{target_infra}/"
+        meta_files = SystemUtils.get_filenames_from_path(meta_path)
+
+        if target_infra == 'was':
+            target_conn = self.im_conn
+        if target_infra == 'db':
+            target_conn = self.mg_conn
+
+        for meta_file in meta_files:
+
+            with open(f"{meta_path}{meta_file}", mode='r', encoding='utf-8') as file:
+                query = file.read()
+
+            table_name = meta_file.split(".")[0].split('-')[1]
+            self._execute_insert_meta(query, table_name, target_conn)
+
+    def _execute_insert_meta(self, query, table_name, target_conn):
+        replace_dict = {'table_name': table_name}
+        delete_table_query = SystemUtils.sql_replace_to_dict(CommonSql.DELETE_TABLE_DEFAULT_QUERY, replace_dict)
+        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, delete_table_query)
+        meta_df = TargetUtils.get_target_data_by_query(self.logger, target_conn, query, table_name,)
+        TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, meta_df)
+
 
 class InterMaxTarget(CommonTarget):
 
@@ -61,51 +89,12 @@ class InterMaxTarget(CommonTarget):
         if self.analysis_engine:
             self.analysis_engine.dispose()
 
-    def create_table(self):
-        conn = db.connect(self.analysis_conn_str)
-        querys = InterMaxInitializeQuery.DDL_SQL
-        check_query = InterMaxInitializeQuery.CHECK_SQL
-        TargetUtils.create_and_check_table(self.logger, conn, querys, check_query)
-
     def insert_intermax_meta(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
 
         self._create_dblink_query()
 
-        self._set_insert_xapm_was_info()
-
-        self._set_insert_xapm_txn_name()
-
-        self._set_insert_xapm_sql_text()
-
-        self._set_insert_xapm_db_info()
-
-    def _set_insert_xapm_was_info(self):
-        query = InterMaxInitializeQuery.SELECT_XAPM_WAS_INFO
-        table_name = TableConstants.AE_WAS_INFO
-        self._excute_insert_intermax_meta(query, table_name)
-
-    def _set_insert_xapm_txn_name(self):
-        query = InterMaxInitializeQuery.SELECT_XAPM_TXN_NAME
-        table_name = TableConstants.AE_TXN_NAME
-        self._excute_insert_intermax_meta(query, table_name)
-
-    # def _set_insert_xapm_sql_text(self):
-    #     query = InterMaxInitializeQuery.SELECT_XAPM_SQL_TEXT
-    #     table_name = TableConstants.AE_WAS_SQL_TEXT
-    #     self._excute_insert_intermax_meta(query, table_name)
-
-    def _set_insert_xapm_db_info(self):
-        query = InterMaxInitializeQuery.SELECT_XAPM_DB_INFO
-        table_name = TableConstants.AE_WAS_DB_INFO
-        self._excute_insert_intermax_meta(query, table_name)
-
-    def _excute_insert_intermax_meta(self, query, table_name):
-        replace_dict = {'table_name': table_name}
-        delete_table_query = SystemUtils.sql_replace_to_dict(SaInitializeQuery.DELETE_TABLE_DEFAULT_QUERY, replace_dict)
-        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, delete_table_query)
-        meta_df = TargetUtils.get_target_data_by_query(self.logger, self.im_conn, query, table_name,)
-        TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, meta_df)
+        self._insert_meta_data('was')
 
     def get_xapm_sql_text(self, chunksize):
         query = InterMaxSqlTextMergeQuery.SELECT_XAPM_SQL_TEXT
@@ -253,6 +242,7 @@ class InterMaxTarget(CommonTarget):
 
 
 class MaxGaugeTarget(CommonTarget):
+
     def init_process(self):
         self.mg_conn = db.connect(self.mg_conn_str)
         self.analysis_engine = create_engine(self.analysis_engine_template)
@@ -266,29 +256,10 @@ class MaxGaugeTarget(CommonTarget):
         if self.analysis_engine:
             self.analysis_engine.dispose()
 
-    def create_table(self):
-        conn = db.connect(self.analysis_conn_str)
-        querys = MaxGaugeInitializeQuery.DDL_SQL
-        check_query = MaxGaugeInitializeQuery.CHECK_SQL
-
-        TargetUtils.create_and_check_table(self.logger, conn, querys, check_query)
-
     def insert_maxgauge_meta(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
 
-        self._set_insert_ae_db_info()
-
-    def _set_insert_ae_db_info(self):
-        query = MaxGaugeInitializeQuery.SELECT_APM_DB_INFO
-        table_name = TableConstants.AE_DB_INFO
-        self._excute_insert_maxgauge_meta(query, table_name)
-
-    def _excute_insert_maxgauge_meta(self, query, table_name):
-        replace_dict = {'table_name': table_name}
-        delete_table_query = SystemUtils.sql_replace_to_dict(SaInitializeQuery.DELETE_TABLE_DEFAULT_QUERY, replace_dict)
-        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, delete_table_query)
-        detail_df = TargetUtils.get_target_data_by_query(self.logger, self.mg_conn, query, table_name,)
-        TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, detail_df)
+        self._insert_meta_data('db')
 
     def insert_maxgauge_detail_data(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
@@ -418,8 +389,16 @@ class SaTarget(CommonTarget):
             self.sa_conn.close()
 
     def create_table(self):
-        querys = SaInitializeQuery.DDL_SQL
-        TargetUtils.create_and_check_table(self.logger, self.sa_conn, querys, None)
+        init_path = f"{self.config['home']}/" \
+                    f"{SystemConstants.SQL_PATH}/" \
+                    f"{ModuleFactoryEnum[self.config['args']['proc']].value}/" \
+                    f"{SystemConstants.DDL_PATH}"
+        init_files = SystemUtils.get_filenames_from_path(init_path)
+
+        for init_file in init_files:
+            with open(f"{init_path}/{init_file}", mode='r', encoding='utf-8') as file:
+                ddl = file.read()
+                TargetUtils.create_table(self.logger, self.sa_conn, ddl)
 
     def get_ae_was_sql_text(self, chunksize):
         query = SaSqlTextMergeQuery.SELECT_AE_WAS_SQL_TEXT

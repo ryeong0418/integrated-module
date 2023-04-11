@@ -42,6 +42,11 @@ class SystemConstants:
     TMP_PATH = 'tmp'
     PID_TMP_FILE_NAME = 'pid.tmp'
 
+    # sql path
+    SQL_PATH = 'sql'
+    DDL_PATH = 'ddl'
+    META_PATH = 'meta'
+
 
 class TableConstants:
     AE_WAS_INFO = "ae_was_info"

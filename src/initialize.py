@@ -21,17 +21,14 @@ class Initialize(cm.CommonModule):
         if self.config['intermax_repo']['use']:
             self.logger.debug("InterMaxTarget init")
             self.imt = InterMaxTarget(self.logger, self.config)
-            self.imt.create_table()
-            time.sleep(1)
 
             self.imt.init_process()
             self.imt.insert_intermax_meta()
+            time.sleep(1)
 
         if self.config['maxgauge_repo']['use']:
             self.logger.debug("MaxGaugeTarget init")
             self.mgt = MaxGaugeTarget(self.logger, self.config)
-            self.mgt.create_table()
-            time.sleep(1)
 
             self.mgt.init_process()
             self.mgt.insert_maxgauge_meta()

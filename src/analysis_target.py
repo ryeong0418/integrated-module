@@ -12,6 +12,7 @@ from sql.sql_text_merge_sql import InterMaxSqlTextMergeQuery, SaSqlTextMergeQuer
 from sql.extract_sql import InterMaxExtractQuery, MaxGaugeExtractorQuery
 from sql.summarizer_sql import SummarizerQuery,InterMaxGaugeSummarizerQuery
 from sql.common_sql import CommonSql
+from datetime import datetime, timedelta
 
 
 class CommonTarget:
@@ -39,6 +40,7 @@ class CommonTarget:
         self.sa_cursor = None
 
         self.chunksize = self.config['data_handling_chunksize']
+        self.sql_match_time = self.config['sql_match_time']
 
 
 class InterMaxTarget(CommonTarget):
@@ -248,6 +250,7 @@ class InterMaxTarget(CommonTarget):
 
         for df in get_read_sql:
             TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
+
 
 class MaxGaugeTarget(CommonTarget):
     def init_process(self):
@@ -548,3 +551,28 @@ class SaTarget(CommonTarget):
 
     def insert_target_table_by_dump(self, table, df):
         TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table, df)
+
+    def term_extract_sql_text(self, chunksize):
+
+        s_date = datetime.strptime(str(self.config['args']['s_date']),'%Y%m%d')
+        e_date = s_date + timedelta(days=int(self.config['args']['interval']))
+
+        date_dict = {'StartDate': str(s_date), 'EndDate': str(e_date), 'seconds': str(self.sql_match_time)}
+        query = SaSqlTextMergeQuery.SELECT_SQL_ID_AND_SQL_TEXT
+        sql_id_and_sql_text = SystemUtils.sql_replace_to_dict(query, date_dict)
+
+        sa_conn = self.analysis_engine.connect().execution_options(stream_results=True)
+        get_read_sql = pd.read_sql_query(text(sql_id_and_sql_text),sa_conn,chunksize=chunksize)
+        return get_read_sql
+
+
+
+
+
+
+
+
+
+
+
+

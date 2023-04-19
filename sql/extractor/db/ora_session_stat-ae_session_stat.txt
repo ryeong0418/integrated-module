@@ -1,0 +1,19 @@
+select  distinct
+        partition_key,
+        db_id,
+        sid,
+        serial,
+        logon_time,
+        time,
+        sql_uid,
+        sql_id,
+        sql_plan_hash,
+        module,
+        action,
+        client_identifier,
+        was_id,
+        split_part(client_identifier, ',' , 4) txn_name,
+        tid
+from #(instance_name).ora_session_stat
+where partition_key = #(partition_key)
+and sql_id is not null

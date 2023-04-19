@@ -1,0 +1,7 @@
+SELECT  PARTITION_KEY
+        ,DB_ID
+        ,SQL_UID
+        ,SEQ
+        ,SQL_TEXT
+FROM #(instance_name).APM_SQL_LIST
+WHERE PARTITION_KEY = #(partition_key)

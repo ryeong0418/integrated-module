@@ -38,3 +38,11 @@ class CommonSql:
     DELETE_TABLE_DEFAULT_QUERY = (
         "delete from #(table_name)"
     )
+
+    DELETE_TABLE_BY_DATE_QUERY = (
+            "delete from #(table_name) where to_char(time,'yyyymmdd')='#(date)'"
+    )
+
+    DELETE_TABLE_BY_PARTITION_KEY_QUERY = (
+            "delete from #(table_name) where partition_key = #(partition_key)"
+    )

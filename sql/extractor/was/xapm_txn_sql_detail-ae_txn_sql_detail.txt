@@ -1,0 +1,13 @@
+select  tid,
+        time,
+        txn_id,
+        was_id,
+        sql_id,
+        execute_count,
+        elapsed_time,
+        elapsed_time_max,
+        db_id,
+        sid,
+        sql_seq,
+        cursor_id
+from xapm_txn_sql_detail_p#(table_suffix)

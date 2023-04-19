@@ -1,0 +1,17 @@
+select partition_key,
+      db_id,
+      sid,
+      logon_time,
+      serial,
+      "time",
+      spid,
+      audsid,
+      (select s.value from apm_string_data s where s.id = si.user_name_id and s.id_type='USER_NAME') as schema,
+      (select s.value from apm_string_data s where s.id = si.os_user_id   and s.id_type='OS_USER') as os_user,
+      (select s.value from apm_string_data s where s.id = si.machine_id   and s.id_type='MACHINE') as machine,
+      (select s.value from apm_string_data s where s.id = si.terminal_id  and s.id_type='TERMINAL') as terminal,
+      cpid,
+      (select s.value from apm_string_data s where s.id = si.program_id   and id_type='PROGRAM') as program,
+      session_type
+from #(instance_name).ora_session_info si
+where partition_key =  #(partition_key)

@@ -1,0 +1,12 @@
+select  time,
+        host_id,
+        host_ip,
+        host_name,
+        os_cpu_sys,
+        os_cpu_user,
+        os_cpu_io,
+        os_free_memory,
+        os_total_memory,
+        swap_free,
+        swap_total
+from xapm_os_stat_osm_p#(table_suffix)

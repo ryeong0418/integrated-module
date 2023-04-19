@@ -9,7 +9,6 @@ class Extractor(cm.CommonModule):
         self.imt = None
         self.mgt = None
 
-
     def main_process(self):
         self.logger.debug('extractor')
 
@@ -24,6 +23,3 @@ class Extractor(cm.CommonModule):
             self.mgt = MaxGaugeTarget(self.logger, self.config)
             self.mgt.init_process()
             self.mgt.insert_maxgauge_detail_data()
-
-
-

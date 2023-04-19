@@ -201,6 +201,10 @@ class SystemUtils:
         args = parser.parse_args()
         return args
 
+    @staticmethod
+    def extract_tablename_in_filename(filename):
+        return filename.split(".")[0].split('-')[1]
+
 
 class TargetUtils:
 

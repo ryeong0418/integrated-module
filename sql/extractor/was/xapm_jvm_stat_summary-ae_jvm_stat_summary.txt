@@ -1,0 +1,14 @@
+select time,
+        was_id,
+        compiles,
+        max_compiles,
+        compile_time,
+        max_compile_time,
+        class_count,
+        max_class_count,
+        loaded,
+        max_loaded,
+        class_time,
+        max_class_time,
+        jvm_gc_count
+from xapm_jvm_stat_summary_p#(table_suffix)

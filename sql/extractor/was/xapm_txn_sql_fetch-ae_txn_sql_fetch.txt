@@ -1,0 +1,10 @@
+select  tid,
+        time,
+        txn_id,
+        server_id as was_id,
+        cursor_id,
+        fetch_count as fetched_rows,
+        fetch_time,
+        fetch_time_max,
+        internal_fetch_count as jdbc_fetch_count
+from xapm_txn_sql_fetch_p#(table_suffix)

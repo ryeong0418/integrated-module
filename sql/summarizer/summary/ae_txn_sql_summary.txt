@@ -1,0 +1,42 @@
+select tt.ten_min_time ,
+        tt.was_name ,
+        tt.txn_name ,
+        tt.txn_exec_count ,
+        tt.exception_sum ,
+        tt.txn_elapse_sum ,
+        tt.txn_elapse_avg ,
+        tt.txn_elapse_max ,
+        tt.txn_cpu_time_sum ,
+        tt.txn_cpu_time_avg ,
+        tt.txn_cpu_time_max ,
+        tt.thread_memory_avg ,
+        tt.thread_memory_max ,
+        tt.fetched_rows_sum ,
+        tt.fetched_rows_avg ,
+        tt.fetched_rows_max ,
+        tt.fetch_time_sum ,
+        tt.fetch_time_avg ,
+        tt.fetch_time_max ,
+        tt.remote_count_sum ,
+        tt.remote_count_avg ,
+        tt.remote_count_max ,
+        tt.remote_elapse_sum ,
+        tt.remote_elapse_avg ,
+        tt.remote_elapse_max,
+        st.instance_name ,
+        st.db_id as was_db_id,
+        st.db_type ,
+        st.sid ,
+        st.was_sql_id ,
+        st.sql_exec_count_sum ,
+        st.sql_elapse_sum ,
+        st.sql_elapse_avg ,
+        st.sql_elapse_max
+from ae_txn_detail_summary_temp tt
+left outer join ae_txn_sql_detail_summary_temp st
+    on tt.was_name = st.was_name
+    and tt.txn_name = st.txn_name
+    and tt.ten_min_time = st.ten_min_time
+where tt.ten_min_time >= '#(StartDate)'::timestamp
+and tt.ten_min_time < '#(EndDate)'::timestamp
+order  by tt.ten_min_time asc

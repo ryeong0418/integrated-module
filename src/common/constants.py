@@ -43,9 +43,9 @@ class SystemConstants:
     PID_TMP_FILE_NAME = 'pid.tmp'
 
     # sql path
-    SQL_PATH = 'sql'
-    DDL_PATH = 'ddl'
-    META_PATH = 'meta'
+    SQL = 'sql'
+    DDL = 'ddl'
+    META = 'meta'
 
 
 class TableConstants:

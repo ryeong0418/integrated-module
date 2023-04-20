@@ -1,5 +1,4 @@
 
-
 class CommonSql:
 
     SELECT_AE_DB_INFO = (
@@ -32,9 +31,20 @@ class CommonSql:
         AS t(sql_id varchar, sql_text_100 varchar, sql_text varchar) 
         where sql_id not in (select sql_id from ae_was_sql_text);
         """
-
     )
 
     DELETE_TABLE_DEFAULT_QUERY = (
         "delete from #(table_name)"
+    )
+
+    DELETE_TABLE_BY_DATE_QUERY = (
+        "delete from #(table_name) where to_char(time,'yyyymmdd')='#(date)'"
+    )
+
+    DELETE_TABLE_BY_PARTITION_KEY_QUERY = (
+        "delete from #(table_name) where partition_key = #(partition_key)"
+    )
+
+    DELETE_SUMMARY_TABLE_BY_DATE_QUERY = (
+        "delete from #(table_name) where to_char(ten_min_time,'yyyymmdd')='#(date)'"
     )

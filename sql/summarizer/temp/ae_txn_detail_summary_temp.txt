@@ -1,0 +1,41 @@
+drop table if exists ae_txn_detail_summary_temp;
+create table ae_txn_detail_summary_temp as
+    select date_trunc( 'hour' , time ) +((( date_part( 'minute' , time ) ::integer /10::integer ) * 10::integer ) || ' minutes' ) ::interval as ten_min_time ,
+            awi.was_name as was_name ,
+            atn.txn_name as txn_name ,
+            count( atd.tid ) as txn_exec_count ,
+            sum( atd.txn_elapse ) as txn_elapse_sum ,
+            avg( atd.txn_elapse ) as txn_elapse_avg ,
+            max( atd.txn_elapse ) as txn_elapse_max ,
+            sum( atd.txn_cpu_time ) as txn_cpu_time_sum ,
+            avg( atd.txn_cpu_time ) as txn_cpu_time_avg ,
+            max( atd.txn_cpu_time ) as txn_cpu_time_max ,
+            avg( atd.thread_memory ) as thread_memory_avg ,
+            max( atd.thread_memory ) as thread_memory_max ,
+            sum( atd.fetched_rows ) as fetched_rows_sum ,
+            avg( atd.fetched_rows ) as fetched_rows_avg ,
+            max( atd.fetched_rows ) as fetched_rows_max ,
+            sum( atd.fetch_time ) as fetch_time_sum ,
+            avg( atd.fetch_time ) as fetch_time_avg ,
+            max( atd.fetch_time ) as fetch_time_max ,
+            sum(atd.jdbc_fetch_count) as jdbc_fetch_count_sum,
+            avg(atd.jdbc_fetch_count) as jdbc_fetch_count_avg,
+            max(atd.jdbc_fetch_count) as jdbc_fetch_count_max,
+            sum( atd.exception ) as exception_sum ,
+            sum( atd.remote_count ) as remote_count_sum ,
+            avg( atd.remote_count ) as remote_count_avg ,
+            max( atd.remote_count ) as remote_count_max ,
+            sum( atd.remote_elapse ) as remote_elapse_sum ,
+            avg( atd.remote_elapse ) as remote_elapse_avg ,
+            max( atd.remote_elapse ) as remote_elapse_max
+    from   ae_txn_detail atd ,
+           ae_txn_name atn ,
+           ae_was_info awi
+    where  1 = 1
+    and    atn.txn_id = atd.txn_id
+    and    atd.was_id = awi.was_id
+    and atd.time >= '#(StartDate)'::timestamp
+    and atd.time < '#(EndDate)'::timestamp
+    group  by ten_min_time ,
+              was_name ,
+              txn_name

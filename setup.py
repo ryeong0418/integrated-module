@@ -31,12 +31,17 @@ setup(
     install_requires=requires,
     python_requires=">=3.8",
     package_dir={
-        "resources": "resources"
+        "resources": "resources",
+        "sql": "sql"
     },
     package_data={
         "resources": [
             '*/*-prod.json',
             '*/*-dev.json'
+        ],
+        "sql": [
+            '*/*/*.txt',
+            '*/*/*/*.txt'
         ],
         "": [
             '../export/sql_csv/sql/*.txt',

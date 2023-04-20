@@ -3,7 +3,6 @@ import argparse
 import os
 import pandas as pd
 import time
-import itertools
 
 from pathlib import Path
 from psycopg2 import errors
@@ -11,7 +10,6 @@ from psycopg2.errorcodes import DUPLICATE_TABLE
 from datetime import datetime, timedelta
 
 from src.common.timelogger import TimeLogger
-from src.common.constants import SystemConstants
 
 
 class SystemUtils:
@@ -337,25 +335,3 @@ class TargetUtils:
             date_conditions.append(date_condition)
 
         return date_conditions
-
-    @staticmethod
-    def summarizer_set_date(input_date, input_interval):
-        start_dates = []
-        end_dates = []
-        pairs = []
-
-        for i in range(1, int(input_interval)+1):
-            from_date = datetime.strptime(str(input_date), '%Y%m%d')
-            date_condition = from_date + timedelta(days=i - 1)
-            start_date = date_condition.strftime('%Y-%m-%d 00:00:00')
-            start_dates.append(start_date)
-            date_condition_p = from_date + timedelta(days=i)
-            end_date = date_condition_p.strftime('%Y-%m-%d 00:00:00')
-            end_dates.append(end_date)
-
-        for pair in zip(start_dates, end_dates):
-            pairs.append(pair)
-
-        return pairs
-
-

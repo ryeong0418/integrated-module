@@ -48,3 +48,7 @@ class CommonSql:
     DELETE_SUMMARY_TABLE_BY_DATE_QUERY = (
         "delete from #(table_name) where to_char(ten_min_time,'yyyymmdd')='#(date)'"
     )
+
+    UPDATE_AE_WAS_SQL_TEXT_BY_CLUSTER_ID_QUERY = (
+        "UPDATE ae_was_sql_text set cluster_id = '#(cluster_id)' where sql_id = '#(sql_id)'"
+    )

@@ -44,6 +44,8 @@ class CommonTarget:
                                   f"{SystemConstants.SQL}/" \
                                   f"{ModuleFactoryEnum[self.config['args']['proc']].value}"
 
+        self.update_cluster_cnt = 0
+
     def _insert_meta_data(self, target_infra):
         meta_path = f"{self.sql_file_root_path}/{SystemConstants.META}/{target_infra}/"
         meta_files = SystemUtils.get_filenames_from_path(meta_path)
@@ -432,3 +434,26 @@ class SaTarget(CommonTarget):
         sa_conn = self.analysis_engine.connect().execution_options(stream_results=True)
         get_read_sql = pd.read_sql_query(text(sql_id_and_sql_text),sa_conn,chunksize=chunksize)
         return get_read_sql
+
+    def update_cluster_id_by_sql_id(self, df):
+        self.logger.info(f"Execute query total : {len(df)}")
+        self.update_cluster_cnt = 0
+
+        [self._update_cluster_id_by_sql_id(row) for _, row in df.iterrows()]
+        self.logger.info(f"Execute query end : {self.update_cluster_cnt}")
+
+    def _update_cluster_id_by_sql_id(self, row):
+        query = CommonSql.UPDATE_AE_WAS_SQL_TEXT_BY_CLUSTER_ID_QUERY
+
+        try:
+            exec_query = SystemUtils.sql_replace_to_dict(query,
+                                                         {'cluster_id': row['cluster_id'], 'sql_id': row['sql_id']}
+                                                         )
+            TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, exec_query)
+
+            self.update_cluster_cnt += 1
+        except IntegrityError:
+            pass
+        except Exception as e:
+            self.logger.exception(f"_update_cluster_id_by_sql_id(), update execute error. check sql_id {row['sql_id']}")
+            self.logger.exception(e)

@@ -131,7 +131,7 @@ if __name__ == "__main__":
 
             query = st.get_table_data_query(table)
 
-            for df in st.get_table_data(query, chunksize=chunksize):
+            for df in st.get_table_data_by_chunksize(query, chunksize=chunksize, coerce=False):
                 if len(df) == 0:
                     break
 

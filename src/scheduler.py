@@ -107,13 +107,14 @@ class Scheduler(cm.CommonModule):
                 session.add(elm)
 
             result = ResultConstants.FAIL
-            self._update_config_custom_values()
 
             self._extractor_job()
 
             self._summarizer_job()
 
             self._sql_text_merge_job()
+
+            self._update_config_custom_values(proc='b')
 
             result = ResultConstants.SUCCESS
             result_code = 'I001'
@@ -133,6 +134,8 @@ class Scheduler(cm.CommonModule):
     def _extractor_job(self):
         self.scheduler_logger.info(f"_extractor_job start")
 
+        self._update_config_custom_values(proc='i')
+
         extractor = Extractor(self.scheduler_logger)
         extractor.set_config(self.config)
         extractor.main_process()
@@ -141,6 +144,8 @@ class Scheduler(cm.CommonModule):
 
     def _summarizer_job(self):
         self.scheduler_logger.info(f"_summarizer_job start")
+
+        self._update_config_custom_values(proc='s')
 
         summarizer = Summarizer(self.scheduler_logger)
         summarizer.set_config(self.config)
@@ -151,15 +156,17 @@ class Scheduler(cm.CommonModule):
     def _sql_text_merge_job(self):
         self.scheduler_logger.info(f"_sql_text_merge_job start")
 
+        self._update_config_custom_values(proc='m')
+
         stm = SqlTextMerge(self.scheduler_logger)
         stm.set_config(self.config)
         stm.main_process()
 
         self.scheduler_logger.info(f"_sql_text_merge_job end")
 
-    def _update_config_custom_values(self):
+    def _update_config_custom_values(self, proc):
         custom_values = dict()
-        custom_values['args'] = {'s_date': SystemUtils.get_date_by_interval(-1, fmt="%Y%m%d"), 'interval': 1, 'proc': 'b'}
+        custom_values['args'] = {'s_date': SystemUtils.get_date_by_interval(-1, fmt="%Y%m%d"), 'interval': 1, 'proc': proc}
         self.config.update(custom_values)
 
     def _is_alive_logging_job(self):

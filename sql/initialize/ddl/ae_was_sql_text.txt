@@ -3,5 +3,6 @@ CREATE TABLE AE_WAS_SQL_TEXT (
     sql_text_100 varchar(100) NULL,
     sql_text text NULL,
     create_dt timestamp with time zone default current_timestamp,
-    create_id varchar(20) default 'system' not NULL
+    create_id varchar(20) default 'system' not NULL,
+    constraint pk_ae_was_sql_text primary key (sql_id)
 )

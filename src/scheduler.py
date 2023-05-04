@@ -134,7 +134,7 @@ class Scheduler(cm.CommonModule):
     def _extractor_job(self):
         self.scheduler_logger.info(f"_extractor_job start")
 
-        self._update_config_custom_values(proc='i')
+        self._update_config_custom_values(proc='e')
 
         extractor = Extractor(self.scheduler_logger)
         extractor.set_config(self.config)

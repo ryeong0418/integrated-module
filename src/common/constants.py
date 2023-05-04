@@ -47,6 +47,18 @@ class SystemConstants:
     DDL = 'ddl'
     META = 'meta'
 
+    # sql_text_template 파일 이름
+    SQL_TEXT_TEMPLATE_LOG_FILE_NAME = 'sql_text_template'
+
+    # sql_text_template 관련 파일 경로
+    DRAIN_CONF_PATH = '/resources/drain/'
+
+    # sql_text_template ini 파일 이름
+    DRAIN_INI_FILE_NAME = 'drain3.ini'
+
+    # sql_text_template model 파일 이름
+    DRAIN_MODEL_FILE_NAME = 'sql_text_template.bin'
+
 
 class TableConstants:
     AE_WAS_INFO = "ae_was_info"
@@ -72,6 +84,7 @@ class TableConstants:
     AE_JVM_STAT_SUMMARY = "ae_jvm_stat_summary"
     AE_WAS_OS_STAT_OSM = "ae_was_os_stat_osm"
     AE_EXECUTE_LOG = "ae_execute_log"
+    AE_SQL_TEMPLATE = "ae_sql_template"
 
 
 class ResultConstants:

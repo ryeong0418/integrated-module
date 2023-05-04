@@ -457,3 +457,22 @@ class SaTarget(CommonTarget):
         except Exception as e:
             self.logger.exception(f"_update_cluster_id_by_sql_id(), update execute error. check sql_id {row['sql_id']}")
             self.logger.exception(e)
+
+    def insert_ae_sql_template(self, df):
+        query = CommonSql.DELETE_TABLE_DEFAULT_QUERY
+        delete_query = SystemUtils.sql_replace_to_dict(query, {'table_name': TableConstants.AE_SQL_TEMPLATE})
+
+        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, delete_query)
+        TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, TableConstants.AE_SQL_TEMPLATE, df)
+
+    def get_ae_was_sql_text_cluster_cnt_by_grouping(self, extract_cnt):
+        query = CommonSql.SELECT_AE_WAS_SQL_TEXT_CLUSTER_CNT_BY_GROUPING_QUERY
+
+        if extract_cnt > 0:
+            query += f"limit {extract_cnt}"
+
+        try:
+            return_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, query, TableConstants.AE_WAS_SQL_TEXT)
+        except Exception as e:
+            self.logger.exception(e)
+        return return_df

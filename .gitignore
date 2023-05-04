@@ -248,4 +248,7 @@ tests/
 # tmp
 tmp/
 
+# bin
+*.bin
+
 # End of https://www.toptal.com/developers/gitignore/api/windows,pycharm,python

@@ -52,3 +52,12 @@ class CommonSql:
     UPDATE_AE_WAS_SQL_TEXT_BY_CLUSTER_ID_QUERY = (
         "UPDATE ae_was_sql_text set cluster_id = '#(cluster_id)' where sql_id = '#(sql_id)'"
     )
+
+    SELECT_AE_WAS_SQL_TEXT_CLUSTER_CNT_BY_GROUPING_QUERY = (
+        "select cluster_id, count(*) as cluster_cnt "
+        "from ae_was_sql_text " 
+        "where cluster_id != '0' "
+        "and cluster_id is not null "
+        "group by cluster_id "
+        "order by count(*) desc "
+    )

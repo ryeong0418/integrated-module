@@ -8,6 +8,7 @@ class ModuleFactoryEnum(Enum):
     v = "visualization"
     b = "scheduler"
     m = "sql_text_merge"
+    t = "sql_text_template"
 
 
 class MessageEnum(Enum):
@@ -22,3 +23,4 @@ class MessageEnum(Enum):
     E001 = '비정상종료'
     E002 = '추출하려는 sql 파일 형식이 맞지 않습니다. ex)n-n xxxx.txt'
     E003 = '추출하려는 sql 파일 형식이 맞지 않습니다. (공백 없음) ex)n-n xxx.txt'
+    E004 = 'intermax_repo or maxgauge_repo use false.. please check config'

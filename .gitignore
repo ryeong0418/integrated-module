@@ -251,4 +251,6 @@ tmp/
 # bin
 *.bin
 
+*.tree
+
 # End of https://www.toptal.com/developers/gitignore/api/windows,pycharm,python

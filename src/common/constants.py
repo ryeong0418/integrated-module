@@ -59,6 +59,9 @@ class SystemConstants:
     # sql_text_template model 파일 이름
     DRAIN_MODEL_FILE_NAME = 'sql_text_template.bin'
 
+    # sql_text_template tree 파일 이름 debug용
+    DRAIN_TEMPLATE_TREE_FILE_NAME = 'sql_text_template.tree'
+
 
 class TableConstants:
     AE_WAS_INFO = "ae_was_info"

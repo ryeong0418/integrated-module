@@ -49,15 +49,29 @@ class CommonSql:
         "delete from #(table_name) where to_char(ten_min_time,'yyyymmdd')='#(date)'"
     )
 
-    UPDATE_AE_WAS_SQL_TEXT_BY_CLUSTER_ID_QUERY = (
-        "UPDATE ae_was_sql_text set cluster_id = '#(cluster_id)' where sql_id = '#(sql_id)'"
+
+class AeWasSqlTextSql:
+
+    SELECT_BY_NO_CLUSTER_ID = (
+        "select sql_id, sql_text "
+        "from ae_was_sql_text "
+        "where cluster_id is null"
     )
 
-    SELECT_AE_WAS_SQL_TEXT_CLUSTER_CNT_BY_GROUPING_QUERY = (
+    UPDATE_BY_NO_ANALYZED_TARGET = (
+        "update ae_was_sql_text set cluster_id = '0' where cluster_id is null"
+    )
+
+    SELECT_CLUSTER_CNT_BY_GROUPING = (
         "select cluster_id, count(*) as cluster_cnt "
         "from ae_was_sql_text " 
-        "where cluster_id != '0' "
+        "where 1=1 "
+        "and cluster_id != '0' "
         "and cluster_id is not null "
         "group by cluster_id "
         "order by count(*) desc "
+    )
+
+    UPDATE_CLUSTER_ID_BY_SQL_ID = (
+        "UPDATE ae_was_sql_text set cluster_id = '#(cluster_id)' where sql_id = '#(sql_id)'"
     )

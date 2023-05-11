@@ -1,0 +1,8 @@
+select  time,
+        sql_id,
+        tid,
+        elapse_time,
+        bind_list,
+        cursor_id,
+        sid
+from xapm_bind_sql_elapse_p#(table_suffix)

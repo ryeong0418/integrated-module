@@ -31,9 +31,11 @@ select tt.ten_min_time ,
         st.sql_exec_count_sum ,
         st.sql_elapse_sum ,
         st.sql_elapse_avg ,
-        st.sql_elapse_max
-from ae_txn_detail_summary_temp tt
-left outer join ae_txn_sql_detail_summary_temp st
+        st.sql_elapse_max,
+        st.sql_fetched_rows_sum,  
+        st.sql_fetch_time_avg,
+        st.sql_fetch_time_max	
+from ae_txn_detail_summary_temp tt left outer join ae_txn_sql_detail_summary_temp st
     on tt.was_name = st.was_name
     and tt.txn_name = st.txn_name
     and tt.ten_min_time = st.ten_min_time

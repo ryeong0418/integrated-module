@@ -344,6 +344,7 @@ class SaTarget(CommonTarget):
                 self.logger.info(f"delete query execute : {sa_delete_query}")
 
                 for df in self.get_table_data_by_chunksize(query, self.extract_chunksize):
+                    print(df)
                     TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
             except Exception as e:

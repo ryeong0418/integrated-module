@@ -60,6 +60,8 @@ def main_process():
     logger.info("*" * 79)
 
     result = ResultConstants.FAIL
+    result_code = "E001"
+    result_msg = MessageEnum[result_code].value
 
     try:
         fmf = ModuleFactory(logger)
@@ -74,7 +76,7 @@ def main_process():
         result_msg = MessageEnum[result_code].value
 
     except ModuleException as me:
-        logger.exception(me)
+        logger.error(me.error_msg)
         result = ResultConstants.ERROR
         result_code = me.error_code
         result_msg = me.error_msg

@@ -24,3 +24,4 @@ class MessageEnum(Enum):
     E002 = '추출하려는 sql 파일 형식이 맞지 않습니다. ex)n-n xxxx.txt'
     E003 = '추출하려는 sql 파일 형식이 맞지 않습니다. (공백 없음) ex)n-n xxx.txt'
     E004 = 'intermax_repo or maxgauge_repo use false.. please check config'
+    E005 = 'Sql text drain matching invalid target value (choose select or etc)'

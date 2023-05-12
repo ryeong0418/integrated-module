@@ -9,7 +9,7 @@ from src.common.utils import TargetUtils, SystemUtils
 from src.common.constants import TableConstants, SystemConstants
 from src.common.enum_module import ModuleFactoryEnum
 from sql.sql_text_merge_sql import InterMaxSqlTextMergeQuery, SaSqlTextMergeQuery
-from sql.common_sql import CommonSql, AeWasSqlTextSql
+from sql.common_sql import CommonSql, AeWasSqlTextSql, AeDbSqlTemplateMapSql
 from datetime import datetime, timedelta
 
 
@@ -458,6 +458,31 @@ class SaTarget(CommonTarget):
             pass
         except Exception as e:
             self.logger.exception(f"_update_cluster_id_by_sql_id(), update execute error. check sql_id {row['sql_id']}")
+            self.logger.exception(e)
+
+    def upsert_cluster_id_by_sql_uid(self, df):
+        self.logger.info(f"Execute upsert_cluster_id_by_sql_uid query total : {len(df)}")
+        self.update_cluster_cnt = 0
+
+        [self._upsert_cluster_id_by_sql_uid(row) for _, row in df.iterrows()]
+        self.logger.info(f"Execute upsert_cluster_id_by_sql_uid query end : {self.update_cluster_cnt}")
+
+    def _upsert_cluster_id_by_sql_uid(self, row):
+        query = AeDbSqlTemplateMapSql.UPSERT_CLUSTER_ID_BY_SQL_UID
+
+        try:
+            exec_query = SystemUtils.sql_replace_to_dict(query,
+                                                         {'cluster_id': row['cluster_id'], 'sql_uid': row['sql_uid']}
+                                                         )
+            TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, exec_query)
+
+            self.update_cluster_cnt += 1
+        except IntegrityError as ie:
+            self.logger.exception(f"_update_cluster_id_by_sql_id(), update execute error. check sql_id {row['sql_uid']}")
+            self.logger.exception(ie)
+            pass
+        except Exception as e:
+            self.logger.exception(f"_update_cluster_id_by_sql_id(), update execute error. check sql_id {row['sql_uid']}")
             self.logger.exception(e)
 
     def insert_ae_sql_template(self, df):

@@ -75,3 +75,14 @@ class AeWasSqlTextSql:
     UPDATE_CLUSTER_ID_BY_SQL_ID = (
         "UPDATE ae_was_sql_text set cluster_id = '#(cluster_id)' where sql_id = '#(sql_id)'"
     )
+
+
+class AeDbSqlTemplateMapSql:
+
+    UPSERT_CLUSTER_ID_BY_SQL_UID = (
+        "INSERT INTO ae_db_sql_template_map (sql_uid, cluster_id) "
+        "VALUES ('#(sql_uid)', '#(cluster_id)') "
+        "ON CONFLICT (sql_uid) "
+        "DO UPDATE "
+        "SET cluster_id = EXCLUDED.cluster_id"
+    )

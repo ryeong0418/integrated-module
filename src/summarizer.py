@@ -13,5 +13,4 @@ class Summarizer(cm.CommonModule):
         self.st = SaTarget(self.logger, self.config)
         self.st.init_process()
         self.st.create_temp_table()
-
         self.st.summary_join()

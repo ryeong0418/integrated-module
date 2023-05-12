@@ -1,32 +1,40 @@
 drop table if exists ae_txn_sql_detail_summary_temp;
-create table ae_txn_sql_detail_summary_temp as
-    select date_trunc( 'hour' , time ) +((( date_part( 'minute' , time ) ::integer /10::integer ) * 10::integer ) || ' minutes' ) ::interval as ten_min_time ,
-        awi.was_name as was_name ,
-        atn.txn_name as txn_name ,
-        atsd.sql_id as was_sql_id ,
-        sum( atsd.execute_count ) as sql_exec_count_sum ,
-        sum( atsd.elapsed_time ) as sql_elapse_sum ,
-        avg( atsd.elapsed_time ) as sql_elapse_avg ,
-        max( atsd.elapsed_time_max ) as sql_elapse_max ,
-        aei.instance_name ,
-        atsd.db_id ,
-        aei.db_type ,
-        atsd.sid
-    from ae_txn_sql_detail atsd ,
-         ae_was_db_info aei ,
-         ae_txn_name atn ,
-         ae_was_info awi
-    where  1=1
-    and    atsd.db_id = aei.db_id
-    and    atn.txn_id=atsd.txn_id
-    and    atsd.was_id = awi.was_id
-    AND atsd.time >= '#(StartDate)'::timestamp
-    AND atsd.time < '#(EndDate)'::timestamp
-    group  by ten_min_time ,
-                was_name ,
-                txn_name ,
-                aei.instance_name ,
-                aei.db_type ,
-                atsd.db_id ,
-                atsd.sid ,
-                atsd.sql_id
+         create table ae_txn_sql_detail_summary_temp as
+                select  date_trunc( 'hour' , atsd.time ) +((( date_part( 'minute' , atsd.time ) ::integer /10::integer ) * 10::integer ) || ' minutes' ) ::interval as ten_min_time ,
+                        awi.was_name as was_name ,
+                        atn.txn_name as txn_name ,
+                        atsd.sql_id as was_sql_id ,
+                        sum( atsd.execute_count ) as sql_exec_count_sum ,
+                        sum( atsd.elapsed_time ) as sql_elapse_sum ,
+                        avg( atsd.elapsed_time ) as sql_elapse_avg ,
+                        max( atsd.elapsed_time_max ) as sql_elapse_max ,
+                        sum( atsf.fetched_rows) as sql_fetched_rows_sum,
+                        avg( atsf.fetch_time) as sql_fetch_time_avg,
+                        max( atsf.fetch_time_max) as sql_fetch_time_max,
+                        aei.instance_name ,
+                        atsd.db_id ,
+                        aei.db_type ,
+                        atsd.sid
+                    from ae_txn_sql_detail atsd ,
+                         ae_txn_sql_fetch atsf ,
+                         ae_was_db_info aei ,
+                         ae_txn_name atn ,
+                         ae_was_info awi
+                    where  1=1
+                    and    atsd.db_id = aei.db_id
+                    and    atn.txn_id=atsd.txn_id
+                    and    atsd.was_id = awi.was_id
+                    and    atsd.tid = atsf.tid
+                    and    atsd.cursor_id = atsf.cursor_id
+                    AND atsd.time >= '#(StartDate)'::timestamp
+                    AND atsd.time < '#(EndDate)'::timestamp
+                    AND atsf.time >= '#(StartDate)'::timestamp
+                    AND atsf.time < '#(EndDate)'::timestamp
+                    group  by ten_min_time ,
+                              was_name ,
+                              txn_name ,
+                              aei.instance_name ,
+                              aei.db_type ,
+                              atsd.db_id ,
+                              atsd.sid ,
+                              atsd.sql_id

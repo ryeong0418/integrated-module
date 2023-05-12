@@ -1,4 +1,4 @@
-select  time,
+select time,
         sql_id,
         tid,
         elapse_time,

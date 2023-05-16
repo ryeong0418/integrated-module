@@ -86,7 +86,7 @@ class DrainWorker:
 
     def get_top_cluster_template(self):
         cluster_list = self._make_cluster_list()
-        cluster_df = pd.DataFrame(cluster_list, columns=['cluster_id', 'sql_template', 'cluster_cnt'])
+        cluster_df = pd.DataFrame(cluster_list, columns=['cluster_id', 'sql_template'])
         return cluster_df
 
     def _add_custom_tag_in_cluster_id(self, cluster_id):
@@ -104,5 +104,5 @@ class DrainWorker:
         self.drain_logger.info("*" * 79)
 
     def _make_cluster_list(self):
-        return [(self._add_custom_tag_in_cluster_id(cluster.cluster_id), ' '.join(cluster.log_template_tokens), 0)
+        return [(self._add_custom_tag_in_cluster_id(cluster.cluster_id), ' '.join(cluster.log_template_tokens))
                 for cluster in self.template_miner.drain.clusters]

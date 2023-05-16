@@ -71,6 +71,7 @@ class TableConstants:
     AE_WAS_OS_STAT_OSM = "ae_was_os_stat_osm"
     AE_EXECUTE_LOG = "ae_execute_log"
     AE_SQL_TEMPLATE = "ae_sql_template"
+    AE_DB_SQL_TEMPLATE_MAP = "ae_db_sql_template_map"
 
 
 class ResultConstants:

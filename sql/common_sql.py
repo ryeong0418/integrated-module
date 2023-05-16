@@ -86,3 +86,13 @@ class AeDbSqlTemplateMapSql:
         "DO UPDATE "
         "SET cluster_id = EXCLUDED.cluster_id"
     )
+
+    SELECT_CLUSTER_CNT_BY_GROUPING = (
+        "select cluster_id, count(*) as cluster_cnt "
+        "from ae_db_sql_template_map " 
+        "where 1=1 "
+        "and cluster_id != '0' "
+        "and cluster_id is not null "
+        "group by cluster_id "
+        "order by count(*) desc "
+    )

@@ -335,3 +335,18 @@ class TargetUtils:
             date_conditions.append(date_condition)
 
         return date_conditions
+
+
+class MaxGaugeUtils:
+
+    @staticmethod
+    def reconstruct_by_grouping(results):
+        """
+        db sql text 재조합을 위한 함수
+        :param results: seq가 동일한 데이터들의 전체 리스트
+        :return: 재조합된 데이터프레임
+        """
+        results_df = pd.DataFrame(results, columns=['sql_text', 'partition_key', 'sql_uid', 'seq'])
+        results_df = results_df.groupby(['sql_uid', 'partition_key'], as_index=False).agg({'sql_text': ''.join})
+        results_df.drop(columns='partition_key', inplace=True)
+        return results_df

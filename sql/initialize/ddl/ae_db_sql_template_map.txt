@@ -1,0 +1,7 @@
+create table ae_db_sql_template_map(
+	sql_uid varchar(48) not NULL,
+	cluster_id varchar(20) not NULL,
+    create_dt timestamp with time zone default current_timestamp,
+    create_id varchar(20) default 'system' not NULL
+	CONSTRAINT pk_ae_db_sql_template_map PRIMARY KEY (sql_uid)
+)

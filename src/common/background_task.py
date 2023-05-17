@@ -12,7 +12,5 @@ class BackgroundTask(threading.Thread):
     def run(self) -> None:
         self.logger.info(f"{self.func.__name__} func execute by thread. kwargs keys : {self.kwargs.keys()}")
 
-        if self.func.__name__ == ('update_cluster_id_by_sql_id' or 'upsert_cluster_id_by_sql_uid'):
+        if self.func.__name__ == 'update_cluster_id_by_sql_id' or 'upsert_cluster_id_by_sql_uid':
             self.func(self.kwargs['df'])
-
-

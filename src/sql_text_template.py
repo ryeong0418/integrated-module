@@ -2,7 +2,6 @@ import re
 import time
 import pandas as pd
 import inspect
-import itertools
 
 from datetime import datetime, timedelta
 
@@ -12,7 +11,7 @@ from src.common.enum_module import MessageEnum
 from src.common.background_task import BackgroundTask
 from src.common.timelogger import TimeLogger
 from src.common.constants import SystemConstants
-from src.common.utils import SystemUtils
+from src.common.utils import MaxGaugeUtils
 from src.drain.drain_worker import DrainWorker
 from resources.logger_manager import Logger
 
@@ -26,7 +25,6 @@ class SqlTextTemplate(cm.CommonModule):
         self.sql_template_select_only = False
         self.chd_threads = []
         self.wait_times_cnt = 0
-        self.export_parquet_root_path = None
         self.sel_worker = None
         self.etc_worker = None
         self.extract_cnt = 1000
@@ -39,7 +37,6 @@ class SqlTextTemplate(cm.CommonModule):
 
         self.chunk_size = self.config.get('data_handling_chunksize', 10_000) * 10
         self.sql_template_select_only = self.config.get('sql_template_select_only', False)
-        self.export_parquet_root_path = f'{self.config["home"]}/{SystemConstants.EXPORT_PARQUET_PATH}'
 
         self._add_sql_text_template_logger()
         self._init_sa_target()
@@ -55,14 +52,12 @@ class SqlTextTemplate(cm.CommonModule):
 
             self._wait_end_of_threads()
             self._update_unanalyzed_was_sql_text()
-            self._save_top_cluster_template(self.extract_cnt)
 
         elif self.config['maxgauge_repo']['use']:
             self._db_sql_text_template()
-
             self._wait_end_of_threads()
-            self._update_unanalyzed_was_sql_text()
-            self._save_top_cluster_template(self.extract_cnt)
+
+        self._save_top_cluster_template(self.extract_cnt)
 
         self._print_drain_tree()
 
@@ -90,27 +85,9 @@ class SqlTextTemplate(cm.CommonModule):
             with TimeLogger(inspect.currentframe().f_code.co_name, self.sql_text_template_logger):
                 sel_df, etc_df = self._preprocessing(df)
 
-            sel_df = self.sel_worker.match(sel_df, 'sql_text')
-            etc_df = self.etc_worker.match(etc_df, 'sql_text')
+            self._drain_match_and_upt(sel_df, etc_df, self.st.update_cluster_id_by_sql_id)
 
-            result_df = pd.concat([sel_df, etc_df])
-
-            self._wait_end_of_threads()
-
-            bgt = BackgroundTask(self.logger, self.st.update_cluster_id_by_sql_id, df=result_df)
-            bgt.start()
-
-            self.chd_threads.append(bgt)
-
-            self.logger.info(f"select drain match processed line_count {self.sel_worker.line_count}")
-            self.logger.info(f"etc drain match processed line_count {self.etc_worker.line_count}")
-
-        total_match_cnt = self.sel_worker.line_count + self.etc_worker.line_count
-
-        time_took = time.time() - start_time
-        rate = total_match_cnt / time_took
-        self.logger.info(f"--- Done processing file in {time_took:.2f} sec. "
-                         f"Total of {total_match_cnt} lines, rate {rate:.1f} lines/sec")
+        self._after_drain_finished(start_time)
 
     def _preprocessing(self, df):
         sel_list = ['select']
@@ -146,13 +123,10 @@ class SqlTextTemplate(cm.CommonModule):
 
         cluster_df = pd.concat([sel_cluster_df, etc_cluster_df])
 
-        return_df = self.st.get_ae_was_sql_text_cluster_cnt_by_grouping(extract_cnt)
+        return_df = self.st.get_cluster_cnt_by_grouping(extract_cnt)
 
         merged_df = pd.merge(cluster_df, return_df, on=['cluster_id'],)
-
-        merged_df.rename(columns={'cluster_cnt_y': 'cluster_cnt'}, inplace=True)
         merged_df.sort_values('cluster_cnt', ascending=False, inplace=True)
-        merged_df.drop('cluster_cnt_x', axis=1, inplace=True)
 
         self.st.insert_ae_sql_template(merged_df)
 
@@ -160,53 +134,55 @@ class SqlTextTemplate(cm.CommonModule):
         self.st.update_unanalyzed_was_sql_text()
 
     def _db_sql_text_template(self):
-        export_filename_suffixs = self._get_export_filename_suffix()
-        export_filenames = []
-        export_filenames.extend(SystemUtils.get_filenames_from_path(self.export_parquet_root_path, prefix=suffix)
-                                for suffix in export_filename_suffixs)
-        export_filenames = list(itertools.chain(*export_filenames))
-
         start_time = time.time()
 
-        for filename in export_filenames:
-            df = pd.read_parquet(f'{self.export_parquet_root_path}/{filename}', columns=["sql_uid", "sql_text"])
-            df['sql_text'] = df['sql_text'].apply(lambda x: ' '.join(x))
+        ae_db_info_df = self.st.get_ae_db_info()
+        ae_db_infos = ae_db_info_df['lpad_db_id'].to_list()
 
-            with TimeLogger(inspect.currentframe().f_code.co_name, self.sql_text_template_logger):
-                df = self._preprocessing(df)
+        date_conditions = self.st.get_maxgauge_date_conditions()
 
-            df['cluster_id'] = '0'
+        for partition_key in [f"{date}{db_info}" for db_info in ae_db_infos for date in date_conditions]:
 
-            for idx, row in df.iterrows():
-                cluster = self.template_miner.match(row['sql_text'])
-                self.line_count += 1
+            for df in self.st.get_ae_db_sql_text_by_1seq(partition_key, chunksize=self.chunk_size):
+                if len(df) == 0:
+                    break
 
-                if cluster is None:
-                    self.sql_text_template_logger.info(f"No Match found")
-                    # result = self.template_miner.add_log_message(row['sql_text'])
-                    # cluster_id = result['cluster_id']
-                    cluster_id = 0
-                    self.sql_text_template_logger.info(f"Create template id # {cluster_id}")
-                else:
-                    # template = cluster.get_template()
-                    self.sql_text_template_logger.info(f"Matched template # {cluster.cluster_id}")
-                    cluster_id = cluster.cluster_id
+                results = self.st.get_all_ae_db_sql_text_by_1seq(df, chunksize=self.chunk_size)
 
-                df.loc[idx, 'cluster_id'] = str(cluster_id)
+                grouping_df = MaxGaugeUtils.reconstruct_by_grouping(results)
 
-            self.st.upsert_cluster_id_by_sql_uid(df)
+                with TimeLogger(inspect.currentframe().f_code.co_name, self.sql_text_template_logger):
+                    sel_df, etc_df = self._preprocessing(grouping_df)
 
-            # bgt = BackgroundTask(self.logger, self.st.upsert_cluster_id_by_sql_uid, df=df)
-            # bgt.start()
-            #
-            # self.chd_threads.append(bgt)
+                self._drain_match_and_upt(sel_df, etc_df, self.st.upsert_cluster_id_by_sql_uid)
 
-            self.sql_text_template_logger.info(f"template predict line_count {self.line_count}")
+        self._after_drain_finished(start_time)
+
+    def _after_drain_finished(self, start_time):
+        total_match_cnt = self.sel_worker.line_count + self.etc_worker.line_count
 
         time_took = time.time() - start_time
-        rate = self.line_count / time_took
+        rate = total_match_cnt / time_took
         self.logger.info(f"--- Done processing file in {time_took:.2f} sec. "
-                         f"Total of {self.line_count} lines, rate {rate:.1f} lines/sec")
+                         f"Total of {total_match_cnt} lines, rate {rate:.1f} lines/sec")
+
+    def _drain_match_and_upt(self, sel_df, etc_df, upt_func=None):
+
+        sel_df = self.sel_worker.match(sel_df, 'sql_text')
+        etc_df = self.etc_worker.match(etc_df, 'sql_text')
+
+        result_df = pd.concat([sel_df, etc_df])
+
+        if upt_func is not None:
+            self._wait_end_of_threads()
+
+            bgt = BackgroundTask(self.logger, upt_func, df=result_df)
+            bgt.start()
+
+            self.chd_threads.append(bgt)
+
+        self.logger.info(f"select drain match processed line_count {self.sel_worker.line_count}")
+        self.logger.info(f"etc drain match processed line_count {self.etc_worker.line_count}")
 
     def _get_export_filename_suffix(self):
         """

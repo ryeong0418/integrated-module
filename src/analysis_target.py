@@ -493,17 +493,21 @@ class SaTarget(CommonTarget):
         TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, delete_query)
         TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
-    def get_ae_was_sql_text_cluster_cnt_by_grouping(self, extract_cnt):
-        query = AeWasSqlTextSql.SELECT_CLUSTER_CNT_BY_GROUPING
+    def get_cluster_cnt_by_grouping(self, extract_cnt):
+
+        if self.config['intermax_repo']['use']:
+            query = AeWasSqlTextSql.SELECT_CLUSTER_CNT_BY_GROUPING
+            table_name = TableConstants.AE_WAS_SQL_TEXT
+
+        elif self.config['maxgauge_repo']['use']:
+            query = AeDbSqlTemplateMapSql.SELECT_CLUSTER_CNT_BY_GROUPING
+            table_name = TableConstants.AE_DB_SQL_TEMPLATE_MAP
 
         if extract_cnt > 0:
             query += f"limit {extract_cnt}"
 
         try:
-            result_df = TargetUtils.get_target_data_by_query(self.logger,
-                                                             self.sa_conn,
-                                                             query,
-                                                             TableConstants.AE_WAS_SQL_TEXT)
+            result_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, query, table_name)
         except Exception as e:
             self.logger.exception(e)
         return result_df

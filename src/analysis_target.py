@@ -269,7 +269,8 @@ class SaTarget(CommonTarget):
         for init_file in init_files:
             with open(f"{init_path}{init_file}", mode='r', encoding='utf-8') as file:
                 ddl = file.read()
-                TargetUtils.create_table(self.logger, self.sa_conn, ddl)
+
+            TargetUtils.create_table(self.logger, self.sa_conn, ddl)
 
     def get_ae_was_sql_text(self, chunksize):
         query = SaSqlTextMergeQuery.SELECT_AE_WAS_SQL_TEXT
@@ -344,8 +345,8 @@ class SaTarget(CommonTarget):
                 TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, sa_delete_query)
                 self.logger.info(f"delete query execute : {sa_delete_query}")
 
-                inter_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, query, table_name)
-                TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, inter_df)
+                for df in self.get_table_data_by_chunksize(query, self.extract_chunksize):
+                    TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
             except Exception as e:
                 self.logger.exception(f"{summary_file.split('.')[0]} table, summary insert execute error")
@@ -415,9 +416,9 @@ class SaTarget(CommonTarget):
 
         return f"SELECT {sel} FROM {table}"
 
-    def get_table_data(self, query, chunksize):
+    def get_table_data_by_chunksize(self, query, chunksize, coerce=True):
         conn = self.analysis_engine.connect().execution_options(stream_results=True, )
-        return pd.read_sql_query(text(query), conn, chunksize=chunksize, coerce_float=False)
+        return pd.read_sql_query(text(query), conn, chunksize=chunksize, coerce_float=True if coerce else False)
 
     def insert_target_table_by_dump(self, table, df):
         TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table, df)

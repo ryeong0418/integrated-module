@@ -37,5 +37,7 @@
 	},
 	"sql_debug_flag": false,
 	"data_handling_chunksize": 10000,
-	"sql_match_sensitive": 5
+	"sql_match_sensitive": 5,
+	"sql_match_time": 500,
+	"sql_template_select_only": true
 }

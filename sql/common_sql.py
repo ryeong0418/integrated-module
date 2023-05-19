@@ -48,3 +48,51 @@ class CommonSql:
     DELETE_SUMMARY_TABLE_BY_DATE_QUERY = (
         "delete from #(table_name) where to_char(ten_min_time,'yyyymmdd')='#(date)'"
     )
+
+
+class AeWasSqlTextSql:
+
+    SELECT_BY_NO_CLUSTER_ID = (
+        "select sql_id, sql_text "
+        "from ae_was_sql_text "
+        "where cluster_id is null"
+    )
+
+    UPDATE_BY_NO_ANALYZED_TARGET = (
+        "update ae_was_sql_text set cluster_id = '0' where cluster_id is null"
+    )
+
+    SELECT_CLUSTER_CNT_BY_GROUPING = (
+        "select cluster_id, count(*) as cluster_cnt "
+        "from ae_was_sql_text " 
+        "where 1=1 "
+        "and cluster_id != '0' "
+        "and cluster_id is not null "
+        "group by cluster_id "
+        "order by count(*) desc "
+    )
+
+    UPDATE_CLUSTER_ID_BY_SQL_ID = (
+        "UPDATE ae_was_sql_text set cluster_id = '#(cluster_id)' where sql_id = '#(sql_id)'"
+    )
+
+
+class AeDbSqlTemplateMapSql:
+
+    UPSERT_CLUSTER_ID_BY_SQL_UID = (
+        "INSERT INTO ae_db_sql_template_map (sql_uid, cluster_id) "
+        "VALUES ('#(sql_uid)', '#(cluster_id)') "
+        "ON CONFLICT (sql_uid) "
+        "DO UPDATE "
+        "SET cluster_id = EXCLUDED.cluster_id"
+    )
+
+    SELECT_CLUSTER_CNT_BY_GROUPING = (
+        "select cluster_id, count(*) as cluster_cnt "
+        "from ae_db_sql_template_map " 
+        "where 1=1 "
+        "and cluster_id != '0' "
+        "and cluster_id is not null "
+        "group by cluster_id "
+        "order by count(*) desc "
+    )

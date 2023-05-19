@@ -9,6 +9,7 @@ from src.common.utils import SystemUtils
 from src.common.constants import SystemConstants, ResultConstants
 from src.common.timelogger import TimeLogger
 from src.common.enum_module import ModuleFactoryEnum, MessageEnum
+from src.common.module_exception import ModuleException
 
 from src.module_factory import ModuleFactory
 from src.sql.database import DataBase
@@ -59,6 +60,8 @@ def main_process():
     logger.info("*" * 79)
 
     result = ResultConstants.FAIL
+    result_code = "E001"
+    result_msg = MessageEnum[result_code].value
 
     try:
         fmf = ModuleFactory(logger)
@@ -71,6 +74,12 @@ def main_process():
         result = ResultConstants.SUCCESS
         result_code = 'I001'
         result_msg = MessageEnum[result_code].value
+
+    except ModuleException as me:
+        logger.error(me.error_msg)
+        result = ResultConstants.ERROR
+        result_code = me.error_code
+        result_msg = me.error_msg
 
     except Exception as e:
         logger.exception(e)

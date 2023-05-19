@@ -9,7 +9,7 @@ from src.common.utils import TargetUtils, SystemUtils
 from src.common.constants import TableConstants, SystemConstants
 from src.common.enum_module import ModuleFactoryEnum
 from sql.sql_text_merge_sql import InterMaxSqlTextMergeQuery, SaSqlTextMergeQuery
-from sql.common_sql import CommonSql
+from sql.common_sql import CommonSql, AeWasSqlTextSql, AeDbSqlTemplateMapSql
 from datetime import datetime, timedelta
 
 
@@ -43,6 +43,8 @@ class CommonTarget:
         self.sql_file_root_path = f"{self.config['home']}/" \
                                   f"{SystemConstants.SQL}/" \
                                   f"{ModuleFactoryEnum[self.config['args']['proc']].value}"
+
+        self.update_cluster_cnt = 0
 
     def _insert_meta_data(self, target_infra):
         meta_path = f"{self.sql_file_root_path}/{SystemConstants.META}/{target_infra}/"
@@ -433,3 +435,90 @@ class SaTarget(CommonTarget):
         sa_conn = self.analysis_engine.connect().execution_options(stream_results=True)
         get_read_sql = pd.read_sql_query(text(sql_id_and_sql_text),sa_conn,chunksize=chunksize)
         return get_read_sql
+
+    def update_cluster_id_by_sql_id(self, df):
+        self.logger.info(f"Execute update_cluster_id_by_sql_id query total : {len(df)}")
+        self.update_cluster_cnt = 0
+
+        [self._update_cluster_id_by_sql_id(row) for _, row in df.iterrows()]
+        self.logger.info(f"Execute update_cluster_id_by_sql_id query end : {self.update_cluster_cnt}")
+
+    def _update_cluster_id_by_sql_id(self, row):
+        query = AeWasSqlTextSql.UPDATE_CLUSTER_ID_BY_SQL_ID
+
+        try:
+            exec_query = SystemUtils.sql_replace_to_dict(query,
+                                                         {'cluster_id': row['cluster_id'], 'sql_id': row['sql_id']}
+                                                         )
+            TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, exec_query)
+
+            self.update_cluster_cnt += 1
+        except IntegrityError as ie:
+            self.logger.exception(f"_update_cluster_id_by_sql_id(), update execute error. check sql_id {row['sql_id']}")
+            self.logger.exception(ie)
+            pass
+        except Exception as e:
+            self.logger.exception(f"_update_cluster_id_by_sql_id(), update execute error. check sql_id {row['sql_id']}")
+            self.logger.exception(e)
+
+    def upsert_cluster_id_by_sql_uid(self, df):
+        self.logger.info(f"Execute upsert_cluster_id_by_sql_uid query total : {len(df)}")
+        self.update_cluster_cnt = 0
+
+        [self._upsert_cluster_id_by_sql_uid(row) for _, row in df.iterrows()]
+        self.logger.info(f"Execute upsert_cluster_id_by_sql_uid query end : {self.update_cluster_cnt}")
+
+    def _upsert_cluster_id_by_sql_uid(self, row):
+        query = AeDbSqlTemplateMapSql.UPSERT_CLUSTER_ID_BY_SQL_UID
+
+        try:
+            exec_query = SystemUtils.sql_replace_to_dict(query,
+                                                         {'cluster_id': row['cluster_id'], 'sql_uid': row['sql_uid']}
+                                                         )
+            TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, exec_query)
+
+            self.update_cluster_cnt += 1
+        except IntegrityError as ie:
+            self.logger.exception(f"_update_cluster_id_by_sql_id(), update execute error. check sql_id {row['sql_uid']}")
+            self.logger.exception(ie)
+            pass
+        except Exception as e:
+            self.logger.exception(f"_update_cluster_id_by_sql_id(), update execute error. check sql_id {row['sql_uid']}")
+            self.logger.exception(e)
+
+    def insert_ae_sql_template(self, df):
+        table_name = TableConstants.AE_SQL_TEMPLATE
+        query = CommonSql.DELETE_TABLE_DEFAULT_QUERY
+        delete_query = SystemUtils.sql_replace_to_dict(query, {'table_name': table_name})
+
+        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, delete_query)
+        TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
+
+    def get_cluster_cnt_by_grouping(self, extract_cnt):
+
+        if self.config['intermax_repo']['use']:
+            query = AeWasSqlTextSql.SELECT_CLUSTER_CNT_BY_GROUPING
+            table_name = TableConstants.AE_WAS_SQL_TEXT
+
+        elif self.config['maxgauge_repo']['use']:
+            query = AeDbSqlTemplateMapSql.SELECT_CLUSTER_CNT_BY_GROUPING
+            table_name = TableConstants.AE_DB_SQL_TEMPLATE_MAP
+
+        if extract_cnt > 0:
+            query += f"limit {extract_cnt}"
+
+        try:
+            result_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, query, table_name)
+        except Exception as e:
+            self.logger.exception(e)
+        return result_df
+
+    def get_ae_was_sql_text_by_no_cluster(self, chunk_size):
+        query = AeWasSqlTextSql.SELECT_BY_NO_CLUSTER_ID
+        conn = self.analysis_engine.connect().execution_options(stream_results=True, )
+        return pd.read_sql_query(text(query), conn, chunksize=chunk_size)
+
+    def update_unanalyzed_was_sql_text(self):
+        update_query = AeWasSqlTextSql.UPDATE_BY_NO_ANALYZED_TARGET
+
+        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, update_query)

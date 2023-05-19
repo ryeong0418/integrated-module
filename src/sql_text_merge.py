@@ -9,7 +9,7 @@ from src import common_module as cm
 from src.common.timelogger import TimeLogger
 from src.common.constants import SystemConstants
 from src.common.file_export import ParquetFile
-from src.common.utils import SystemUtils
+from src.common.utils import SystemUtils, MaxGaugeUtils
 from src.analysis_target import InterMaxTarget, SaTarget
 
 
@@ -135,7 +135,7 @@ class SqlTextMerge(cm.CommonModule):
 
                         results = self.st.get_all_ae_db_sql_text_by_1seq(df, chunksize=self.CHUNKSIZE)
 
-                        grouping_df = self._reconstruct_by_grouping(results)
+                        grouping_df = MaxGaugeUtils.reconstruct_by_grouping(results)
                         grouping_df = self._preprocessing(grouping_df)
 
                         if pqwriter is None:

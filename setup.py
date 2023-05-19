@@ -37,7 +37,8 @@ setup(
     package_data={
         "resources": [
             '*/*-prod.json',
-            '*/*-dev.json'
+            '*/*-dev.json',
+            'drain/drain3.ini'
         ],
         "sql": [
             '*/*/*.txt',
@@ -47,7 +48,7 @@ setup(
             '../export/sql_csv/sql/*.txt',
             '../package/setup/*',
             '../bin/*.sh',
-            '../*.bat,',
+            '../*.bat',
             '../docs/*.pptx'
         ]
     }

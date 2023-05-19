@@ -12,12 +12,11 @@ class SystemConstants:
     LOGGER_FILE_PREFIX = 'logger-'
     LOGGER_FILE_SUFFIX = '.json'
 
-    # logger master 파일 이름
+    # logger 파일 이름
     MASTER_LOG_FILE_NAME = 'master'
     ETC_LOG_FILE_NAME = 'etc'
-
-    # logger scheduler 파일 이름
     SCHEDULER_LOG_FILE_NAME = 'scheduler'
+    SQL_TEXT_TEMPLATE_LOG_FILE_NAME = 'sql_text_template'
 
     # logs 폴더명
     LOGGER_PATH = 'logs'
@@ -31,11 +30,7 @@ class SystemConstants:
     # export 폴더명
     EXPORT_PARQUET_PATH = 'export/parquet'
     EXPORT_ETC_PATH = 'export/etc'
-
-    #sql path
     SQL_PATH = 'export/sql_excel/sql'
-
-    #excel_path
     EXCEL_PATH = 'export/sql_excel/excel'
 
     # batch_pid_tmp
@@ -46,6 +41,9 @@ class SystemConstants:
     SQL = 'sql'
     DDL = 'ddl'
     META = 'meta'
+
+    # sql_text_template 관련 파일 경로
+    DRAIN_CONF_PATH = '/resources/drain/'
 
 
 class TableConstants:
@@ -72,6 +70,8 @@ class TableConstants:
     AE_JVM_STAT_SUMMARY = "ae_jvm_stat_summary"
     AE_WAS_OS_STAT_OSM = "ae_was_os_stat_osm"
     AE_EXECUTE_LOG = "ae_execute_log"
+    AE_SQL_TEMPLATE = "ae_sql_template"
+    AE_DB_SQL_TEMPLATE_MAP = "ae_db_sql_template_map"
 
 
 class ResultConstants:
@@ -79,3 +79,20 @@ class ResultConstants:
     FAIL = 'F'
     ERROR = 'E'
     PROGRESS = 'P'
+
+
+class DrainConstants:
+    # drain ini 파일 이름
+    DRAIN_INI_FILE_NAME = 'drain3.ini'
+
+    # sql_text_template model 파일 이름
+    DRAIN_SELECT_MODEL_FILE_NAME = 'select_sql_text_template.bin'
+    DRAIN_ETC_MODEL_FILE_NAME = 'etc_sql_text_template.bin'
+
+    # sql_text_template tree 파일 이름 debug용
+    DRAIN_SELECT_TEMPLATE_TREE_FILE_NAME = 'select_sql_text_template.tree'
+    DRAIN_ETC_TEMPLATE_TREE_FILE_NAME = 'etc_sql_text_template.tree'
+
+    # cluster_id custom tag
+    SELECT_TEMPLATE_CLUSTER_ID_PREFIX = 'S_'
+    ETC_TEMPLATE_CLUSTER_ID_PREFIX = 'E_'

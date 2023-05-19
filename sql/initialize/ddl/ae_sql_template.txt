@@ -1,0 +1,8 @@
+CREATE TABLE ae_sql_template(
+    cluster_id varchar(20) not null,
+    sql_template text null,
+    cluster_cnt int8,
+    create_dt timestamp with time zone default current_timestamp,
+    create_id varchar(20) default 'system' not NULL,
+    constraint pk_ae_sql_template primary key (cluster_id)
+)

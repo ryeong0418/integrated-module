@@ -83,13 +83,17 @@ class CommonTarget:
         meta_df = TargetUtils.get_target_data_by_query(self.logger, target_conn, query, table_name,)
         TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, meta_df)
 
+    @staticmethod
+    def _create_engine(engine_template):
+        return create_engine(engine_template, pool_size=20, max_overflow=20)
+
 
 class InterMaxTarget(CommonTarget):
 
     def init_process(self):
         self.im_conn = db.connect(self.im_conn_str)
-        self.analysis_engine = create_engine(self.analysis_engine_template, pool_size=20, max_overflow=20)
-        self.im_engine = create_engine(self.im_engine_template, pool_size=20, max_overflow=20)
+        self.analysis_engine = self._create_engine(self.analysis_engine_template)
+        self.im_engine = self._create_engine(self.im_engine_template)
 
     def insert_intermax_meta(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
@@ -176,8 +180,8 @@ class MaxGaugeTarget(CommonTarget):
 
     def init_process(self):
         self.mg_conn = db.connect(self.mg_conn_str)
-        self.analysis_engine = create_engine(self.analysis_engine_template, pool_size=20, max_overflow=20)
-        self.mg_engine = create_engine(self.mg_engine_template, pool_size=20, max_overflow=20)
+        self.analysis_engine = self._create_engine(self.analysis_engine_template)
+        self.mg_engine = self._create_engine(self.mg_engine_template)
 
     def insert_maxgauge_meta(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
@@ -234,7 +238,7 @@ class SaTarget(CommonTarget):
 
     def init_process(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
-        self.analysis_engine = create_engine(self.analysis_engine_template, pool_size=20, max_overflow=20)
+        self.analysis_engine = self._create_engine(self.analysis_engine_template)
 
         self.sa_cursor = self.sa_conn.cursor()
 

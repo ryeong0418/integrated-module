@@ -10,7 +10,7 @@ from src.common.utils import SystemUtils
 class Visualization(cm.CommonModule):
 
     def __init__(self, logger):
-        super.__init__(logger)
+        super().__init__(logger)
 
     def main_process(self):
 

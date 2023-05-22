@@ -1,4 +1,0 @@
-
-SELECT * FROM dblink('#(intermax_db_info)','select was_id from xapm_was_info where was_name ilike ''%tmax%'' or was_name like ''%닷넷%''')
-AS t(was_id int4)
-WHERE was_id NOT IN (SELECT was_id FROM ae_was_dev_map);

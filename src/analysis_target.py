@@ -138,7 +138,7 @@ class InterMaxTarget(CommonTarget):
                     self.logger.exception(f"{table_name} table, {date} date detail data insert error")
                     self.logger.exception(e)
 
-        #self._set_insert_xapm_sql_text()
+        self._set_insert_xapm_sql_text()
 
     def _execute_insert_intermax_detail_data(self, query, table_name):
         im_conn = self.im_engine.connect().execution_options(stream_results=True)

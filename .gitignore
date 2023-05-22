@@ -5,7 +5,12 @@
 ./job/log
 ./job/log/*
 
-export/
+# export path
+export/etc/
+export/parquet
+export/sql_excel/excel/*.xlsx
+export/sql_excel/sql/*.txt
+
 
 *.pyc
 
@@ -235,9 +240,6 @@ logs/
 
 # local config, logger
 resources/**/*-local.json
-
-# export file
-export_file/
 
 # package lib
 package/setup

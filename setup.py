@@ -45,7 +45,7 @@ setup(
             '*/*/*/*.txt'
         ],
         "": [
-            '../export/sql_csv/sql/*.txt',
+            '../export/sql_excel/sql/*.txt',
             '../package/setup/*',
             '../bin/*.sh',
             '../*.bat',

@@ -1,13 +1,6 @@
 
 class CommonSql:
 
-    SELECT_AE_DB_INFO = (
-        """
-        SELECT db_id, instance_name FROM ae_db_info
-        ORDER BY db_id asc
-        """
-    )
-
     SELECT_TABLE_COLUMN_TYPE = (
         """
         SELECT column_name, data_type 
@@ -52,6 +45,10 @@ class CommonSql:
 
 class AeWasSqlTextSql:
 
+    SELECT_AE_WAS_SQL_TEXT = (
+        "select sql_id, sql_text_100, sql_text from ae_was_sql_text"
+    )
+
     SELECT_BY_NO_CLUSTER_ID = (
         "select sql_id, sql_text "
         "from ae_was_sql_text "
@@ -76,6 +73,20 @@ class AeWasSqlTextSql:
         "UPDATE ae_was_sql_text set cluster_id = '#(cluster_id)' where sql_id = '#(sql_id)'"
     )
 
+    SELECT_SQL_ID_AND_SQL_TEXT = (
+        """
+        select AWST.sql_id, AWST.sql_text, AWST.sql_text_100
+        from ae_was_sql_text AWST
+        where exists (select 'X'
+                      from ae_txn_sql_detail ATSD
+                      where AWST.sql_id = ATSD.sql_id
+                      and ATSD.TIME >= '""" + "#(StartDate)" + """'::timestamp
+                      and ATSD.TIME < '""" + "#(EndDate)" + """'::timestamp
+                      and ATSD.elapsed_time >= #(seconds)
+        )
+        """
+    )
+
 
 class AeDbSqlTemplateMapSql:
 
@@ -95,4 +106,45 @@ class AeDbSqlTemplateMapSql:
         "and cluster_id is not null "
         "group by cluster_id "
         "order by count(*) desc "
+    )
+
+
+class AeDbInfoSql:
+
+    SELECT_AE_DB_INFO = (
+        """
+        SELECT db_id, instance_name FROM ae_db_info
+        ORDER BY db_id asc
+        """
+    )
+
+
+class AeDbSqlTextSql:
+
+    SELECT_AE_DB_SQL_TEXT_1SEQ = (
+        """
+        select sql_uid,            
+            partition_key             		   
+        from ae_db_sql_text
+        where 1=1 
+        and partition_key = #(partition_key)
+        and seq = 1
+        """
+    )
+
+    SELECT_AE_DB_SQL_TEXT_WITH_DATA = (
+        """
+            with data(sql_uid, partition_key) as (
+                values %s
+            )
+            select ae.sql_text
+                 , ae.partition_key
+                 , ae.sql_uid
+                 , ae.seq             
+            from ae_db_sql_text ae
+            JOIN data d
+            ON ae.sql_uid = d.sql_uid
+            AND ae.partition_key = d.partition_key
+            order by ae.partition_key asc, ae.sql_uid asc, ae.seq asc
+        """
     )

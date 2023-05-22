@@ -312,6 +312,9 @@ class TargetUtils:
             sa_conn.commit()
             cursor.close()
 
+
+class InterMaxUtils:
+
     @staticmethod
     def set_intermax_date(input_date, input_interval):
         date_conditions = []
@@ -320,18 +323,6 @@ class TargetUtils:
             from_date = datetime.strptime(str(input_date), '%Y%m%d')
             date_condition = from_date + timedelta(days=i - 1)
             date_condition = date_condition.strftime('%Y%m%d')
-            date_conditions.append(date_condition)
-
-        return date_conditions
-
-    @staticmethod
-    def set_maxgauge_date(input_date, input_interval):
-        date_conditions = []
-
-        for i in range(1,int(input_interval)+1):
-            from_date = datetime.strptime(str(input_date), '%Y%m%d')
-            date_condition = from_date + timedelta(days=i - 1)
-            date_condition = date_condition.strftime('%y%m%d')
             date_conditions.append(date_condition)
 
         return date_conditions
@@ -350,3 +341,15 @@ class MaxGaugeUtils:
         results_df = results_df.groupby(['sql_uid', 'partition_key'], as_index=False).agg({'sql_text': ''.join})
         results_df.drop(columns='partition_key', inplace=True)
         return results_df
+
+    @staticmethod
+    def set_maxgauge_date(input_date, input_interval):
+        date_conditions = []
+
+        for i in range(1,int(input_interval)+1):
+            from_date = datetime.strptime(str(input_date), '%Y%m%d')
+            date_condition = from_date + timedelta(days=i - 1)
+            date_condition = date_condition.strftime('%y%m%d')
+            date_conditions.append(date_condition)
+
+        return date_conditions

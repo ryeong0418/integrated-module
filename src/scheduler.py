@@ -21,7 +21,7 @@ CRON = 'cron'
 class Scheduler(cm.CommonModule):
 
     def __init__(self, logger):
-        self.logger = logger
+        super().__init__(logger)
         self.scheduler_logger = None
         self.main_scheduler: BlockingScheduler = None
         self.bg_scheduler: BackgroundScheduler = None

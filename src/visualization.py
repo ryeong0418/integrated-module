@@ -3,7 +3,6 @@ from pathlib import Path
 from datetime import datetime
 
 from src import common_module as cm
-from src.analysis_target import SaTarget
 from src.common.constants import SystemConstants
 from src.common.utils import SystemUtils
 
@@ -11,16 +10,12 @@ from src.common.utils import SystemUtils
 class Visualization(cm.CommonModule):
 
     def __init__(self, logger):
-
-        self.logger = logger
-        self.logger.info("visualization init")
-        self.st = None
+        super.__init__(logger)
 
     def main_process(self):
 
         self.logger.debug('Visualization')
-        self.st = SaTarget(self.logger, self.config)
-        self.st.init_process()
+        self._init_sa_target()
 
         query_folder = self.config['home'] + '/' + SystemConstants.SQL_PATH
         excel_path = self.config['home'] + '/' + SystemConstants.EXCEL_PATH
@@ -48,6 +43,3 @@ class Visualization(cm.CommonModule):
 
             else:
                 SystemUtils.excel_export(excel_file, sheet_name_txt, result_df)
-
-
-

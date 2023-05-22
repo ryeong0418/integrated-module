@@ -5,11 +5,10 @@ import psycopg2.extras
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import IntegrityError
 
-from src.common.utils import TargetUtils, SystemUtils
+from src.common.utils import TargetUtils, SystemUtils, InterMaxUtils, MaxGaugeUtils
 from src.common.constants import TableConstants, SystemConstants
 from src.common.enum_module import ModuleFactoryEnum
-from sql.sql_text_merge_sql import InterMaxSqlTextMergeQuery, SaSqlTextMergeQuery
-from sql.common_sql import CommonSql, AeWasSqlTextSql, AeDbSqlTemplateMapSql
+from sql.common_sql import CommonSql, AeWasSqlTextSql, AeDbSqlTemplateMapSql, AeDbInfoSql, AeDbSqlTextSql
 from datetime import datetime, timedelta
 
 
@@ -96,12 +95,6 @@ class InterMaxTarget(CommonTarget):
 
         self._insert_meta_data('was')
 
-    def get_xapm_sql_text(self, chunksize):
-        query = InterMaxSqlTextMergeQuery.SELECT_XAPM_SQL_TEXT
-
-        conn = self.im_engine.connect().execution_options(stream_results=True,)
-        return pd.read_sql_query(text(query), conn, chunksize=chunksize)
-
     def insert_ae_sql_text(self, filtered_df):
         table_name = TableConstants.AE_SQL_TEXT
         TargetUtils.default_insert_data(self.logger, self.analysis_engine, table_name, filtered_df)
@@ -114,7 +107,7 @@ class InterMaxTarget(CommonTarget):
         extractor_files = SystemUtils.get_filenames_from_path(extractor_file_path)
         delete_query = CommonSql.DELETE_TABLE_BY_DATE_QUERY
 
-        date_conditions = TargetUtils.set_intermax_date(self.config['args']['s_date'], self.config['args']['interval'])
+        date_conditions = InterMaxUtils.set_intermax_date(self.config['args']['s_date'], self.config['args']['interval'])
 
         for extractor_file in extractor_files:
 
@@ -199,8 +192,8 @@ class MaxGaugeTarget(CommonTarget):
     def insert_maxgauge_detail_data(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
 
-        date_conditions = TargetUtils.set_maxgauge_date(self.config['args']['s_date'], self.config['args']['interval'])
-        ae_db_info_query = CommonSql.SELECT_AE_DB_INFO
+        date_conditions = MaxGaugeUtils.set_maxgauge_date(self.config['args']['s_date'], self.config['args']['interval'])
+        ae_db_info_query = AeDbInfoSql.SELECT_AE_DB_INFO
         ae_db_info_name = TableConstants.AE_DB_INFO
 
         db_info_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, ae_db_info_query, ae_db_info_name)
@@ -273,18 +266,18 @@ class SaTarget(CommonTarget):
             TargetUtils.create_table(self.logger, self.sa_conn, ddl)
 
     def get_ae_was_sql_text(self, chunksize):
-        query = SaSqlTextMergeQuery.SELECT_AE_WAS_SQL_TEXT
+        query = AeWasSqlTextSql.SELECT_AE_WAS_SQL_TEXT
         conn = self.analysis_engine.connect().execution_options(stream_results=True,)
         return pd.read_sql_query(text(query), conn, chunksize=chunksize)
 
     def get_ae_db_sql_text_by_1seq(self, partition_key, chunksize):
         replace_dict = {'partition_key': partition_key}
-        query = SystemUtils.sql_replace_to_dict(SaSqlTextMergeQuery.SELECT_AE_DB_SQL_TEXT_1SEQ, replace_dict)
+        query = SystemUtils.sql_replace_to_dict(AeDbSqlTextSql.SELECT_AE_DB_SQL_TEXT_1SEQ, replace_dict)
 
         return pd.read_sql_query(query, self.sa_conn, chunksize=chunksize)
 
     def get_all_ae_db_sql_text_by_1seq(self, df, chunksize):
-        query_with_data = SaSqlTextMergeQuery.SELECT_AE_DB_SQL_TEXT_WITH_DATA
+        query_with_data = AeDbSqlTextSql.SELECT_AE_DB_SQL_TEXT_WITH_DATA
 
         params = tuple(df.itertuples(index=False, name=None))
 
@@ -360,7 +353,7 @@ class SaTarget(CommonTarget):
         return df
 
     def get_maxgauge_date_conditions(self,):
-        return TargetUtils.set_maxgauge_date(self.config['args']['s_date'], self.config['args']['interval'])
+        return MaxGaugeUtils.set_maxgauge_date(self.config['args']['s_date'], self.config['args']['interval'])
 
     def insert_merged_result(self, merged_df):
         table_name = TableConstants.AE_SQL_TEXT
@@ -379,7 +372,7 @@ class SaTarget(CommonTarget):
         self.logger.info(f"Matching Data except duplicate, Insert rows : {total_len}")
 
     def get_ae_db_info(self):
-        query = CommonSql.SELECT_AE_DB_INFO
+        query = AeDbInfoSql.SELECT_AE_DB_INFO
         table_name = TableConstants.AE_DB_INFO
 
         df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, query, table_name, )
@@ -429,7 +422,7 @@ class SaTarget(CommonTarget):
         e_date = s_date + timedelta(days=int(self.config['args']['interval']))
 
         date_dict = {'StartDate': str(s_date), 'EndDate': str(e_date), 'seconds': str(self.sql_match_time)}
-        query = SaSqlTextMergeQuery.SELECT_SQL_ID_AND_SQL_TEXT
+        query = AeWasSqlTextSql.SELECT_SQL_ID_AND_SQL_TEXT
         sql_id_and_sql_text = SystemUtils.sql_replace_to_dict(query, date_dict)
 
         sa_conn = self.analysis_engine.connect().execution_options(stream_results=True)

@@ -19,7 +19,7 @@ from resources.logger_manager import Logger
 class SqlTextTemplate(cm.CommonModule):
 
     def __init__(self, logger):
-        self.logger = logger
+        super().__init__(logger)
         self.sql_text_template_logger = None
         self.chunk_size = 0
         self.sql_template_select_only = False

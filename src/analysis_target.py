@@ -45,6 +45,20 @@ class CommonTarget:
 
         self.update_cluster_cnt = 0
 
+    def __del__(self):
+        if self.im_conn:
+            self.im_conn.close()
+        if self.sa_conn:
+            self.sa_conn.close()
+        if self.mg_conn:
+            self.mg_conn.close()
+        if self.analysis_engine:
+            self.analysis_engine.dispose()
+        if self.im_engine:
+            self.im_engine.dispose()
+        if self.mg_engine:
+            self.mg_engine.dispose()
+
     def _insert_meta_data(self, target_infra):
         meta_path = f"{self.sql_file_root_path}/{SystemConstants.META}/{target_infra}/"
         meta_files = SystemUtils.get_filenames_from_path(meta_path)
@@ -74,19 +88,8 @@ class InterMaxTarget(CommonTarget):
 
     def init_process(self):
         self.im_conn = db.connect(self.im_conn_str)
-        self.analysis_engine = create_engine(self.analysis_engine_template)
-        self.im_engine = create_engine(self.im_engine_template)
-
-    def create_im_engine(self):
-        self.im_engine = create_engine(self.im_engine_template)
-
-    def __del__(self):
-        if self.im_conn:
-            self.im_conn.close()
-        if self.sa_conn:
-            self.sa_conn.close()
-        if self.analysis_engine:
-            self.analysis_engine.dispose()
+        self.analysis_engine = create_engine(self.analysis_engine_template, pool_size=20, max_overflow=20)
+        self.im_engine = create_engine(self.im_engine_template, pool_size=20, max_overflow=20)
 
     def insert_intermax_meta(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
@@ -173,16 +176,8 @@ class MaxGaugeTarget(CommonTarget):
 
     def init_process(self):
         self.mg_conn = db.connect(self.mg_conn_str)
-        self.analysis_engine = create_engine(self.analysis_engine_template)
-        self.mg_engine = create_engine(self.mg_engine_template)
-
-    def __del__(self):
-        if self.mg_conn:
-            self.mg_conn.close()
-        if self.sa_conn:
-            self.sa_conn.close()
-        if self.analysis_engine:
-            self.analysis_engine.dispose()
+        self.analysis_engine = create_engine(self.analysis_engine_template, pool_size=20, max_overflow=20)
+        self.mg_engine = create_engine(self.mg_engine_template, pool_size=20, max_overflow=20)
 
     def insert_maxgauge_meta(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
@@ -239,21 +234,13 @@ class SaTarget(CommonTarget):
 
     def init_process(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
-        self.analysis_engine = create_engine(self.analysis_engine_template)
+        self.analysis_engine = create_engine(self.analysis_engine_template, pool_size=20, max_overflow=20)
 
         self.sa_cursor = self.sa_conn.cursor()
 
         self.logger.info(f"analysis_repo DB 접속 정보 {self.analysis_conn_str}")
         self.logger.info(f"intermax_repo DB 접속 정보 {self.im_conn_str}")
         self.logger.info(f"maxgauge_repo DB 접속 정보 {self.mg_conn_str}")
-
-        self.analysis_engine = create_engine(self.analysis_engine_template)
-
-    def __del__(self):
-        if self.sa_cursor:
-            self.sa_cursor.close()
-        if self.sa_conn:
-            self.sa_conn.close()
 
     def create_table(self):
         init_path = f"{self.sql_file_root_path}/{SystemConstants.DDL}/"

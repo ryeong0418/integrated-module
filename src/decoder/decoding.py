@@ -3,7 +3,6 @@ from urllib.parse import quote_plus
 from urllib import parse
 import urllib.parse
 
-
 class Decoding:
 
     def convertBindList(bindList):
@@ -28,8 +27,14 @@ class Decoding:
             return str
 
         def h2d(val):
-            hex_num = int(val, 16)  # val을 16진수로 변경
-            return hex_num
+
+            try:
+                hex_num = int(val, 16)  # val을 16진수로 변경
+                return hex_num
+
+            except ValueError:
+                hex_num = None
+                return hex_num
 
         def h2f(val):
             hex = int('0x' + val, 16)  # '0x'+val을 16진수로 변경
@@ -89,7 +94,7 @@ class Decoding:
             return ((high & 0xfffff) | 0x100000) * 1.0 / pow(2, 52 - 32) * pow(2, e) + low * 1.0 / pow(2, 52) * pow(2, e)
 
         def h2c(val):
-            str_ = ''
+            b_str = ''
             ix = 0
             ixLen = len(val)
             result = ''
@@ -108,7 +113,7 @@ class Decoding:
 
             finally:
                 ix = None
-                str_ = None
+                b_str = None
 
         if bindList:
 

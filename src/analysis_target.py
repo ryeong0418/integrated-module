@@ -11,8 +11,7 @@ from src.common.enum_module import ModuleFactoryEnum
 from sql.sql_text_merge_sql import InterMaxSqlTextMergeQuery, SaSqlTextMergeQuery
 from sql.common_sql import CommonSql
 from datetime import datetime, timedelta
-from src.decoding import Decoding
-import json
+
 
 class CommonTarget:
 
@@ -139,20 +138,15 @@ class InterMaxTarget(CommonTarget):
                     self.logger.exception(f"{table_name} table, {date} date detail data insert error")
                     self.logger.exception(e)
 
-        self._set_insert_xapm_sql_text()
+        #self._set_insert_xapm_sql_text()
 
     def _execute_insert_intermax_detail_data(self, query, table_name):
         im_conn = self.im_engine.connect().execution_options(stream_results=True)
         get_read_sql_query = pd.read_sql_query(text(query), im_conn, chunksize=self.extract_chunksize)
 
-        if table_name == 'ae_bind_sql_elapse':
-            for df in get_read_sql_query:
-                df['bind_value'] = df['bind_list'].apply(Decoding.convertBindList)
-                df['bind_value'] = list(map(lambda x: json.dumps(x), df['bind_value']))
-                TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine,table_name,df)
-        else:
-            for df in get_read_sql_query:
-                TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
+        for df in get_read_sql_query:
+            df = TargetUtils.add_custom_table_value(df,table_name,self.config['bind_sql_elapse'])
+            TargetUtils.insert_analysis_by_df(self.logger,self.analysis_engine,table_name,df)
 
     def _set_insert_xapm_sql_text(self):
 

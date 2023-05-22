@@ -1,0 +1,8 @@
+CREATE TABLE AE_HOST_INFO (
+    host_id int8 not null,
+    host_ip varchar(8) not null,
+    host_name varchar(64) not null,
+    host_key varchar(256) null,
+    create_dt timestamp with time zone default current_timestamp,
+    create_id varchar(20) default 'system' not null
+)

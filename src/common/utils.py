@@ -10,7 +10,7 @@ from psycopg2.errorcodes import DUPLICATE_TABLE
 from datetime import datetime, timedelta
 
 from src.common.timelogger import TimeLogger
-
+from src.decoder.decoding import Decoding
 
 class SystemUtils:
 
@@ -335,3 +335,13 @@ class TargetUtils:
             date_conditions.append(date_condition)
 
         return date_conditions
+
+
+    @staticmethod
+    def add_custom_table_value(df,table_name,bind_value_config):
+
+        if bind_value_config and table_name == 'ae_bind_sql_elapse':
+            df['bind_value'] = df['bind_list'].apply(Decoding.convertBindList)
+            df['bind_value'] = df['bind_value'].astype(str)
+
+        return df

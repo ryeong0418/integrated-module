@@ -6,7 +6,7 @@ CREATE TABLE AE_BIND_SQL_ELAPSE(
     bind_list text NULL,
     cursor_id int8 NULL,
     sid int4 NULL,
-    bind_value jsonb NULL,
+    bind_value text NULL,
     create_dt timestamp with time zone default current_timestamp,
     create_id varchar(20) default 'system' not NULL
 )

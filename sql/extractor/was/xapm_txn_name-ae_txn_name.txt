@@ -1,0 +1,3 @@
+select * from dblink('#(intermax_db_info)','select txn_id, txn_name, business_id, business_name from xapm_txn_name') 
+AS t(txn_id varchar, txn_name varchar, business_id int4, business_name varchar) 
+where txn_id not in (select txn_id from ae_txn_name);

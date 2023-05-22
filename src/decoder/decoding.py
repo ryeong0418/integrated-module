@@ -205,6 +205,9 @@ class Decoding:
                     bindValue = h2c(bindSubString(bindLength * 2))
                     result.append({'code': bindCode, 'value': '\'' + bindValue + '\''})
 
+                else:
+                    pass
+
         return result
 
 

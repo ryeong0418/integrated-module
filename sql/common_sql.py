@@ -42,6 +42,10 @@ class CommonSql:
         "delete from #(table_name) where to_char(ten_min_time,'yyyymmdd')='#(date)'"
     )
 
+    TRUNCATE_TABLE_DEFAULT_QUERY = (
+        "truncate table #(table_name)"
+    )
+
 
 class AeWasSqlTextSql:
 

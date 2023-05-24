@@ -472,10 +472,10 @@ class SaTarget(CommonTarget):
 
     def insert_ae_sql_template(self, df):
         table_name = TableConstants.AE_SQL_TEMPLATE
-        query = CommonSql.DELETE_TABLE_DEFAULT_QUERY
-        delete_query = SystemUtils.sql_replace_to_dict(query, {'table_name': table_name})
+        truncate_query = CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY
+        truncate_query = SystemUtils.sql_replace_to_dict(truncate_query, {'table_name': table_name})
 
-        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, delete_query)
+        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, truncate_query)
         TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
     def get_cluster_cnt_by_grouping(self, extract_cnt):

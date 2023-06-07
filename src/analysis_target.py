@@ -49,7 +49,7 @@ class CommonTarget:
         delete_table_query = SystemUtils.sql_replace_to_dict(CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY, replace_dict)
         TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, delete_table_query)
         meta_df = TargetUtils.get_target_data_by_query(self.logger, target_conn, query, table_name,)
-        TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name,meta_df)
+        TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, meta_df)
 
 
 class InterMaxTarget(CommonTarget):

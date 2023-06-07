@@ -17,29 +17,10 @@ class CommonSql:
         """
     )
 
-    # CREATE_DBLINK = (
-    #     """CREATE extension if not exists dblink """
-    # )
-    #
-    # DBLINK_CONNECT = (
-    #     """SELECT dblink_connect('#(intermax_db_info)')"""
-    # )
-    #
-    # SELECT_SQL_ID = (
-    #     """
-    #     select * from dblink('#(intermax_db_info)','select sql_id,sql_text_100,sql_text from xapm_sql_text')
-    #     AS t(sql_id varchar, sql_text_100 varchar, sql_text varchar)
-    #     where sql_id not in (select sql_id from ae_was_sql_text);
-    #     """
-    # )
-
     SELECT_AE_WAS_DEV_MAP = (
         "select was_id from ae_was_dev_map"
     )
 
-    SELECT_WAS_ID_NOT_IN = (
-        "select * from #(table_name)_p#(table_suffix) where was_id not in #(ae_was_dev_map_was_id)"
-    )
 
     DELETE_TABLE_DEFAULT_QUERY = (
         "delete from #(table_name)"

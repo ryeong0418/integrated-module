@@ -306,23 +306,6 @@ class TargetUtils:
         return df
 
     @staticmethod
-    def return_query(logger, sa_conn, query):
-
-        try:
-            cursor = sa_conn.cursor()
-            cursor.execute(query)
-            rows = cursor.fetchall()
-
-            return rows
-
-        except Exception as e:
-            logger.exception(e)
-
-        finally:
-            sa_conn.commit()
-            cursor.close()
-
-    @staticmethod
     def default_sa_execute_query(logger, sa_conn, query):
 
         """

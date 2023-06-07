@@ -80,7 +80,7 @@ class Decoding:
             highbyte = int(val[0:2], 16)
             bn = int('0x' + val, 16)
 
-            if 0x80 and highbyte:
+            if 0x80 & highbyte:
                 bn = int(''.join(['1' if i == '0' else '0' for i in bin(bn)[2:]]), 2) + 1
                 bn = -bn
 

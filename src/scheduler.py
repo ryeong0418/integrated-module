@@ -13,6 +13,7 @@ from src.sql_text_merge import SqlTextMerge
 from src.common.constants import SystemConstants, ResultConstants
 from src.common.utils import SystemUtils
 from src.common.enum_module import ModuleFactoryEnum, MessageEnum
+from src.common.module_exception import ModuleException
 from resources.logger_manager import Logger
 
 CRON = 'cron'
@@ -98,6 +99,10 @@ class Scheduler(cm.CommonModule):
     def _main_job(self):
         start_tm = time.time()
 
+        result = ResultConstants.FAIL
+        result_code = "E001"
+        result_msg = MessageEnum[result_code].value
+
         try:
             db = DataBase(self.config)
             elm = ExecuteLogModel(ModuleFactoryEnum[self.config['args']['proc']].value,
@@ -105,8 +110,6 @@ class Scheduler(cm.CommonModule):
 
             with db.session_scope() as session:
                 session.add(elm)
-
-            result = ResultConstants.FAIL
 
             self._extractor_job()
 
@@ -119,6 +122,13 @@ class Scheduler(cm.CommonModule):
             result = ResultConstants.SUCCESS
             result_code = 'I001'
             result_msg = MessageEnum[result_code].value
+
+        except ModuleException as me:
+            self.logger.error(me.error_msg)
+            result = ResultConstants.ERROR
+            result_code = me.error_code
+            result_msg = me.error_msg
+
         except Exception as e:
             self.logger.exception(e)
             result = ResultConstants.ERROR

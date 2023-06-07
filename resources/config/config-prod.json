@@ -18,12 +18,12 @@
 		"use": true
 	},
 	"analysis_repo": {
-		"db_type": "",
-		"host": "",
-		"port": 0,
-		"sid": "",
-		"user": "",
-		"password": ""
+		"db_type": "postgres",
+		"host": "127.0.0.1",
+		"port": 5432,
+		"sid": "aeproject",
+		"user": "aeproject",
+		"password": "7WRPw6hnKS5KJpUcZF8F"
 	},
 	"scheduler": {
 		"is_alive_sched": {
@@ -31,7 +31,7 @@
 			"minute": "0,30"
 		},
 		"main_sched": {
-			"hour": "2",
+			"hour": "3",
 			"minute": "5"
 		}
 	},

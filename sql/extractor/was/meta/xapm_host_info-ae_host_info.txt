@@ -1,0 +1,5 @@
+select host_id,
+       host_ip,
+       host_name,
+       host_key
+from xapm_host_info

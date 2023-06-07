@@ -1,0 +1,1 @@
+select was_id from xapm_was_info where was_name ilike '%jeus%' or was_name ilike '%test%'

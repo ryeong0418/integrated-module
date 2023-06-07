@@ -44,37 +44,22 @@ class CommonTarget:
                                   f"{SystemConstants.SQL}/" \
                                   f"{ModuleFactoryEnum[self.config['args']['proc']].value}"
 
-    def _insert_meta_data(self, target_infra):
-        meta_path = f"{self.sql_file_root_path}/{SystemConstants.META}/{target_infra}/"
-        meta_files = SystemUtils.get_filenames_from_path(meta_path)
-
-        if target_infra == 'was':
-            target_conn = self.im_conn
-        if target_infra == 'db':
-            target_conn = self.mg_conn
-
-        for meta_file in meta_files:
-
-            with open(f"{meta_path}{meta_file}", mode='r', encoding='utf-8') as file:
-                query = file.read()
-
-            table_name = SystemUtils.extract_tablename_in_filename(meta_file)
-            self._execute_insert_meta(query, table_name, target_conn)
-
     def _execute_insert_meta(self, query, table_name, target_conn):
         replace_dict = {'table_name': table_name}
-        delete_table_query = SystemUtils.sql_replace_to_dict(CommonSql.DELETE_TABLE_DEFAULT_QUERY, replace_dict)
+        delete_table_query = SystemUtils.sql_replace_to_dict(CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY, replace_dict)
         TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, delete_table_query)
         meta_df = TargetUtils.get_target_data_by_query(self.logger, target_conn, query, table_name,)
-        TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, meta_df)
+        TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name,meta_df)
 
 
 class InterMaxTarget(CommonTarget):
 
     def init_process(self):
         self.im_conn = db.connect(self.im_conn_str)
+        self.analysis_engine = create_engine(self.analysis_engine_template, pool_size=20, max_overflow=20, pool_pre_ping=True, pool_recycle=3600)
         self.analysis_engine = create_engine(self.analysis_engine_template)
         self.im_engine = create_engine(self.im_engine_template)
+        self.sa_conn = db.connect(self.analysis_conn_str)
 
     def create_im_engine(self):
         self.im_engine = create_engine(self.im_engine_template)
@@ -87,13 +72,6 @@ class InterMaxTarget(CommonTarget):
         if self.analysis_engine:
             self.analysis_engine.dispose()
 
-    def insert_intermax_meta(self):
-        self.sa_conn = db.connect(self.analysis_conn_str)
-
-        self._create_dblink_query()
-
-        self._insert_meta_data('was')
-
     def get_xapm_sql_text(self, chunksize):
         query = InterMaxSqlTextMergeQuery.SELECT_XAPM_SQL_TEXT
 
@@ -103,6 +81,24 @@ class InterMaxTarget(CommonTarget):
     def insert_ae_sql_text(self, filtered_df):
         table_name = TableConstants.AE_SQL_TEXT
         TargetUtils.default_insert_data(self.logger, self.analysis_engine, table_name, filtered_df)
+
+    def insert_intermax_meta_data(self):
+
+        self.sa_conn = db.connect(self.analysis_conn_str)
+        extractor_file_path = f"{self.sql_file_root_path}/was/meta/"
+        extractor_files = SystemUtils.get_filenames_from_path(extractor_file_path)
+
+        for extractor_file in extractor_files:
+            with open(f"{extractor_file_path}{extractor_file}", mode='r', encoding='utf-8') as file:
+                query = file.read()
+
+            table_name = SystemUtils.extract_tablename_in_filename(extractor_file)
+
+            if table_name == "ae_was_dev_map":
+                self._excute_upsert_intermax_data(query, table_name)
+
+            else:
+                self._execute_insert_meta(query, table_name, self.im_conn)
 
     def insert_intermax_detail_data(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
@@ -116,64 +112,61 @@ class InterMaxTarget(CommonTarget):
 
         for extractor_file in extractor_files:
 
-            with open(f"{extractor_file_path}{extractor_file}", mode='r', encoding='utf-8') as file:
-                query = file.read()
+            if extractor_file.endswith('.txt'):
 
-            table_name = SystemUtils.extract_tablename_in_filename(extractor_file)
+                with open(f"{extractor_file_path}{extractor_file}", mode='r', encoding='utf-8') as file:
+                    query = file.read()
 
-            for date in date_conditions:
-                table_suffix_dict = {'table_suffix': date}
+                table_name = SystemUtils.extract_tablename_in_filename(extractor_file)
 
-                detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
-                delete_dict = {'table_name': table_name, 'date': date}
+                for date in date_conditions:
 
-                try:
-                    im_delete_query = SystemUtils.sql_replace_to_dict(delete_query, delete_dict)
-                    self.logger.info(f"delete query execute : {im_delete_query}")
+                    table_suffix_dict = {'table_suffix': date}
+                    detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
+                    delete_dict = {'table_name': table_name, 'date': date}
 
-                    TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, im_delete_query)
-                    self._execute_insert_intermax_detail_data(detail_query, table_name)
+                    if table_name == "ae_was_sql_text" or table_name == "ae_txn_name":
+                        self._excute_upsert_intermax_data(detail_query, table_name)
 
-                except Exception as e:
-                    self.logger.exception(f"{table_name} table, {date} date detail data insert error")
-                    self.logger.exception(e)
+                    else:
 
-        self._set_insert_xapm_sql_text()
+                        try:
+                            im_delete_query = SystemUtils.sql_replace_to_dict(delete_query, delete_dict)
+                            self.logger.info(f"delete query execute : {im_delete_query}")
+                            TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, im_delete_query)
+
+                            if table_name == "ae_bind_sql_elapse" or table_name == "ae_was_os_stat_osm":
+                                self._execute_insert_intermax_detail_data(detail_query, table_name)
+
+                            else:
+                                self._excute_insert_dev_except_data(detail_query,table_name)
+
+                        except Exception as e:
+                            self.logger.exception(f"{table_name} table, {date} date detail data insert error")
+                            self.logger.exception(e)
+
+    def _excute_upsert_intermax_data(self,query,table_name):
+        im_conn = self.im_engine.connect().execution_options(stream_results=True)
+        get_read_sql_query = pd.read_sql_query(text(query), im_conn, chunksize=self.extract_chunksize)
+        for query_df in get_read_sql_query:
+            df = TargetUtils.meta_table_value(table_name, query_df)
+            TargetUtils.psql_insert_copy(self.logger,table_name, self.analysis_engine, df)
 
     def _execute_insert_intermax_detail_data(self, query, table_name):
         im_conn = self.im_engine.connect().execution_options(stream_results=True)
         get_read_sql_query = pd.read_sql_query(text(query), im_conn, chunksize=self.extract_chunksize)
-
         for df in get_read_sql_query:
             df = TargetUtils.add_custom_table_value(df,table_name,self.config['bind_sql_elapse'])
             TargetUtils.insert_analysis_by_df(self.logger,self.analysis_engine,table_name,df)
 
-    def _set_insert_xapm_sql_text(self):
+    def _excute_insert_dev_except_data(self,query,table_name):
+        im_conn = self.im_engine.connect().execution_options(stream_results=True)
+        get_read_sql_query = pd.read_sql_query(text(query), im_conn, chunksize=self.extract_chunksize)
+        for detail_df in get_read_sql_query:
+            ae_dev_map_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, CommonSql.SELECT_AE_WAS_DEV_MAP,table_name)
+            was_id_except_df = detail_df[~detail_df['was_id'].isin(ae_dev_map_df['was_id'])]
+            TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, was_id_except_df)
 
-        self._dblink_connect()
-
-        self._insert_new_xapm_sql_text()
-
-    def _create_dblink_query(self):
-        create_dblink_query = CommonSql.CREATE_DBLINK
-        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, create_dblink_query)
-
-    def _dblink_connect(self):
-        dblink_connect_query = CommonSql.DBLINK_CONNECT
-        intermax_db_info = {'intermax_db_info': self.im_conn_str}
-        dblink_query = SystemUtils.sql_replace_to_dict(dblink_connect_query, intermax_db_info)
-        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, dblink_query)
-
-    def _insert_new_xapm_sql_text(self):
-        sql_id_query = CommonSql.SELECT_SQL_ID
-        intermax_db_info = {'intermax_db_info': self.im_conn_str}
-        select_sql_id_query = SystemUtils.sql_replace_to_dict(sql_id_query, intermax_db_info)
-        sa_conn = self.analysis_engine.connect().execution_options(stream_results=True)
-        get_read_sql = pd.read_sql_query(text(select_sql_id_query),sa_conn,chunksize=self.extract_chunksize)
-        table_name = TableConstants.AE_WAS_SQL_TEXT
-
-        for df in get_read_sql:
-            TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
 
 class MaxGaugeTarget(CommonTarget):
@@ -191,10 +184,19 @@ class MaxGaugeTarget(CommonTarget):
         if self.analysis_engine:
             self.analysis_engine.dispose()
 
-    def insert_maxgauge_meta(self):
-        self.sa_conn = db.connect(self.analysis_conn_str)
 
-        self._insert_meta_data('db')
+    def insert_maxgauge_meta_data(self):
+        self.sa_conn = db.connect(self.analysis_conn_str)
+        extractor_file_path = f"{self.sql_file_root_path}/db/meta/"
+        extractor_files = SystemUtils.get_filenames_from_path(extractor_file_path)
+
+        for extractor_file in extractor_files:
+            with open(f"{extractor_file_path}{extractor_file}", mode='r', encoding='utf-8') as file:
+                query = file.read()
+
+            table_name = SystemUtils.extract_tablename_in_filename(extractor_file)
+            self._execute_insert_meta(query,table_name,self.mg_conn)
+
 
     def insert_maxgauge_detail_data(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
@@ -211,29 +213,31 @@ class MaxGaugeTarget(CommonTarget):
 
         for extractor_file in extractor_files:
 
-            with open(f"{extractor_file_path}{extractor_file}", mode='r', encoding='utf-8') as file:
-                query = file.read()
+            if extractor_file.endswith('.txt'):
 
-            table_name = SystemUtils.extract_tablename_in_filename(extractor_file)
+                with open(f"{extractor_file_path}{extractor_file}", mode='r', encoding='utf-8') as file:
+                    query = file.read()
 
-            for _, row in db_info_df.iterrows():
-                db_id = str(row["db_id"]).zfill(3)
-                instance_name = str(row["instance_name"])
+                table_name = SystemUtils.extract_tablename_in_filename(extractor_file)
 
-                for date in date_conditions:
-                    table_suffix_dict = {'instance_name': instance_name, 'partition_key': date + db_id}
-                    delete_suffix_dict = {'table_name': table_name, 'partition_key': date + db_id}
+                for _, row in db_info_df.iterrows():
+                    db_id = str(row["db_id"]).zfill(3)
+                    instance_name = str(row["instance_name"])
 
-                    try:
-                        mg_delete_query = SystemUtils.sql_replace_to_dict(delete_query, delete_suffix_dict)
-                        self.logger.info(f"delete query execute : {mg_delete_query}")
-                        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, mg_delete_query)
+                    for date in date_conditions:
+                        table_suffix_dict = {'instance_name': instance_name, 'partition_key': date + db_id}
+                        delete_suffix_dict = {'table_name': table_name, 'partition_key': date + db_id}
 
-                        detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
-                        self._execute_insert_maxgauge_detail_data(detail_query, table_name)
-                    except Exception as e:
-                        self.logger.exception(f"{table_name} table, {date} date detail data insert error")
-                        self.logger.exception(e)
+                        try:
+                            mg_delete_query = SystemUtils.sql_replace_to_dict(delete_query, delete_suffix_dict)
+                            self.logger.info(f"delete query execute : {mg_delete_query}")
+                            TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, mg_delete_query)
+
+                            detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
+                            self._execute_insert_maxgauge_detail_data(detail_query, table_name)
+                        except Exception as e:
+                            self.logger.exception(f"{table_name} table, {date} date detail data insert error")
+                            self.logger.exception(e)
 
     def _execute_insert_maxgauge_detail_data(self, query, table_name):
         mg_conn = self.mg_engine.connect().execution_options(stream_results=True)
@@ -246,6 +250,7 @@ class SaTarget(CommonTarget):
 
     def init_process(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
+        self.im_conn = db.connect(self.im_conn_str)
         self.analysis_engine = create_engine(self.analysis_engine_template)
 
         self.sa_cursor = self.sa_conn.cursor()
@@ -254,7 +259,6 @@ class SaTarget(CommonTarget):
         self.logger.info(f"intermax_repo DB 접속 정보 {self.im_conn_str}")
         self.logger.info(f"maxgauge_repo DB 접속 정보 {self.mg_conn_str}")
 
-        self.analysis_engine = create_engine(self.analysis_engine_template)
 
     def __del__(self):
         if self.sa_cursor:
@@ -271,6 +275,17 @@ class SaTarget(CommonTarget):
                 ddl = file.read()
 
             TargetUtils.create_table(self.logger, self.sa_conn, ddl)
+    def ae_was_sql_text_meta(self):
+
+        init_path = f"{self.sql_file_root_path}/{SystemConstants.META}/"
+        init_files = SystemUtils.get_filenames_from_path(init_path)
+
+        for init_file in init_files:
+            with open(f"{init_path}{init_file}", mode='r', encoding='utf-8') as file:
+                meta_query = file.read()
+
+            table_name = SystemUtils.extract_tablename_in_filename(init_file)
+            self._execute_insert_meta(meta_query, table_name, self.im_conn)
 
     def get_ae_was_sql_text(self, chunksize):
         query = SaSqlTextMergeQuery.SELECT_AE_WAS_SQL_TEXT
@@ -435,3 +450,5 @@ class SaTarget(CommonTarget):
         sa_conn = self.analysis_engine.connect().execution_options(stream_results=True)
         get_read_sql = pd.read_sql_query(text(sql_id_and_sql_text),sa_conn,chunksize=chunksize)
         return get_read_sql
+
+

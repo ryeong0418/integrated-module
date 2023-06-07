@@ -178,21 +178,21 @@ class Decoding:
                 if type == 9:
                     bindLength = h2d(bindSubString(byte))
                     bindValue = h2c(bindSubString(bindLength * 2))
-                    result.append({'code': bindCode, 'value': '\'' + bindValue + '\''})
+                    result.append({'code': bindCode, 'value': bindValue})
 
                 if type == 10:
                     bindValue = h2d(bindSubString(double))
-                    bindValue = str(datetime.date.fromtimestamp(bindValue // 1000))
-                    result.append({'code': bindCode, 'value': '\'' + bindValue + '\''})
+                    bindValue = str(datetime.date.fromtimestamp(bindValue/1000))
+                    result.append({'code': bindCode, 'value': bindValue})
 
                 if type == 11:
                     bindValue = h2d(bindSubString(double))
-                    bindValue = str(datetime.datetime.fromtimestamp(bindValue // 1000).strftime("%H:%M:%S"))
-                    result.append({'code': bindCode, 'value': '\'' + bindValue + '\''})
+                    bindValue = str(datetime.datetime.fromtimestamp(bindValue/1000).strftime("%H:%M:%S"))
+                    result.append({'code': bindCode, 'value': bindValue})
 
                 if type == 12:
                     bindValue = h2d(bindSubString(double))
-                    bindValue = str(datetime.datetime.fromtimestamp(bindValue//1000).strftime('%Y-%m-%d %H:%M:%S.%f'))
+                    bindValue = str(datetime.datetime.fromtimestamp(bindValue/1000).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3])
                     result.append({'code': bindCode, 'value': bindValue})
 
                 if type == 13:
@@ -203,7 +203,7 @@ class Decoding:
                 if type == 14:
                     bindLength = h2d(bindSubString(short))
                     bindValue = h2c(bindSubString(bindLength * 2))
-                    result.append({'code': bindCode, 'value': '\'' + bindValue + '\''})
+                    result.append({'code': bindCode, 'value':  bindValue})
 
                 else:
                     pass

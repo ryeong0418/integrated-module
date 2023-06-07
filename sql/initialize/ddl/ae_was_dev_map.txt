@@ -1,5 +1,5 @@
 CREATE TABLE AE_WAS_DEV_MAP (
-    was_id int4 primary key,
+    was_id int4 PRIMARY KEY,
     isdev int4 NULL,
     create_dt timestamp with time zone default current_timestamp,
     create_id varchar(20) default 'system' not NULL

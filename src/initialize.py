@@ -17,18 +17,4 @@ class Initialize(cm.CommonModule):
         self.st = SaTarget(self.logger, self.config)
         self.st.init_process()
         self.st.create_table()
-
-        if self.config['intermax_repo']['use']:
-            self.logger.debug("InterMaxTarget init")
-            self.imt = InterMaxTarget(self.logger, self.config)
-
-            self.imt.init_process()
-            self.imt.insert_intermax_meta()
-            time.sleep(1)
-
-        if self.config['maxgauge_repo']['use']:
-            self.logger.debug("MaxGaugeTarget init")
-            self.mgt = MaxGaugeTarget(self.logger, self.config)
-
-            self.mgt.init_process()
-            self.mgt.insert_maxgauge_meta()
+        self.st.ae_was_sql_text_meta()

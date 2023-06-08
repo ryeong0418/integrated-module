@@ -370,22 +370,27 @@ class TargetUtils:
     @staticmethod
     def psql_insert_copy(logger,table, analysis_engine, df):
 
-        logger.info(f"{table}  upsert data")
-        metadata = MetaData()
-        users = Table(table, metadata, autoload_with=analysis_engine)
-        insert_values = df.replace({np.nan: None}).to_dict(orient='records')
+        if not df.empty:
 
-        insert_stmt = insert(users).values(insert_values)
-        update_stmt = {exc_k.key: exc_k for exc_k in insert_stmt.excluded}
+            logger.info(f"{table}  upsert data")
 
-        upsert_values = insert_stmt.on_conflict_do_update(
-            index_elements=users.primary_key,
-            set_=update_stmt
-        ).returning(users)
+            metadata = MetaData()
+            users = Table(table, metadata, autoload_with=analysis_engine)
+            insert_values = df.replace({np.nan: None}).to_dict(orient='records')
 
-        with analysis_engine.connect() as connection:
-            connection.execute(upsert_values)
-            connection.commit()
+            insert_stmt = insert(users).values(insert_values)
+            update_stmt = {exc_k.key: exc_k for exc_k in insert_stmt.excluded}
+
+            upsert_values = insert_stmt.on_conflict_do_update(
+                index_elements=users.primary_key,
+                set_=update_stmt
+            ).returning(users)
+
+            with analysis_engine.connect() as connection:
+                connection.execute(upsert_values)
+                connection.commit()
+        else:
+            pass
 
 
 

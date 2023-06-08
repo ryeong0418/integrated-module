@@ -56,8 +56,7 @@ class InterMaxTarget(CommonTarget):
 
     def init_process(self):
         self.im_conn = db.connect(self.im_conn_str)
-        self.analysis_engine = create_engine(self.analysis_engine_template, pool_size=20, max_overflow=20, pool_pre_ping=True, pool_recycle=3600)
-        self.analysis_engine = create_engine(self.analysis_engine_template)
+        self.analysis_engine = create_engine(self.analysis_engine_template, pool_size=20, max_overflow=20)
         self.im_engine = create_engine(self.im_engine_template)
         self.sa_conn = db.connect(self.analysis_conn_str)
 
@@ -74,7 +73,6 @@ class InterMaxTarget(CommonTarget):
 
     def get_xapm_sql_text(self, chunksize):
         query = InterMaxSqlTextMergeQuery.SELECT_XAPM_SQL_TEXT
-
         conn = self.im_engine.connect().execution_options(stream_results=True,)
         return pd.read_sql_query(text(query), conn, chunksize=chunksize)
 
@@ -168,7 +166,6 @@ class InterMaxTarget(CommonTarget):
             TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, was_id_except_df)
 
 
-
 class MaxGaugeTarget(CommonTarget):
 
     def init_process(self):
@@ -184,7 +181,6 @@ class MaxGaugeTarget(CommonTarget):
         if self.analysis_engine:
             self.analysis_engine.dispose()
 
-
     def insert_maxgauge_meta_data(self):
         self.sa_conn = db.connect(self.analysis_conn_str)
         extractor_file_path = f"{self.sql_file_root_path}/db/meta/"
@@ -196,7 +192,6 @@ class MaxGaugeTarget(CommonTarget):
 
             table_name = SystemUtils.extract_tablename_in_filename(extractor_file)
             self._execute_insert_meta(query,table_name,self.mg_conn)
-
 
     def insert_maxgauge_detail_data(self):
         self.sa_conn = db.connect(self.analysis_conn_str)

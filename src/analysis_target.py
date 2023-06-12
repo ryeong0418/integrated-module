@@ -81,7 +81,6 @@ class InterMaxTarget(CommonTarget):
         TargetUtils.default_insert_data(self.logger, self.analysis_engine, table_name, filtered_df)
 
     def insert_intermax_meta_data(self):
-
         self.sa_conn = db.connect(self.analysis_conn_str)
         extractor_file_path = f"{self.sql_file_root_path}/was/meta/"
         extractor_files = SystemUtils.get_filenames_from_path(extractor_file_path)
@@ -99,10 +98,10 @@ class InterMaxTarget(CommonTarget):
                 self._execute_insert_meta(query, table_name, self.im_conn)
 
     def insert_intermax_detail_data(self):
+
         self.sa_conn = db.connect(self.analysis_conn_str)
 
         extractor_file_path = f"{self.sql_file_root_path}/was/"
-
         extractor_files = SystemUtils.get_filenames_from_path(extractor_file_path)
         delete_query = CommonSql.DELETE_TABLE_BY_DATE_QUERY
 
@@ -123,12 +122,13 @@ class InterMaxTarget(CommonTarget):
                     detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
                     delete_dict = {'table_name': table_name, 'date': date}
 
-                    if table_name == "ae_was_sql_text" or table_name == "ae_txn_name":
-                        self._excute_upsert_intermax_data(detail_query, table_name)
+                    try:
 
-                    else:
+                        if table_name == "ae_was_sql_text" or table_name == "ae_txn_name":
+                            self._excute_upsert_intermax_data(detail_query, table_name)
 
-                        try:
+                        else:
+
                             im_delete_query = SystemUtils.sql_replace_to_dict(delete_query, delete_dict)
                             self.logger.info(f"delete query execute : {im_delete_query}")
                             TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, im_delete_query)
@@ -137,11 +137,11 @@ class InterMaxTarget(CommonTarget):
                                 self._execute_insert_intermax_detail_data(detail_query, table_name)
 
                             else:
-                                self._excute_insert_dev_except_data(detail_query,table_name)
+                                self._excute_insert_dev_except_data(detail_query, table_name)
 
-                        except Exception as e:
-                            self.logger.exception(f"{table_name} table, {date} date detail data insert error")
-                            self.logger.exception(e)
+                    except Exception as e:
+                        self.logger.exception(f"{table_name} table, {date} date detail data insert error")
+                        self.logger.exception(e)
 
     def _excute_upsert_intermax_data(self,query,table_name):
         im_conn = self.im_engine.connect().execution_options(stream_results=True)
@@ -154,14 +154,15 @@ class InterMaxTarget(CommonTarget):
         im_conn = self.im_engine.connect().execution_options(stream_results=True)
         get_read_sql_query = pd.read_sql_query(text(query), im_conn, chunksize=self.extract_chunksize)
         for df in get_read_sql_query:
-            df = TargetUtils.add_custom_table_value(df,table_name,self.config['bind_sql_elapse'])
-            TargetUtils.insert_analysis_by_df(self.logger,self.analysis_engine,table_name,df)
+            df = TargetUtils.add_custom_table_value(df, table_name, self.config['bind_sql_elapse'])
+            TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
-    def _excute_insert_dev_except_data(self,query,table_name):
+    def _excute_insert_dev_except_data(self, query, table_name):
         im_conn = self.im_engine.connect().execution_options(stream_results=True)
         get_read_sql_query = pd.read_sql_query(text(query), im_conn, chunksize=self.extract_chunksize)
         for detail_df in get_read_sql_query:
-            ae_dev_map_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, CommonSql.SELECT_AE_WAS_DEV_MAP,table_name)
+            ae_dev_map_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn,
+                                                                 CommonSql.SELECT_AE_WAS_DEV_MAP, table_name)
             was_id_except_df = detail_df[~detail_df['was_id'].isin(ae_dev_map_df['was_id'])]
             TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, was_id_except_df)
 
@@ -303,25 +304,39 @@ class SaTarget(CommonTarget):
 
         return results
 
-    def create_temp_table(self):
-        start_date, end_date = SaTarget.summarizer_set_date(self.config['args']['s_date'])
-        date_dict = {'StartDate': start_date, 'EndDate': end_date}
+    def excute_summarizer(self):
+
+        date_conditions = TargetUtils.set_intermax_date(self.config['args']['s_date'], self.config['args']['interval'])
 
         summarizer_temp_path = f"{self.sql_file_root_path}/temp/"
         summarizer_temp_files = SystemUtils.get_filenames_from_path(summarizer_temp_path)
 
-        for summarizer_temp_file in summarizer_temp_files:
+        for date in date_conditions:
+            start_date, end_date = SaTarget.summarizer_set_date(date)
+            date_dict = {'StartDate': start_date, 'EndDate': end_date}
 
-            with open(f"{summarizer_temp_path}{summarizer_temp_file}", mode='r', encoding='utf-8') as file:
-                query = file.read()
+            for summarizer_temp_file in summarizer_temp_files:
 
-            query = SystemUtils.sql_replace_to_dict(query, date_dict)
+                table_name = summarizer_temp_file.split('.')[0]
 
-            try:
-                TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, query)
-            except Exception as e:
-                self.logger.exception(f"{summarizer_temp_file.split('.')[0]} table, create_temp_table execute error")
-                self.logger.exception(e)
+                replace_dict = {'table_name': table_name}
+                delete_table_query = SystemUtils.sql_replace_to_dict(CommonSql.DELETE_TABLE_DEFAULT_QUERY,
+                                                                     replace_dict)
+
+                with open(f"{summarizer_temp_path}{summarizer_temp_file}", mode='r', encoding='utf-8') as file:
+                    query = file.read()
+                    temp_query = SystemUtils.sql_replace_to_dict(query, date_dict)
+
+                    try:
+                        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, delete_table_query)
+                        temp_df = TargetUtils.get_target_data_by_query(self.logger,self.sa_conn, temp_query, table_name)
+                        TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, temp_df)
+
+                    except Exception as e:
+                        self.logger.exception(f"{summarizer_temp_file.split('.')[0]} table, create_temp_table execute error")
+                        self.logger.exception(e)
+
+            self.summary_join(date_dict)
 
     @staticmethod
     def summarizer_set_date(input_date):
@@ -331,9 +346,7 @@ class SaTarget(CommonTarget):
         end_date = end_date.strftime('%Y-%m-%d 00:00:00')
         return start_date, end_date
 
-    def summary_join(self):
-        start_date, end_date = SaTarget.summarizer_set_date(self.config['args']['s_date'])
-        date_dict = {'StartDate': start_date, 'EndDate': end_date}
+    def summary_join(self,date_dict):
 
         summary_path = f"{self.sql_file_root_path}/summary/"
         summary_files = SystemUtils.get_filenames_from_path(summary_path)
@@ -345,22 +358,23 @@ class SaTarget(CommonTarget):
             with open(f"{summary_path}{summary_file}", mode='r', encoding='utf-8') as file:
                 query = file.read()
 
-            query = SystemUtils.sql_replace_to_dict(query, date_dict)
-            table_name = summary_file.split('.')[0]
+                join_query = SystemUtils.sql_replace_to_dict(query, date_dict)
+                table_name = summary_file.split('.')[0]
+                datetime_format = datetime.strptime(date_dict['StartDate'].split()[0], '%Y-%m-%d')
+                formatted_date = datetime_format.strftime('%Y%m%d')
+                delete_dict = {'table_name': table_name, 'date': formatted_date}
 
-            delete_dict = {'table_name': table_name, 'date': self.config['args']['s_date']}
+                try:
+                    sa_delete_query = SystemUtils.sql_replace_to_dict(delete_query, delete_dict)
+                    TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, sa_delete_query)
+                    self.logger.info(f"delete query execute : {sa_delete_query}")
 
-            try:
-                sa_delete_query = SystemUtils.sql_replace_to_dict(delete_query, delete_dict)
-                TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, sa_delete_query)
-                self.logger.info(f"delete query execute : {sa_delete_query}")
+                    for df in self.get_table_data_by_chunksize(join_query, self.extract_chunksize):
+                        TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
-                for df in self.get_table_data_by_chunksize(query, self.extract_chunksize):
-                    TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
-
-            except Exception as e:
-                self.logger.exception(f"{summary_file.split('.')[0]} table, summary insert execute error")
-                self.logger.exception(e)
+                except Exception as e:
+                    self.logger.exception(f"{summary_file.split('.')[0]} table, summary insert execute error")
+                    self.logger.exception(e)
 
     def sql_query_convert_df(self, sql_query):
 

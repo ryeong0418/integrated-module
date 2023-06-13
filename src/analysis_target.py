@@ -1,8 +1,6 @@
 import pandas as pd
 import psycopg2 as db
 import psycopg2.extras
-import time
-import glob
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import IntegrityError
@@ -374,7 +372,7 @@ class SaTarget(CommonTarget):
                 table_name = summarizer_temp_file.split('.')[0]
 
                 replace_dict = {'table_name': table_name}
-                delete_table_query = SystemUtils.sql_replace_to_dict(CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY,
+                delete_table_query = SystemUtils.sql_replace_to_dict(CommonSql.DELETE_TABLE_DEFAULT_QUERY,
                                                                      replace_dict)
 
                 with open(f"{summarizer_temp_path}{summarizer_temp_file}", mode='r', encoding='utf-8') as file:

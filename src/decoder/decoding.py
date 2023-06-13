@@ -3,6 +3,7 @@ from urllib.parse import quote_plus
 from urllib import parse
 import urllib.parse
 
+
 class Decoding:
 
     def convertBindList(bindList):
@@ -39,6 +40,7 @@ class Decoding:
         def h2f(val):
             hex = int('0x' + val, 16)  # '0x'+val을 16진수로 변경
             return (hex & 0x7fffff | 0x800000) * 1.0 / pow(2, 23) * pow(2, ((hex >> 23 & 0xff) - 127))
+
         def h2l(val):
 
             dec = '0'
@@ -121,6 +123,7 @@ class Decoding:
             bindListType = 'INDEX' if h2d(bindList[2:4]) else 'NAME'
 
             ix = 0
+
             while ix < totalLength:
                 idx = h2d(bindSubString(2))
                 ix += 1

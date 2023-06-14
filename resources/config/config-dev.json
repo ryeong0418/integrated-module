@@ -19,11 +19,11 @@
 	},
 	"analysis_repo": {
 		"db_type": "postgres",
-		"host": "127.0.0.1",
+		"host": "10.10.47.241",
 		"port": 5432,
 		"sid": "postgres",
 		"user": "postgres",
-		"password": "221212"
+		"password": "postgres"
 	},
 	"scheduler": {
 		"is_alive_sched": {

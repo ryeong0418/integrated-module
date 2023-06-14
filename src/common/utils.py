@@ -279,9 +279,6 @@ class TargetUtils:
         with TimeLogger(f"{table_name} to export", logger):
             df = pd.read_sql(query, target_conn)
 
-        logger.info(f"{table_name} export pandas data memory (deep) : "
-                    f"{SystemUtils.byte_transform(df.memory_usage(deep=True).sum(), 'm')} Mb")
-
         return df
 
     @staticmethod

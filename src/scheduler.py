@@ -40,11 +40,12 @@ class Scheduler(cm.CommonModule):
 
         try:
             self.logger.info(f"Background Scheduler job start")
-            self._bg_scheduler_start()
+            # self._bg_scheduler_start()
             time.sleep(1)
 
             self.logger.info(f"Main Scheduler job start")
             self._main_scheduler_start()
+            self.logger.info(f"End of Scheduler main")
         except Exception as e:
             self.logger.exception(e)
 
@@ -77,6 +78,7 @@ class Scheduler(cm.CommonModule):
                                    f"{self.config['scheduler']['main_sched']['hour']} hour "
                                    f"{self.config['scheduler']['main_sched']['minute']} minute")
         self.main_scheduler.start()
+        self.logger.info(f"End of Scheduler start")
 
     def _add_scheduler_logger(self):
         self.scheduler_logger = Logger(self.config['env']).\
@@ -97,6 +99,7 @@ class Scheduler(cm.CommonModule):
         self.main_scheduler.shutdown()
 
     def _main_job(self):
+        self.scheduler_logger.info("main_job start")
         start_tm = time.time()
 
         result = ResultConstants.FAIL
@@ -140,6 +143,9 @@ class Scheduler(cm.CommonModule):
             with db.session_scope() as session:
                 session.query(ExecuteLogModel).filter(ExecuteLogModel.seq == f'{elm.seq}').update(result_dict)
                 session.commit()
+
+        self.scheduler_logger.info("main_job end")
+        return
 
     def _extractor_job(self):
         self.scheduler_logger.info(f"_extractor_job start")

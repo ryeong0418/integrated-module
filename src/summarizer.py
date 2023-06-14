@@ -1,15 +1,12 @@
 from src import common_module as cm
-from src.analysis_target import SaTarget
 
 
 class Summarizer(cm.CommonModule):
 
     def __init__(self, logger):
-        self.logger = logger
-        self.st = None
+        super().__init__(logger)
 
     def main_process(self):
         self.logger.debug('Summarizer')
-        self.st = SaTarget(self.logger, self.config)
-        self.st.init_process()
+        self._init_sa_target()
         self.st.excute_summarizer()

@@ -13,6 +13,7 @@ from src.sql_text_merge import SqlTextMerge
 from src.common.constants import SystemConstants, ResultConstants
 from src.common.utils import SystemUtils
 from src.common.enum_module import ModuleFactoryEnum, MessageEnum
+from src.common.module_exception import ModuleException
 from resources.logger_manager import Logger
 
 CRON = 'cron'
@@ -21,7 +22,7 @@ CRON = 'cron'
 class Scheduler(cm.CommonModule):
 
     def __init__(self, logger):
-        self.logger = logger
+        super().__init__(logger)
         self.scheduler_logger = None
         self.main_scheduler: BlockingScheduler = None
         self.bg_scheduler: BackgroundScheduler = None
@@ -98,6 +99,10 @@ class Scheduler(cm.CommonModule):
     def _main_job(self):
         start_tm = time.time()
 
+        result = ResultConstants.FAIL
+        result_code = "E001"
+        result_msg = MessageEnum[result_code].value
+
         try:
             db = DataBase(self.config)
             elm = ExecuteLogModel(ModuleFactoryEnum[self.config['args']['proc']].value,
@@ -106,18 +111,24 @@ class Scheduler(cm.CommonModule):
             with db.session_scope() as session:
                 session.add(elm)
 
-            result = ResultConstants.FAIL
-            self._update_config_custom_values()
-
             self._extractor_job()
 
             self._summarizer_job()
 
             self._sql_text_merge_job()
 
+            self._update_config_custom_values(proc='b')
+
             result = ResultConstants.SUCCESS
             result_code = 'I001'
             result_msg = MessageEnum[result_code].value
+
+        except ModuleException as me:
+            self.logger.error(me.error_msg)
+            result = ResultConstants.ERROR
+            result_code = me.error_code
+            result_msg = me.error_msg
+
         except Exception as e:
             self.logger.exception(e)
             result = ResultConstants.ERROR
@@ -133,6 +144,8 @@ class Scheduler(cm.CommonModule):
     def _extractor_job(self):
         self.scheduler_logger.info(f"_extractor_job start")
 
+        self._update_config_custom_values(proc='e')
+
         extractor = Extractor(self.scheduler_logger)
         extractor.set_config(self.config)
         extractor.main_process()
@@ -141,6 +154,8 @@ class Scheduler(cm.CommonModule):
 
     def _summarizer_job(self):
         self.scheduler_logger.info(f"_summarizer_job start")
+
+        self._update_config_custom_values(proc='s')
 
         summarizer = Summarizer(self.scheduler_logger)
         summarizer.set_config(self.config)
@@ -151,15 +166,17 @@ class Scheduler(cm.CommonModule):
     def _sql_text_merge_job(self):
         self.scheduler_logger.info(f"_sql_text_merge_job start")
 
+        self._update_config_custom_values(proc='m')
+
         stm = SqlTextMerge(self.scheduler_logger)
         stm.set_config(self.config)
         stm.main_process()
 
         self.scheduler_logger.info(f"_sql_text_merge_job end")
 
-    def _update_config_custom_values(self):
+    def _update_config_custom_values(self, proc):
         custom_values = dict()
-        custom_values['args'] = {'s_date': SystemUtils.get_date_by_interval(-1, fmt="%Y%m%d"), 'interval': 1, 'proc': 'b'}
+        custom_values['args'] = {'s_date': SystemUtils.get_date_by_interval(-1, fmt="%Y%m%d"), 'interval': 1, 'proc': proc}
         self.config.update(custom_values)
 
     def _is_alive_logging_job(self):

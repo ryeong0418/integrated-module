@@ -9,18 +9,14 @@ from src import common_module as cm
 from src.common.timelogger import TimeLogger
 from src.common.constants import SystemConstants
 from src.common.file_export import ParquetFile
-from src.common.utils import SystemUtils
-from src.analysis_target import InterMaxTarget, SaTarget
+from src.common.utils import SystemUtils, MaxGaugeUtils
 
 
 class SqlTextMerge(cm.CommonModule):
 
     def __init__(self, logger):
-        self.logger = logger
-        self.st = None
-        self.imt = None
-        self.mgt = None
-        self.CHUNKSIZE = 10000
+        super().__init__(logger)
+        self.chunk_size = 0
         self.export_parquet_root_path = None
         # Sql Text 전처리 및 매치 모드 분리 (str, token)
         self.MATCH_MODE = 'token'
@@ -35,11 +31,10 @@ class SqlTextMerge(cm.CommonModule):
             self.logger.error(f"MATCH_MODE invalid value.. please check sql_text_merge.py near Line 28 ")
             return
 
-        self.st = SaTarget(self.logger, self.config)
-        self.st.init_process()
+        self._init_sa_target()
 
         self.export_parquet_root_path = f'{self.config["home"]}/{SystemConstants.EXPORT_PARQUET_PATH}'
-        self.CHUNKSIZE = self.config.get('data_handling_chunksize', 10000)
+        self.chunk_size = self.config.get('data_handling_chunksize', 10000) * 4
         self.sql_match_sensitive = self.config.get('sql_match_sensitive', 5)
 
         self._export_db_sql_text()
@@ -49,9 +44,7 @@ class SqlTextMerge(cm.CommonModule):
         """
         was sql text - db sql text match
         """
-        self.imt = InterMaxTarget(self.logger, self.config)
-        self.imt.init_process()
-        self.imt.create_im_engine()
+        self._init_im_target()
 
         export_filename_suffixs = self._get_export_filename_suffix()
         export_filenames = []
@@ -69,7 +62,7 @@ class SqlTextMerge(cm.CommonModule):
         if self.MATCH_MODE == 'token':
             default_merge_column = default_merge_column + first_token_merge_column + last_token_merge_column
 
-        for ae_was_df in self.st.term_extract_sql_text(chunksize=self.CHUNKSIZE):
+        for ae_was_df in self.st.term_extract_sql_text(chunksize=self.chunk_size):
             result_df_list = []
 
             ae_was_df = self._preprocessing(ae_was_df)
@@ -129,13 +122,13 @@ class SqlTextMerge(cm.CommonModule):
                 pqwriter = None
 
                 with TimeLogger(f"Make_parquet_file_ae_db_sql_text (date:{date}, db_id:{db_id}),elapsed ", self.logger):
-                    for df in self.st.get_ae_db_sql_text_by_1seq(partition_key, chunksize=self.CHUNKSIZE):
+                    for df in self.st.get_ae_db_sql_text_by_1seq(partition_key, chunksize=self.chunk_size):
                         if len(df) == 0:
                             break
 
-                        results = self.st.get_all_ae_db_sql_text_by_1seq(df, chunksize=self.CHUNKSIZE)
+                        results = self.st.get_all_ae_db_sql_text_by_1seq(df, chunksize=self.chunk_size)
 
-                        grouping_df = self._reconstruct_by_grouping(results)
+                        grouping_df = MaxGaugeUtils.reconstruct_by_grouping(results)
                         grouping_df = self._preprocessing(grouping_df)
 
                         if pqwriter is None:
@@ -155,18 +148,6 @@ class SqlTextMerge(cm.CommonModule):
         result_df['state_code'] = 0
 
         self.st.insert_merged_result(result_df)
-
-    @staticmethod
-    def _reconstruct_by_grouping(results):
-        """
-        db sql text 재조합을 위한 함수
-        :param results: seq가 동일한 데이터들의 전체 리스트
-        :return: 재조합된 데이터프레임
-        """
-        results_df = pd.DataFrame(results, columns=['sql_text', 'partition_key', 'sql_uid', 'seq'])
-        results_df = results_df.groupby(['sql_uid', 'partition_key'], as_index=False).agg({'sql_text': ''.join})
-        results_df.drop(columns='partition_key', inplace=True)
-        return results_df
 
     def _preprocessing(self, xapm_sql_df):        
         xapm_sql_df = self._remove_unnecess_char(xapm_sql_df, 'sql_text')

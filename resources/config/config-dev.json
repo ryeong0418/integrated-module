@@ -38,6 +38,7 @@
 	"sql_debug_flag": true,
 	"data_handling_chunksize": 10000,
 	"sql_match_sensitive": 5,
-	"sql_match_time": 1000,
+	"sql_match_time": 0,
+	"sql_template_select_only": false,
 	"bind_sql_elapse": false
 }

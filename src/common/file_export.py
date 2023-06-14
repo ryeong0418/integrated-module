@@ -25,7 +25,6 @@ class ParquetFile:
         다른 파일 생성 시 get_pqwriter 함수로 재 생성한 후 사용
         :param df: 타겟 데이터 프레임
         :param pqwriter: parquet 파일 writer 객체
-        :param parquet_file_name: 추출하려는 파일 이름 Optinal (for log)
         :return:
         """
         self.index = 1 if self.index > 10 else self.index

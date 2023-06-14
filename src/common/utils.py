@@ -326,41 +326,7 @@ class TargetUtils:
             cursor.close()
 
     @staticmethod
-    def set_intermax_date(input_date, input_interval):
-        date_conditions = []
-
-        for i in range(1,int(input_interval)+1):
-            from_date = datetime.strptime(str(input_date), '%Y%m%d')
-            date_condition = from_date + timedelta(days=i - 1)
-            date_condition = date_condition.strftime('%Y%m%d')
-            date_conditions.append(date_condition)
-
-        return date_conditions
-
-    @staticmethod
-    def set_maxgauge_date(input_date, input_interval):
-        date_conditions = []
-
-        for i in range(1,int(input_interval)+1):
-            from_date = datetime.strptime(str(input_date), '%Y%m%d')
-            date_condition = from_date + timedelta(days=i - 1)
-            date_condition = date_condition.strftime('%y%m%d')
-            date_conditions.append(date_condition)
-
-        return date_conditions
-
-
-    @staticmethod
-    def add_custom_table_value(df,table_name,bind_value_config):
-
-        if bind_value_config and table_name == 'ae_bind_sql_elapse':
-            df['bind_value'] = df['bind_list'].apply(Decoding.convertBindList)
-            df['bind_value'] = df['bind_value'].astype(str)
-
-        return df
-
-    @staticmethod
-    def meta_table_value(table_name,df):
+    def meta_table_value(table_name, df):
 
         if table_name == 'ae_was_dev_map':
             df['isdev'] = 1
@@ -368,7 +334,7 @@ class TargetUtils:
         return df
 
     @staticmethod
-    def psql_insert_copy(logger,table, analysis_engine, df):
+    def psql_insert_copy(logger, table, analysis_engine, df):
 
         if not df.empty:
 
@@ -389,13 +355,54 @@ class TargetUtils:
             with analysis_engine.connect() as connection:
                 connection.execute(upsert_values)
                 connection.commit()
-        else:
-            pass
+
+    @staticmethod
+    def add_custom_table_value(df, table_name, bind_value_config):
+
+        if bind_value_config and table_name == 'ae_bind_sql_elapse':
+            df['bind_value'] = df['bind_list'].apply(Decoding.convertBindList)
+            df['bind_value'] = df['bind_value'].astype(str)
+
+        return df
 
 
+class InterMaxUtils:
+
+    @staticmethod
+    def set_intermax_date(input_date, input_interval):
+        date_conditions = []
+
+        for i in range(1,int(input_interval)+1):
+            from_date = datetime.strptime(str(input_date), '%Y%m%d')
+            date_condition = from_date + timedelta(days=i - 1)
+            date_condition = date_condition.strftime('%Y%m%d')
+            date_conditions.append(date_condition)
+
+        return date_conditions
 
 
+class MaxGaugeUtils:
 
+    @staticmethod
+    def reconstruct_by_grouping(results):
+        """
+        db sql text 재조합을 위한 함수
+        :param results: seq가 동일한 데이터들의 전체 리스트
+        :return: 재조합된 데이터프레임
+        """
+        results_df = pd.DataFrame(results, columns=['sql_text', 'partition_key', 'sql_uid', 'seq'])
+        results_df = results_df.groupby(['sql_uid', 'partition_key'], as_index=False).agg({'sql_text': ''.join})
+        results_df.drop(columns='partition_key', inplace=True)
+        return results_df
 
+    @staticmethod
+    def set_maxgauge_date(input_date, input_interval):
+        date_conditions = []
 
+        for i in range(1,int(input_interval)+1):
+            from_date = datetime.strptime(str(input_date), '%Y%m%d')
+            date_condition = from_date + timedelta(days=i - 1)
+            date_condition = date_condition.strftime('%y%m%d')
+            date_conditions.append(date_condition)
 
+        return date_conditions

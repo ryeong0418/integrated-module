@@ -34,11 +34,22 @@ class SqlTextMerge(cm.CommonModule):
         self._init_sa_target()
 
         self.export_parquet_root_path = f'{self.config["home"]}/{SystemConstants.EXPORT_PARQUET_PATH}'
-        self.chunk_size = self.config.get('data_handling_chunksize', 10000) * 4
-        self.sql_match_sensitive = self.config.get('sql_match_sensitive', 5)
+        self.chunk_size = self.config.get('data_handling_chunksize', 10000) * 3
+        self.sql_match_sensitive = int(self._calc_sql_match_sensitive())
 
         self._export_db_sql_text()
         self._sql_text_merge()
+
+    def _calc_sql_match_sensitive(self):
+        sample_df = self.st.get_ae_was_sql_text(extract_cnt=200_000)
+
+        sample_df = self._remove_unnecess_char(sample_df, 'sql_text')
+        token_cnt = sample_df['sql_text'].str.count(r"\s+")
+
+        m = np.mean(token_cnt)
+        result = m // 50
+
+        return result if result > 0 else 1
 
     def _sql_text_merge(self):
         """
@@ -87,7 +98,7 @@ class SqlTextMerge(cm.CommonModule):
             self.logger.info('End of all export file compare')
 
             result_df = pd.concat(result_df_list, ignore_index=True) if len(result_df_list) > 0 else pd.DataFrame()
-            result_df = result_df.drop_duplicates(subset=['sql_id','sql_uid'])
+            result_df = result_df.drop_duplicates(subset=['sql_id', 'sql_uid'])
 
             if len(result_df) == 0:
                 continue

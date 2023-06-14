@@ -50,7 +50,7 @@ class CommonSql:
 class AeWasSqlTextSql:
 
     SELECT_AE_WAS_SQL_TEXT = (
-        "select sql_id, sql_text_100, sql_text from ae_was_sql_text"
+        "select sql_id, sql_text from ae_was_sql_text"
     )
 
     SELECT_BY_NO_CLUSTER_ID = (

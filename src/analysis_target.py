@@ -256,10 +256,18 @@ class SaTarget(CommonTarget):
 
             TargetUtils.create_table(self.logger, self.sa_conn, ddl)
 
-    def get_ae_was_sql_text(self, chunksize):
+    def get_ae_was_sql_text(self, extract_cnt=0):
         query = AeWasSqlTextSql.SELECT_AE_WAS_SQL_TEXT
-        conn = self.analysis_engine.connect().execution_options(stream_results=True,)
-        return pd.read_sql_query(text(query), conn, chunksize=chunksize)
+        table_name = TableConstants.AE_WAS_SQL_TEXT
+
+        if extract_cnt > 0:
+            query += f" limit {extract_cnt}"
+
+        try:
+            result_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, query, table_name)
+        except Exception as e:
+            self.logger.exception(e)
+        return result_df
 
     def get_ae_db_sql_text_by_1seq(self, partition_key, chunksize):
         replace_dict = {'partition_key': partition_key}

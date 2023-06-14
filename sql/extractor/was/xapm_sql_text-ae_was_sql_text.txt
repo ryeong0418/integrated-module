@@ -1,0 +1,6 @@
+with temp as ( select distinct sql_id 
+                       from xapm_sql_summary_1day_p#(table_suffix))
+select sq.sql_id, 
+       sq.sql_text 
+from temp t inner join xapm_sql_text sq
+on t.sql_id = sq.sql_id

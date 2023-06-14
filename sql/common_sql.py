@@ -10,24 +10,16 @@ class CommonSql:
         """
     )
 
-    CREATE_DBLINK = (
-        """CREATE extension if not exists dblink """
-    )
-
-    DBLINK_CONNECT = (
-        """SELECT dblink_connect('#(intermax_db_info)')"""
-    )
-
-    SELECT_SQL_ID = (
-        """
-        select * from dblink('#(intermax_db_info)','select sql_id,sql_text_100,sql_text from xapm_sql_text') 
-        AS t(sql_id varchar, sql_text_100 varchar, sql_text varchar) 
-        where sql_id not in (select sql_id from ae_was_sql_text);
-        """
+    SELECT_AE_WAS_DEV_MAP = (
+        "select was_id from ae_was_dev_map"
     )
 
     DELETE_TABLE_DEFAULT_QUERY = (
         "delete from #(table_name)"
+    )
+
+    TRUNCATE_TABLE_DEFAULT_QUERY = (
+        "truncate table #(table_name)"
     )
 
     DELETE_TABLE_BY_DATE_QUERY = (
@@ -40,6 +32,15 @@ class CommonSql:
 
     DELETE_SUMMARY_TABLE_BY_DATE_QUERY = (
         "delete from #(table_name) where to_char(ten_min_time,'yyyymmdd')='#(date)'"
+    )
+
+    DUPLICATE_CHECK_AE_WAS_SQL_TEXT = (
+        """
+        INSERT INTO ae_was_sql_text (sql_id, sql_text)
+        VALUES ('#(sql_id)', '#(sql_value)')
+        ON CONFLICT (sql_id) 
+        DO NOTHING
+        """
     )
 
     TRUNCATE_TABLE_DEFAULT_QUERY = (

@@ -1,5 +1,6 @@
 import importlib.util
 import argparse
+
 import os
 import pandas as pd
 import time
@@ -10,6 +11,11 @@ from psycopg2.errorcodes import DUPLICATE_TABLE
 from datetime import datetime, timedelta
 
 from src.common.timelogger import TimeLogger
+from src.decoder.decoding import Decoding
+
+from sqlalchemy import Table,MetaData
+from sqlalchemy.dialects.postgresql import insert
+import numpy as np
 
 
 class SystemUtils:
@@ -234,10 +240,13 @@ class TargetUtils:
 
         try:
             cur.execute(ddl_query)
+
         except errors.lookup(DUPLICATE_TABLE) as e:
             logger.warn("This DDL Query DUPLICATE_TABLE.. SKIP")
+
         except Exception as e:
             logger.exception(f"{e}")
+
         finally:
             conn.commit()
 
@@ -256,6 +265,7 @@ class TargetUtils:
             repo_info['sid']
         )
 
+
     @staticmethod
     def get_target_data_by_query(logger, target_conn, query, table_name="UNKNOWN TABLE"):
         """
@@ -266,6 +276,7 @@ class TargetUtils:
         :param table_name: 분석 모듈 DB에 저장될 테이블 명 (for logging)
         :return: 각 타겟의 query 결과 정보 (DataFrame)
         """
+
         with TimeLogger(f"{table_name} to export", logger):
             df = pd.read_sql(query, target_conn)
 
@@ -290,12 +301,13 @@ class TargetUtils:
                 con=analysis_engine,
                 schema='public',
                 if_exists='append',
-                index=False,
+                index=False
             )
         return df
 
     @staticmethod
     def default_sa_execute_query(logger, sa_conn, query):
+
         """
         분석 모듈 DB 기본 sql 실행 쿼리
         :param logger: logger
@@ -306,11 +318,52 @@ class TargetUtils:
         try:
             cursor = sa_conn.cursor()
             cursor.execute(query)
+
         except Exception as e:
             logger.exception(e)
         finally:
             sa_conn.commit()
             cursor.close()
+
+    @staticmethod
+    def meta_table_value(table_name, df):
+
+        if table_name == 'ae_was_dev_map':
+            df['isdev'] = 1
+
+        return df
+
+    @staticmethod
+    def psql_insert_copy(logger, table, analysis_engine, df):
+
+        if not df.empty:
+
+            logger.info(f"{table}  upsert data")
+
+            metadata = MetaData()
+            users = Table(table, metadata, autoload_with=analysis_engine)
+            insert_values = df.replace({np.nan: None}).to_dict(orient='records')
+
+            insert_stmt = insert(users).values(insert_values)
+            update_stmt = {exc_k.key: exc_k for exc_k in insert_stmt.excluded}
+
+            upsert_values = insert_stmt.on_conflict_do_update(
+                index_elements=users.primary_key,
+                set_=update_stmt
+            ).returning(users)
+
+            with analysis_engine.connect() as connection:
+                connection.execute(upsert_values)
+                connection.commit()
+
+    @staticmethod
+    def add_custom_table_value(df, table_name, bind_value_config):
+
+        if bind_value_config and table_name == 'ae_bind_sql_elapse':
+            df['bind_value'] = df['bind_list'].apply(Decoding.convertBindList)
+            df['bind_value'] = df['bind_value'].astype(str)
+
+        return df
 
 
 class InterMaxUtils:

@@ -12,11 +12,11 @@ class Extractor(cm.CommonModule):
         if self.config['intermax_repo']['use']:
             self.logger.debug("Intermax extractor")
             self._init_im_target()
-
+            self.imt.insert_intermax_meta_data()
             self.imt.insert_intermax_detail_data()
 
         if self.config['maxgauge_repo']['use']:
             self.logger.debug("maxgauge extractor")
             self._init_mg_target()
-
+            self.mgt.insert_maxgauge_meta_data()
             self.mgt.insert_maxgauge_detail_data()

@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from src.common.timelogger import TimeLogger
 from src.decoder.decoding import Decoding
 
-from sqlalchemy import Table,MetaData
+from sqlalchemy import Table, MetaData
 from sqlalchemy.dialects.postgresql import insert
 import numpy as np
 
@@ -87,16 +87,16 @@ class SystemUtils:
         return 'prod' if os.environ.get("DEPLOY_ENV") is None else os.environ.get("DEPLOY_ENV")
 
     @staticmethod
-    def byte_transform(bytes, to, bsize=1024):
+    def byte_transform(b, to, bsize=1024):
         """
         byte를 kb, mb, gb, tb, eb로 변환하는 함수
-        :param bytes: 변환하려는 byte 값
+        :param b: 변환하려는 byte 값
         :param to: 변환 하려는 단위 (k : kb, m : mb, g : gb, t : tb, e : eb)
         :param bsize: 변환 상수
         :return: 변환 하려는 단위의 반올림 값
         """
         a = {'k': 1, 'm': 2, 'g': 3, 't': 4, 'p': 5, 'e': 6}
-        r = float(bytes)
+        r = float(b)
         for i in range(a[to]):
             r = r / bsize
         return round(r, 2)
@@ -241,7 +241,7 @@ class TargetUtils:
         try:
             cur.execute(ddl_query)
 
-        except errors.lookup(DUPLICATE_TABLE) as e:
+        except errors.lookup(DUPLICATE_TABLE):
             logger.warn("This DDL Query DUPLICATE_TABLE.. SKIP")
 
         except Exception as e:
@@ -264,7 +264,6 @@ class TargetUtils:
             repo_info['port'],
             repo_info['sid']
         )
-
 
     @staticmethod
     def get_target_data_by_query(logger, target_conn, query, table_name="UNKNOWN TABLE"):
@@ -372,7 +371,7 @@ class InterMaxUtils:
     def set_intermax_date(input_date, input_interval):
         date_conditions = []
 
-        for i in range(1,int(input_interval)+1):
+        for i in range(1, int(input_interval)+1):
             from_date = datetime.strptime(str(input_date), '%Y%m%d')
             date_condition = from_date + timedelta(days=i - 1)
             date_condition = date_condition.strftime('%Y%m%d')
@@ -399,7 +398,7 @@ class MaxGaugeUtils:
     def set_maxgauge_date(input_date, input_interval):
         date_conditions = []
 
-        for i in range(1,int(input_interval)+1):
+        for i in range(1, int(input_interval)+1):
             from_date = datetime.strptime(str(input_date), '%Y%m%d')
             date_condition = from_date + timedelta(days=i - 1)
             date_condition = date_condition.strftime('%y%m%d')

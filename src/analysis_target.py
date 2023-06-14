@@ -9,6 +9,7 @@ from src.common.utils import TargetUtils, SystemUtils, InterMaxUtils, MaxGaugeUt
 from src.common.constants import TableConstants, SystemConstants
 from src.common.enum_module import ModuleFactoryEnum
 from sql.common_sql import CommonSql, AeWasSqlTextSql, AeDbSqlTemplateMapSql, AeDbInfoSql, AeDbSqlTextSql
+from sql.common_sql import AeWasDevMapSql
 from datetime import datetime, timedelta
 
 
@@ -199,7 +200,7 @@ class InterMaxTarget(CommonTarget):
 
         for detail_df in self._get_intermax_data_by_chunksize(query):
             ae_dev_map_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn,
-                                                                 CommonSql.SELECT_AE_WAS_DEV_MAP, table_name)
+                                                                 AeWasDevMapSql.SELECT_AE_WAS_DEV_MAP, table_name)
             was_id_except_df = detail_df[~detail_df['was_id'].isin(ae_dev_map_df['was_id'])]
             TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, was_id_except_df)
 
@@ -566,7 +567,6 @@ class SaTarget(CommonTarget):
         TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
     def get_cluster_cnt_by_grouping(self, extract_cnt):
-
         if self.config['intermax_repo']['use']:
             query = AeWasSqlTextSql.SELECT_CLUSTER_CNT_BY_GROUPING
             table_name = TableConstants.AE_WAS_SQL_TEXT
@@ -582,7 +582,7 @@ class SaTarget(CommonTarget):
             result_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, query, table_name)
         except Exception as e:
             self.logger.exception(e)
-        return result_df
+        return result_df if result_df is not None else pd.DataFrame()
 
     def get_ae_was_sql_text_by_no_cluster(self, chunk_size):
         query = AeWasSqlTextSql.SELECT_BY_NO_CLUSTER_ID

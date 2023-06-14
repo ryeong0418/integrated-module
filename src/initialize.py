@@ -1,5 +1,3 @@
-import time
-
 from src import common_module as cm
 
 

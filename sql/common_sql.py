@@ -10,10 +10,6 @@ class CommonSql:
         """
     )
 
-    SELECT_AE_WAS_DEV_MAP = (
-        "select was_id from ae_was_dev_map"
-    )
-
     DELETE_TABLE_DEFAULT_QUERY = (
         "delete from #(table_name)"
     )
@@ -32,19 +28,6 @@ class CommonSql:
 
     DELETE_SUMMARY_TABLE_BY_DATE_QUERY = (
         "delete from #(table_name) where to_char(ten_min_time,'yyyymmdd')='#(date)'"
-    )
-
-    DUPLICATE_CHECK_AE_WAS_SQL_TEXT = (
-        """
-        INSERT INTO ae_was_sql_text (sql_id, sql_text)
-        VALUES ('#(sql_id)', '#(sql_value)')
-        ON CONFLICT (sql_id) 
-        DO NOTHING
-        """
-    )
-
-    TRUNCATE_TABLE_DEFAULT_QUERY = (
-        "truncate table #(table_name)"
     )
 
 
@@ -152,4 +135,11 @@ class AeDbSqlTextSql:
             AND ae.partition_key = d.partition_key
             order by ae.partition_key asc, ae.sql_uid asc, ae.seq asc
         """
+    )
+
+
+class AeWasDevMapSql:
+
+    SELECT_AE_WAS_DEV_MAP = (
+        "select was_id from ae_was_dev_map"
     )

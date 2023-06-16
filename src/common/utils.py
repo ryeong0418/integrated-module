@@ -16,6 +16,7 @@ from src.decoder.decoding import Decoding
 from sqlalchemy import Table, MetaData
 from sqlalchemy.dialects.postgresql import insert
 import numpy as np
+from src.decoder.decoding_java import excute_decoding_java
 
 
 class SystemUtils:
@@ -353,10 +354,10 @@ class TargetUtils:
                 connection.commit()
 
     @staticmethod
-    def add_custom_table_value(df, table_name, bind_value_config):
+    def add_custom_table_value(df, table_name):
 
-        if bind_value_config and table_name == 'ae_bind_sql_elapse':
-            df['bind_value'] = df['bind_list'].apply(Decoding.convertBindList)
+        if table_name == 'ae_bind_sql_elapse':
+            df['bind_value'] = df['bind_list'].apply(excute_decoding_java)
             df['bind_value'] = df['bind_value'].astype(str)
 
         return df

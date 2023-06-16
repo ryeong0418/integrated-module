@@ -187,7 +187,7 @@ class InterMaxTarget(CommonTarget):
                    (InterMax 테이블) ae_bind_sql_elapse, ae_was_os_stat_osm
         """
         for df in self._get_intermax_data_by_chunksize(query):
-            df = TargetUtils.add_custom_table_value(df, table_name, self.config['bind_sql_elapse'])
+            df = TargetUtils.add_custom_table_value(df, table_name)
             TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
     def _excute_insert_dev_except_data(self, query, table_name):

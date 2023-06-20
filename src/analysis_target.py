@@ -488,7 +488,7 @@ class SaTarget(CommonTarget):
 
     def get_table_data_by_chunksize(self, query, chunksize, coerce=True):
         conn = self.analysis_engine.connect().execution_options(stream_results=True, )
-        return pd.read_sql_query(text(query), conn, chunksize=chunksize, coerce_float=True if coerce else False)
+        return pd.read_sql_query(text(query), conn, chunksize=chunksize, coerce_float=bool(coerce))
 
     def insert_target_table_by_dump(self, table, df):
         TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table, df)

@@ -1,6 +1,6 @@
 import importlib.util
 import argparse
-
+import sys
 import os
 import pandas as pd
 import time
@@ -276,7 +276,8 @@ class TargetUtils:
         :return: 각 타겟의 query 결과 정보 (DataFrame)
         """
 
-        with TimeLogger(f"{table_name} to export", logger):
+        with TimeLogger(f"[{TargetUtils.__name__}] {sys._getframe(0).f_code.co_name}(), "
+                        f"{table_name} to extract ", logger):
             df = pd.read_sql(query, target_conn)
 
         return df
@@ -291,7 +292,8 @@ class TargetUtils:
         :param df: 저장하려는 DataFrame
         :return:
         """
-        with TimeLogger(f"{table_name} to import", logger):
+        with TimeLogger(f"[{TargetUtils.__name__}] {sys._getframe(0).f_code.co_name}(), "
+                        f"{table_name} to import ", logger):
             df.to_sql(
                 name=table_name,
                 con=analysis_engine,

@@ -21,18 +21,18 @@
 		"db_type": "postgres",
 		"host": "10.10.47.241",
 		"port": 5432,
-		"sid": "postgres",
+		"sid": "AEproject",
 		"user": "postgres",
 		"password": "postgres"
 	},
 	"scheduler": {
 		"is_alive_sched": {
 			"hour": "*",
-			"minute": "0,30"
+			"minute": "*"
 		},
 		"main_sched": {
-			"hour": "1",
-			"minute": "5"
+			"hour": "11",
+			"minute": "10, 59"
 		}
 	},
 	"sql_debug_flag": true,

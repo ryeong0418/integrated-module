@@ -9,7 +9,7 @@ from src.common.utils import TargetUtils, SystemUtils, InterMaxUtils, MaxGaugeUt
 from src.common.constants import TableConstants, SystemConstants
 from src.common.enum_module import ModuleFactoryEnum
 from sql.common_sql import CommonSql, AeWasSqlTextSql, AeDbSqlTemplateMapSql, AeDbInfoSql, AeDbSqlTextSql
-from sql.common_sql import AeWasDevMapSql
+from sql.common_sql import AeWasDevMapSql, XapmTxnSqlDetail
 from datetime import datetime, timedelta
 
 
@@ -203,6 +203,12 @@ class InterMaxTarget(CommonTarget):
                                                                  AeWasDevMapSql.SELECT_AE_WAS_DEV_MAP, table_name)
             was_id_except_df = detail_df[~detail_df['was_id'].isin(ae_dev_map_df['was_id'])]
             TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, was_id_except_df)
+
+    def get_xapm_txn_sql_detail(self, start_param, end_param):
+        param_dict = {'start_param': start_param, 'end_param': end_param}
+        query = SystemUtils.sql_replace_to_dict(XapmTxnSqlDetail.SELECT_XAPM_TXN_SQL_DETAIL, param_dict)
+
+        return TargetUtils.get_target_data_by_query(self.logger, self.im_conn, query, "XAPM_SQL_SUMMARY")
 
 
 class MaxGaugeTarget(CommonTarget):
@@ -593,3 +599,13 @@ class SaTarget(CommonTarget):
         update_query = AeWasSqlTextSql.UPDATE_BY_NO_ANALYZED_TARGET
 
         TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, update_query)
+
+    def insert_ae_txn_sql_similarity(self, result_valid_df):
+        table_name = TableConstants.AE_TXN_SQL_SIMILARITY
+        TargetUtils.psql_insert_copy(self.logger, table_name, self.analysis_engine, result_valid_df)
+
+    def get_ae_was_sql_text_by_sql_id(self, sql_id):
+        table_name = TableConstants.AE_WAS_SQL_TEXT
+        query = SystemUtils.sql_replace_to_dict(AeWasSqlTextSql.SELECT_CLUSTER_ID_BY_SQL_ID, {'sql_id': sql_id})
+        df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, query, table_name)
+        return df

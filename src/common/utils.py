@@ -4,6 +4,7 @@ import sys
 import os
 import pandas as pd
 import time
+import re
 
 from pathlib import Path
 from psycopg2 import errors
@@ -404,3 +405,50 @@ class MaxGaugeUtils:
             date_conditions.append(date_condition)
 
         return date_conditions
+
+
+class SqlUtils:
+
+    @staticmethod
+    def remove_unnecess_char(df, target_c: str, des_c: str = None, contains_comma=False):
+        """
+        정규식을 이용한 /t, /n, /r, comma 치환 함수
+        :param df: 원본 데이터프레임
+        :param target_c: 대상 타겟 컬럼
+        :param des_c: 목적지 컬럼 (optional) if None target_c
+        :param contains_comma: comma 값 치환 여부
+        :return: 치환된 데이터프레임
+        """
+        des_c = target_c if des_c is None else des_c
+
+        comma_attr = [(',', ' ')]
+
+        repls = {r'\\t': ' ', r'\\n': ' ', r'\\r': ' ', '\t': ' ', '\n': ' ', '\r': ' '}
+
+        if contains_comma:
+            repls.update(comma_attr)
+
+        rep = dict((re.escape(k), v) for k, v in repls.items())
+        pattern = re.compile("|".join(rep.keys()))
+
+        df[des_c] = df[target_c].apply(
+            lambda x: pattern.sub(lambda m: rep[re.escape(m.group(0))], x)
+        )
+        return df
+
+    @staticmethod
+    def rex_processing(df):
+        """
+        sql text를 정규식 처리를 위한 함수
+        in 구문, values 구문, DateTime 형식, Date 형식
+        :param df: 정규식 처리를 위한 DataFrame, 해당 컬럼은 sql_text
+        :return: 정규식 변환 처리된 DataFrame
+        """
+        df['sql_text'] = df['sql_text'].str.replace(r'\s+in\s?\([^)]*\)', ' in(<:args:>)', regex=True)
+        df['sql_text'] = df['sql_text'].str.replace(r'\s+values\s?\([^)]*\)', ' values(<:args:>)', regex=True)
+        df['sql_text'] = df['sql_text'].str.replace(r"\d{2,4}\-\d{2}\-\d{2} \d{2}:\d{2}:\d{2}\.?\d{0,3}", '<DATETIME>',
+                                                    regex=True)
+        df['sql_text'] = df['sql_text'].str.replace(r"\d{2,4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}\.?\d{0,3}", '<DATETIME>',
+                                                    regex=True)
+        df['sql_text'] = df['sql_text'].str.replace(r"\d{4}\-\d{2}\-\d{2}", '<DATE>', regex=True)
+        return df

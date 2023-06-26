@@ -1,1 +1,0 @@
-create index if not exists ae_was_sql_text_index on ae_was_sql_text (cluster_id)

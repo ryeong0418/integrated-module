@@ -310,6 +310,19 @@ class SaTarget(CommonTarget):
 
             TargetUtils.create_table(self.logger, self.sa_conn, ddl)
 
+    def get_ae_was_sql_text(self, extract_cnt=0):
+        query = AeWasSqlTextSql.SELECT_AE_WAS_SQL_TEXT
+        table_name = TableConstants.AE_WAS_SQL_TEXT
+
+        if extract_cnt > 0:
+            query += f" limit {extract_cnt}"
+
+        try:
+            result_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, query, table_name)
+        except Exception as e:
+            self.logger.exception(e)
+        return result_df
+
     def ae_was_sql_text_meta(self):
         """
         InterMax DB xapm_sql_text 테이블에서 데이터 추출하여 분석 DB ae_was_sql_text 테이블에 insert 기능 함수
@@ -323,11 +336,6 @@ class SaTarget(CommonTarget):
 
             table_name = SystemUtils.extract_tablename_in_filename(init_file)
             self._execute_insert_meta(meta_query, table_name, self.im_conn)
-
-    def get_ae_was_sql_text(self, chunksize):
-        query = AeWasSqlTextSql.SELECT_AE_WAS_SQL_TEXT
-        conn = self.analysis_engine.connect().execution_options(stream_results=True, )
-        return pd.read_sql_query(text(query), conn, chunksize=chunksize)
 
     def get_ae_db_sql_text_by_1seq(self, partition_key, chunksize):
         replace_dict = {'partition_key': partition_key}

@@ -40,7 +40,7 @@ class Scheduler(cm.CommonModule):
 
         try:
             self.logger.info(f"Background Scheduler job start")
-            self._bg_scheduler_start()
+            # self._bg_scheduler_start()
             time.sleep(1)
 
             self.logger.info(f"Blocking Scheduler job start")
@@ -76,23 +76,12 @@ class Scheduler(cm.CommonModule):
         self.scheduler_logger.info(f"Main scheduler start and set config cron expression - "
                                    f"{self.config['scheduler']['main_sched']['hour']} hour "
                                    f"{self.config['scheduler']['main_sched']['minute']} minute")
+
         self.block_scheduler.start()
+        self.logger.info(f"End of Scheduler start")
 
     def _block_scheduler_job(self):
         self.scheduler_logger.info("_block_scheduler_job")
-
-    # def _block_scheduler_start(self):
-    #     self.block_scheduler.add_job(
-    #         self._main_job,
-    #         CRON,
-    #         hour=self.config['scheduler']['main_sched']['hour'],
-    #         minute=self.config['scheduler']['main_sched']['minute'],
-    #         id='_extract_summary_job'
-    #     )
-    #     self.scheduler_logger.info(f"Main scheduler start and set config cron expression - "
-    #                                f"{self.config['scheduler']['main_sched']['hour']} hour "
-    #                                f"{self.config['scheduler']['main_sched']['minute']} minute")
-    #     self.block_scheduler.start()
 
     def _add_scheduler_logger(self):
         self.scheduler_logger = Logger(self.config['env']).\
@@ -113,6 +102,7 @@ class Scheduler(cm.CommonModule):
         self.block_scheduler.shutdown()
 
     def _main_job(self):
+        self.scheduler_logger.info("main_job start")
         start_tm = time.time()
 
         result = ResultConstants.FAIL
@@ -156,6 +146,9 @@ class Scheduler(cm.CommonModule):
             with db.session_scope() as session:
                 session.query(ExecuteLogModel).filter(ExecuteLogModel.seq == f'{elm.seq}').update(result_dict)
                 session.commit()
+
+        self.scheduler_logger.info("main_job end")
+        return
 
     def _extractor_job(self):
         self.scheduler_logger.info(f"_extractor_job start")

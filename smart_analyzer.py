@@ -75,7 +75,7 @@ def main_process():
         instance = fmf.get_module_instance(ModuleFactoryEnum[process].value)
         instance.set_config(config)
 
-        with TimeLogger(f'{instance.__class__.__name__}', logger):
+        with TimeLogger(f'[{instance.__class__.__name__}] ', logger):
             instance.main_process()
 
         result = ResultConstants.SUCCESS

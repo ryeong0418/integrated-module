@@ -42,3 +42,4 @@ CREATE TABLE AE_TXN_SQL_SUMMARY (
     create_dt timestamp with time zone default current_timestamp,
     create_id varchar(20) default 'system' not NULL
 )
+

@@ -1,9 +1,6 @@
-import re
 import time
 import pandas as pd
 import inspect
-
-from datetime import datetime, timedelta
 
 from src import common_module as cm
 from src.common.module_exception import ModuleException
@@ -11,7 +8,7 @@ from src.common.enum_module import MessageEnum
 from src.common.background_task import BackgroundTask
 from src.common.timelogger import TimeLogger
 from src.common.constants import SystemConstants
-from src.common.utils import MaxGaugeUtils
+from src.common.utils import MaxGaugeUtils, SqlUtils
 from src.drain.drain_worker import DrainWorker
 from resources.logger_manager import Logger
 
@@ -102,14 +99,14 @@ class SqlTextTemplate(cm.CommonModule):
         df = df[df['sql_text'].str.contains('|'.join(filter_list), na=False, case=False)]
         df = df[~df['sql_text'].str.contains('sql is too big', na=False, case=False)]
 
-        df = SqlTextTemplate._remove_unnecess_char(df, 'sql_text')
+        df = SqlUtils.remove_unnecess_char(df, 'sql_text', contains_comma=True)
         df['sql_text'] = df['sql_text'].str.lower().str.replace(r'\s+', ' ', regex=True)
 
         sel_df = df[df['sql_text'].str.contains('|'.join(sel_list), na=False, case=False)]
         etc_df = df[~df['sql_text'].str.contains('|'.join(sel_list), na=False, case=False)]
 
-        sel_df = SqlTextTemplate._rex_processing(sel_df)
-        etc_df = SqlTextTemplate._rex_processing(etc_df)
+        sel_df = SqlUtils.rex_processing(sel_df)
+        etc_df = SqlUtils.rex_processing(etc_df)
 
         return sel_df, etc_df
 
@@ -183,49 +180,3 @@ class SqlTextTemplate(cm.CommonModule):
 
         self.logger.info(f"select drain match processed line_count {self.sel_worker.line_count}")
         self.logger.info(f"etc drain match processed line_count {self.etc_worker.line_count}")
-
-    def _get_export_filename_suffix(self):
-        """
-        db sql text export 파일 날짜 접미사 추출 함수
-        :return: 날짜 list
-        """
-        prefix = []
-
-        for i in range(0, int(self.config['args']['interval'])):
-            from_date = datetime.strptime(str(self.config['args']['s_date']), '%Y%m%d')
-            date_condition = from_date + timedelta(days=i)
-            date_condition = date_condition.strftime('%y%m%d')
-
-            parquet_file_name_suffix = f"{SystemConstants.DB_SQL_TEXT_FILE_NAME}_{date_condition}"
-
-            prefix.append(parquet_file_name_suffix)
-
-        return prefix
-
-    @staticmethod
-    def _rex_processing(df):
-        df['sql_text'] = df['sql_text'].str.replace(r'\s+in\s?\([^)]*\)', ' in(<:args:>)', regex=True)
-        df['sql_text'] = df['sql_text'].str.replace(r'\s+values\s?\([^)]*\)', ' values(<:args:>)', regex=True)
-        df['sql_text'] = df['sql_text'].str.replace(r"\d{2,4}\-\d{2}\-\d{2} \d{2}:\d{2}:\d{2}\.?\d{0,3}", '<DATETIME>',
-                                                    regex=True)
-        df['sql_text'] = df['sql_text'].str.replace(r"\d{2,4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}\.?\d{0,3}", '<DATETIME>',
-                                                    regex=True)
-        df['sql_text'] = df['sql_text'].str.replace(r"\d{4}\-\d{2}\-\d{2}", '<DATE>', regex=True)
-        return df
-
-    @staticmethod
-    def _remove_unnecess_char(df, target_c: str):
-        """
-        정규식을 이용한 /t, /n, /r, , 치환 함수
-        :param df: 원본 데이터프레임
-        :param target_c: 대상 타겟 컬럼
-        :return: 치환된 데이터프레임
-        """
-        repls = {r'\\t': ' ', r'\\n': ' ', r'\\r': ' ', '\t': ' ', '\n': ' ', '\r': ' ', ',': ' '}
-        rep = dict((re.escape(k), v) for k, v in repls.items())
-        pattern = re.compile("|".join(rep.keys()))
-
-        df[target_c] = df[target_c].apply(
-            lambda x: pattern.sub(lambda m: rep[re.escape(m.group(0))], x)
-        )
-        return df

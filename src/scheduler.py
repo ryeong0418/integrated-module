@@ -10,6 +10,7 @@ from src.sql.model import ExecuteLogModel
 from src.extractor import Extractor
 from src.summarizer import Summarizer
 from src.sql_text_merge import SqlTextMerge
+from src.sql_text_similarity import SqlTextSimilarity
 from src.common.constants import SystemConstants, ResultConstants
 from src.common.utils import SystemUtils
 from src.common.enum_module import ModuleFactoryEnum, MessageEnum
@@ -26,6 +27,7 @@ class Scheduler(cm.CommonModule):
         self.scheduler_logger = None
         self.block_scheduler: BlockingScheduler = None
         self.bg_scheduler: BackgroundScheduler = None
+        self.sts: SqlTextSimilarity = None
 
     def __del__(self):
         if self.block_scheduler:
@@ -40,7 +42,7 @@ class Scheduler(cm.CommonModule):
 
         try:
             self.logger.info(f"Background Scheduler job start")
-            # self._bg_scheduler_start()
+            self._bg_scheduler_start()
             time.sleep(1)
 
             self.logger.info(f"Blocking Scheduler job start")
@@ -56,6 +58,7 @@ class Scheduler(cm.CommonModule):
             minute=self.config['scheduler']['is_alive_sched']['minute'],
             id='_is_alive_logging_job'
         )
+
         self.bg_scheduler.add_job(
             self._main_job,
             CRON,
@@ -63,7 +66,23 @@ class Scheduler(cm.CommonModule):
             minute=self.config['scheduler']['main_sched']['minute'],
             id='_extract_summary_job'
         )
-        self.bg_scheduler.start()
+
+        if self.config['intermax_repo']['use']:
+            self.sts = SqlTextSimilarity(self.scheduler_logger)
+            self.sts.set_config(self.config)
+            self.sts.pre_load_tuning_sql_text()
+
+            self.bg_scheduler.add_job(
+                self._sql_text_similarity_job,
+                CRON,
+                hour=self.config['scheduler']['sql_text_similarity_sched']['hour'],
+                minute=self.config['scheduler']['sql_text_similarity_sched']['minute'],
+                id='_sql_text_similarity_job'
+
+            )
+            self.bg_scheduler.start()
+        else:
+            self.scheduler_logger.info("SqlTextSimilarity not activate, cause intermax_repo config use false")
 
     def _block_scheduler_start(self):
         self.block_scheduler.add_job(
@@ -183,6 +202,15 @@ class Scheduler(cm.CommonModule):
 
         self.scheduler_logger.info(f"_sql_text_merge_job end")
 
+    def _sql_text_similarity_job(self):
+        self.scheduler_logger.info(f"_sql_text_similarity_job start")
+
+        self._update_config_custom_values(proc='l')
+        self.sts.set_config(self.config)
+        self.sts.main_process()
+
+        self.scheduler_logger.info(f"_sql_text_similarity_job end")
+
     def _update_config_custom_values(self, proc):
         custom_values = dict()
         custom_values['args'] = {'s_date': SystemUtils.get_date_by_interval(-1, fmt="%Y%m%d"), 'interval': 1, 'proc': proc}
@@ -206,4 +234,4 @@ class Scheduler(cm.CommonModule):
                 job.next_run_time,
             ))
 
-        self.scheduler_logger.info(f"This Analysis Module Scheduler is Alive.. PID : {os.getpid()} \n")
+        self.scheduler_logger.info(f"This analysis module scheduler is alive.. PID : {os.getpid()} \n")

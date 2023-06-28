@@ -33,6 +33,10 @@
 		"main_sched": {
 			"hour": "3",
 			"minute": "5"
+		},
+		"sql_text_similarity_sched": {
+			"hour": "*",
+			"minute": "3, 13, 23, 33, 43, 53"
 		}
 	},
 	"sql_debug_flag": false,

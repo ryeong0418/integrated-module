@@ -6,7 +6,6 @@ from pathlib import Path
 from datetime import datetime, timedelta
 
 from src import common_module as cm
-from src.common.module_exception import ModuleException
 from src.common.utils import SystemUtils, SqlUtils
 from src.common.constants import DateFmtConstants
 from src.common.constants import SystemConstants
@@ -23,24 +22,23 @@ class SqlTextSimilarity(cm.CommonModule):
         self.last_execution_time = None
         self.last_execution_proc = "None"
         self.valid_sql_text_similarity = 0.6
+        self.is_exist_tuning_sql = False
 
     def pre_load_tuning_sql_text(self):
         self._set_tuning_sql_text()
+        self.valid_sql_text_similarity = self.config.get('valid_sql_text_similarity', 0.6)
 
     def main_process(self):
         self.logger.info("SqlTextSimilarity")
-        self.valid_sql_text_similarity = self.config.get('valid_sql_text_similarity', 0.6)
 
         self._set_tuning_sql_text()
 
-        self._init_im_target()
-        xapm_sql_df = self._get_xapm_txn_sql_detail()
-        self._teardown_im_target()
+        if self.is_exist_tuning_sql:
+            xapm_sql_df = self._get_xapm_txn_sql_detail()
+            xapm_sql_df = self._preprocessing_xapm_sql_df(xapm_sql_df)
 
-        xapm_sql_df = self._preprocessing_xapm_sql_df(xapm_sql_df)
-
-        result_valid_df = self._analysis_sql_text_similarity(xapm_sql_df)
-        self._insert_ae_txn_sql_similarity(result_valid_df)
+            result_valid_df = self._analysis_sql_text_similarity(xapm_sql_df)
+            self._insert_ae_txn_sql_similarity(result_valid_df)
 
     @staticmethod
     def _preprocessing_xapm_sql_df(xapm_sql_df):
@@ -63,12 +61,14 @@ class SqlTextSimilarity(cm.CommonModule):
         self.logger.debug(f"tuning sql child path exist {bool(os.listdir(tuning_sql_path))}")
 
         if not bool(os.listdir(tuning_sql_path)):
-            self.logger.warn("tuning sql text not exist")
-            raise ModuleException("W002")
+            self.logger.warn("tuning sql text path not exist")
+            return
+        else:
+            self.is_exist_tuning_sql = True
 
         tuning_sql_list = os.listdir(tuning_sql_path)
 
-        self.logger.info(f"tuning sql path {len(tuning_sql_list)} exist")
+        self.logger.info(f"tuning sql path {len(tuning_sql_list)} things exist")
 
         dict_keys_set = set(self.origin_sql_id_dict.keys())
         list_set = set(tuning_sql_list)
@@ -77,9 +77,11 @@ class SqlTextSimilarity(cm.CommonModule):
         del_sql_id_list = list(dict_keys_set - list_set)
 
         if bool(del_sql_id_list):
-            self.logger.info(f"{str(del_sql_id_list)} sql_id deleted")
+            self.logger.info(f"{str(del_sql_id_list)} sql_id deleted.")
+            self._remove_sql_id_in_object(del_sql_id_list)
 
         if not bool(new_sql_id_list):
+            self.logger.info("new sql id path not detected.")
             return
 
         self.origin_sql_id_dict.update(dict.fromkeys(new_sql_id_list))
@@ -92,13 +94,14 @@ class SqlTextSimilarity(cm.CommonModule):
         for sql_id, pre_sql_text in self.origin_sql_id_dict.items():
 
             if pre_sql_text is None:
+                self.logger.info(f"new sql id : {sql_id}")
 
                 tuning_sql_files = SystemUtils.get_filenames_from_path(
                     os.path.join(tuning_sql_path, sql_id), suffix=".sql"
                 )
 
                 if len(tuning_sql_files) > 1:
-                    self.logger.warn(f"[{sql_id}] tuning sql file {len(tuning_sql_files)} exist")
+                    self.logger.warn(f"[{sql_id}] tuning sql file {len(tuning_sql_files)} exist. Check file in path")
 
                 tuning_sql_file = tuning_sql_files[0]
 
@@ -137,21 +140,27 @@ class SqlTextSimilarity(cm.CommonModule):
         return ' '.join(sql)
 
     def _get_xapm_txn_sql_detail(self):
-        start_date, end_date = self._get_time_param()
-        self.logger.info(f"get_xapm_sql_summary start_date : {start_date}, end_date : {end_date}")
+        self._init_im_target()
 
-        return self.imt.get_xapm_txn_sql_detail(start_date, end_date)
+        start_date, end_date = self._get_time_param()
+        self.logger.info(f"get_xapm_txn_sql_detail start_date : {start_date}, end_date : {end_date}")
+
+        xapm_sql_df = self.imt.get_xapm_txn_sql_detail(start_date, end_date)
+        self._teardown_im_target()
+        return xapm_sql_df
 
     @staticmethod
     def _get_time_param():
         now = datetime.now()
 
-        start_date = now.replace(minute=now.minute - now.minute % INTERVAL_MINUTE, second=0, microsecond=0) - \
-                     timedelta(minutes=INTERVAL_MINUTE)
+        start_date = \
+            now.replace(minute=now.minute - now.minute % INTERVAL_MINUTE, second=0, microsecond=0) - \
+            timedelta(minutes=INTERVAL_MINUTE)
         end_date = now.replace(minute=now.minute - now.minute % INTERVAL_MINUTE, second=0, microsecond=0)
 
-        return start_date.strftime(DateFmtConstants.DATETIME_FORMAT), \
-               end_date.strftime(DateFmtConstants.DATETIME_FORMAT)
+        return \
+            start_date.strftime(DateFmtConstants.DATETIME_FORMAT), \
+            end_date.strftime(DateFmtConstants.DATETIME_FORMAT)
 
     def _analysis_sql_text_similarity(self, xapm_sql_df):
         valid_df_list = []
@@ -181,9 +190,15 @@ class SqlTextSimilarity(cm.CommonModule):
 
     def _insert_ae_txn_sql_similarity(self, result_valid_df):
         self._init_sa_target()
-
         self.st.insert_ae_txn_sql_similarity(result_valid_df)
         self._teardown_sa_target()
+
+    def _remove_sql_id_in_object(self, del_sql_id_list):
+        for del_sql_id in del_sql_id_list:
+            if self.origin_sql_id_dict.get(del_sql_id):
+                del self.origin_sql_id_dict[del_sql_id]
+            if self.cluster_id_by_origin_sql_id_dict.get(del_sql_id):
+                del self.cluster_id_by_origin_sql_id_dict[del_sql_id]
 
     @staticmethod
     def jaccard_similarity(list1, list2):

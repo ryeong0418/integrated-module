@@ -6,4 +6,5 @@ CREATE TABLE AE_WAS_SQL_TEXT (
     create_dt timestamp with time zone default current_timestamp,
     create_id varchar(20) default 'system' not NULL,
     constraint pk_ae_was_sql_text primary key (sql_id)
-)
+);
+create index if not exists ae_was_sql_text_index on ae_was_sql_text (cluster_id);

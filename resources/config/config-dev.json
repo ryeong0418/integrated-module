@@ -33,11 +33,16 @@
 		"main_sched": {
 			"hour": "1",
 			"minute": "5"
+		},
+		"sql_text_similarity_sched": {
+			"hour": "*",
+			"minute": "3, 13, 23, 33, 43, 53"
 		}
 	},
 	"sql_debug_flag": true,
 	"data_handling_chunksize": 10000,
 	"sql_match_time": 0,
 	"sql_template_select_only": false,
-	"bind_sql_elapse": false
+	"bind_sql_elapse": false,
+	"valid_sql_text_similarity": 0.6
 }

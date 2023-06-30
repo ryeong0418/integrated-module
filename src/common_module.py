@@ -27,3 +27,12 @@ class CommonModule:
     def _init_mg_target(self):
         self.mgt = MaxGaugeTarget(self.logger, self.config)
         self.mgt.init_process()
+
+    def _teardown_sa_target(self):
+        del self.st
+
+    def _teardown_im_target(self):
+        del self.imt
+
+    def _teardown_mg_target(self):
+        del self.mgt

@@ -1,0 +1,10 @@
+create table ae_txn_sql_similarity(
+	txn_id varchar(40) not null,
+	sql_id varchar(40) not null,
+	origin_sql_id varchar(40) not null,
+	origin_cluster_id varchar(20) null,
+	similarity numeric not null,
+	create_dt timestamp with time zone default current_timestamp,
+	create_id varchar(20) default 'system' not null,
+    constraint pk_ae_txn_sql_similarity primary key (origin_sql_id, txn_id, sql_id)
+);

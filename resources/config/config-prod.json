@@ -44,5 +44,5 @@
 	"sql_match_time": 200,
 	"sql_template_select_only": false,
 	"bind_sql_elapse": false,
-	"valid_sql_text_similarity": 0.6
+	"valid_sql_text_similarity": 0.7
 }

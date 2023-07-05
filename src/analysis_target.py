@@ -75,7 +75,20 @@ class CommonTarget:
 
     @staticmethod
     def _create_engine(engine_template):
-        return create_engine(engine_template, pool_size=20, max_overflow=20)
+        return create_engine(
+            engine_template,
+            echo=False,
+            pool_size=20,
+            max_overflow=20,
+            echo_pool=False,
+            pool_pre_ping=True,
+            connect_args={
+                "keepalives": 1,
+                "keepalives_idle": 30,
+                "keepalives_interval": 10,
+                "keepalives_count": 5,
+            },
+        )
 
 
 class InterMaxTarget(CommonTarget):

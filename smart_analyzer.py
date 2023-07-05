@@ -49,10 +49,13 @@ def main_process():
 
         if bool(process) and process != 'i' and process != 'b':
             db = DataBase(config)
+            db.create_engine()
             elm = ExecuteLogModel(ModuleFactoryEnum[process].value, SystemUtils.get_now_timestamp(), str(vars(args)))
 
             with db.session_scope() as session:
                 session.add(elm)
+
+            db.engine_dispose()
         elif bool(process) and process == 'b':
             Path(f"{home}/{SystemConstants.TMP_PATH}").mkdir(exist_ok=True, parents=True)
             pid_tmp_file = f"{home}/{SystemConstants.TMP_PATH}/{SystemConstants.PID_TMP_FILE_NAME}"
@@ -98,6 +101,7 @@ def main_process():
         result_dict = SystemUtils.set_update_execute_log(result, start_tm, result_code, result_msg)
 
         if bool(process) and process != 'i' and process != 'b':
+            db.create_engine()
             with db.session_scope() as session:
                 session.query(ExecuteLogModel).filter(ExecuteLogModel.seq == f'{elm.seq}').update(result_dict)
                 session.commit()

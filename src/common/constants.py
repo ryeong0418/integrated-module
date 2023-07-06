@@ -46,7 +46,7 @@ class SystemConstants:
     DRAIN_CONF_PATH = '/resources/drain/'
 
     # decoding jar 파일
-    DECODING_JAR_FILE_PATH = '/src/decoder'
+    DECODING_JAR_FILE_PATH = '/resources/intermax_decoding'
 
     # jar 파일 확장자
     JAR_FILE_EXT = '.jar'

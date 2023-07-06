@@ -11,7 +11,7 @@ from src.common.enum_module import ModuleFactoryEnum
 from sql.common_sql import CommonSql, AeWasSqlTextSql, AeDbSqlTemplateMapSql, AeDbInfoSql, AeDbSqlTextSql
 from sql.common_sql import AeWasDevMapSql
 from datetime import datetime, timedelta
-from src.decoder.decoding_java import Decoding
+from src.decoder.intermax_decryption import Decoding
 
 
 class CommonTarget:
@@ -194,18 +194,17 @@ class InterMaxTarget(CommonTarget):
 
         bind_list 컬럼값을 복호화하여 bind_value 컬럼에 insert
         """
-        if self.config['extract_bind_value']:
+        decoding = Decoding(self.config)
+        decoding.set_path()
 
-            decoding = Decoding(self.config)
-            decoding.set_path()
+        for df in self._get_intermax_data_by_chunksize(query):
 
-            for df in self._get_intermax_data_by_chunksize(query):
+            if self.config['extract_bind_value']:
                 df['bind_value'] = df['bind_list'].apply(decoding.execute_bind_list_decoding)
                 df['bind_value'] = df['bind_value'].astype(str)
                 TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
-        else:
-            for df in self._get_intermax_data_by_chunksize(query):
+            else:
                 TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
 

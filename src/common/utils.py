@@ -15,7 +15,7 @@ from src.common.timelogger import TimeLogger
 from sqlalchemy import Table, MetaData
 from sqlalchemy.dialects.postgresql import insert
 import numpy as np
-from src.decoder.decoding_java import Decoding
+from src.decoder.intermax_decryption import Decoding
 
 
 class SystemUtils:

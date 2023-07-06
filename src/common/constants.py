@@ -45,6 +45,12 @@ class SystemConstants:
     # sql_text_template 관련 파일 경로
     DRAIN_CONF_PATH = '/resources/drain/'
 
+    # decoding jar 파일
+    DECODING_JAR_FILE_PATH = '/src/decoder'
+
+    # jar 파일 확장자
+    JAR_FILE_EXT = '.jar'
+
 
 class TableConstants:
     AE_WAS_INFO = "ae_was_info"

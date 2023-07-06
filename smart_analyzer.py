@@ -53,6 +53,7 @@ def main_process():
 
             with db.session_scope() as session:
                 session.add(elm)
+
         elif bool(process) and process == 'b':
             Path(f"{home}/{SystemConstants.TMP_PATH}").mkdir(exist_ok=True, parents=True)
             pid_tmp_file = f"{home}/{SystemConstants.TMP_PATH}/{SystemConstants.PID_TMP_FILE_NAME}"

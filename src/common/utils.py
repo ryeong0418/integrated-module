@@ -11,12 +11,11 @@ from psycopg2.errorcodes import DUPLICATE_TABLE
 from datetime import datetime, timedelta
 
 from src.common.timelogger import TimeLogger
-from src.decoder.decoding import Decoding
 
 from sqlalchemy import Table, MetaData
 from sqlalchemy.dialects.postgresql import insert
 import numpy as np
-from src.decoder.decoding_java import excute_decoding_java
+from src.decoder.decoding_java import Decoding
 
 
 class SystemUtils:
@@ -357,7 +356,7 @@ class TargetUtils:
     def add_custom_table_value(df, table_name):
 
         if table_name == 'ae_bind_sql_elapse':
-            df['bind_value'] = df['bind_list'].apply(excute_decoding_java)
+            df['bind_value'] = df['bind_list'].apply(Decoding.excute_bind_list_decoding)
             df['bind_value'] = df['bind_value'].astype(str)
 
         return df

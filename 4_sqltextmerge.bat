@@ -8,6 +8,8 @@ type "%ParrentPath%\exem_analysis_module.txt"
 
 SET result="unknown error"
 
+call zulu.bat
+
 call .venv\Scripts\activate
 python smart_analyzer.py --proc m --s_date %1 --interval %2 > Output
 

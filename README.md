@@ -1,16 +1,17 @@
 # Integrated technology Group WAS&DB Data Analysis
 
-Exem Was/DB 통합 분석 데이터 분석기
+Exem Was/DB 통합 데이터 분석 모듈 
 
 ## Required Software
 
 - python >= 3.8.10
-- postgresql >= 13.3
+- postgresql >= 15.2
+- JRE >= 1.8 
 
 ## Settings
 
-- 설치한 postgresql에 분석 모듈에서 사용할 Database 생성
-- 분석에 사용될 연동 정보 설정 (/resource/config/config-prod.json)
+- 패키징된 OS별 setup 실행 및 DB(PG) 실행
+- 분석에 사용될 타겟 연동 정보 설정 (/resource/config/config-prod.json)
 
 ## Install
 ### 파이썬 가상환경 생성 및 라이브러리 설치
@@ -29,22 +30,22 @@ Exem Was/DB 통합 분석 데이터 분석기
 
 ## Usage
 
-1. Initialize (분석 모듈 Table 생성 & 메타 정보 저장)
+1. Initialize (분석 모듈에서 사용하는 Table 생성 & 각 타겟의 메타 정보 저장)
 ```shell
 /1_initialize.bat (Windows)
 /bin/1_initialize.sh (UNIX)
 ```
 
-2. Extractor (분석 데이터 추출 및 저장)
+2. Extractor (각 타겟의 분석 데이터 추출 및 저장)
 ```shell
 /2_extractor.bat {시작날짜} {기간} (Windows)
 /bin/2_extractor.sh {시작날짜} {기간} (UNIX)
 ```
 
-3. Summarizer (분석 데이터 취합 및 저장, 시작 날짜에 대한 데이터 summary)
+3. Summarizer (분석 데이터 취합(summary))
 ```shell
-/3_summarizer.bat {시작날짜} (Windows)
-/bin/3_summarizer.sh {시작날짜} (UNIX)
+/3_summarizer.bat {시작날짜} {기간} (Windows)
+/bin/3_summarizer.sh {시작날짜} {기간} (UNIX)
 ```
 
 4. SqlTextMerge (Was/DB Sql Text Match)
@@ -53,13 +54,19 @@ Exem Was/DB 통합 분석 데이터 분석기
 /bin/4_sqltextmerge.sh {시작날짜} {기간} (UNIX)
 ```
 
-5. Visualization (분석 데이터 추출)
+5. Visualization (취합된 분석 데이터 추출, /export/sql_excel_sql/*.txt에 대한 sql 결과 정보 추출)
 ```shell
 /5_visualization.bat (Windows)
 /bin/5_visualization.sh (UNIX)
 ```
 
-6. Scheduler (분석 데이터 추출/취합/Sql Text Match 동작 스케쥴러 (하루전) - Background Execute)
+6. SqlTextTemplate (리터럴 쿼리 분석 및 저장)
+```shell
+/6_sqltexttemplate.bat {시작날짜} {기간} (Windows)
+/bin/6_sqltexttemplate.sh {시작날짜} {기간} (UNIX)
+```
+
+7. Scheduler (분석 데이터 추출/취합/Sql Text Match 동작, 튜닝 sql text 트랜잭션 추적 기능 스케쥴러 (하루전 데이터))
 ```shell
 /6_batch.bat (Windows)
 /bin/6_batch.sh (UNIX)
@@ -67,7 +74,7 @@ Exem Was/DB 통합 분석 데이터 분석기
 
 ## Extra Function
 
-- DB export/import
+- DB export/import (분석 모듈에서 사용하고 있는 table export/import)
 ```shell
 파이썬 가상환경 활성화 후
 python -m src.common.file_export (export)

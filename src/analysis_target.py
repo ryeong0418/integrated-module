@@ -39,13 +39,14 @@ class CommonTarget:
         self.sa_cursor = None
 
         self.chunksize = self.config.get('data_handling_chunksize', 10_000)
-        self.extract_chunksize = self.chunksize * 10
+        self.extract_chunksize = self.chunksize * 5
         self.sql_match_time = self.config.get('sql_match_time', 0)
         self.sql_file_root_path = f"{self.config['home']}/" \
                                   f"{SystemConstants.SQL}/" \
                                   f"{ModuleFactoryEnum[self.config['args']['proc']].value}"
 
         self.update_cluster_cnt = 0
+        self.intermax_decoder = None
 
     def __del__(self):
         if self.im_conn:
@@ -207,19 +208,20 @@ class InterMaxTarget(CommonTarget):
 
         bind_list 컬럼값을 복호화하여 bind_value 컬럼에 insert
         """
-        decoding = Decoding(self.config)
-        decoding.set_path()
-
         for df in self._get_intermax_data_by_chunksize(query):
 
             if self.config['extract_bind_value']:
-                df['bind_value'] = df['bind_list'].apply(decoding.execute_bind_list_decoding)
+
+                if self.intermax_decoder is None:
+                    self.intermax_decoder = Decoding(self.config)
+                    self.intermax_decoder.set_path()
+
+                df['bind_value'] = df['bind_list'].apply(
+                    lambda bind_str: self.intermax_decoder.execute_bind_list_decoding(bind_str)
+                )
                 df['bind_value'] = df['bind_value'].astype(str)
-                TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
-            else:
-                TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
-
+            TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
     def _execute_insert_intermax_detail_data(self, query, table_name):
 

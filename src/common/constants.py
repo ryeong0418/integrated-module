@@ -51,6 +51,9 @@ class SystemConstants:
     # jar 파일 확장자
     JAR_FILE_EXT = '.jar'
 
+    # 튜닝된 sql text path
+    TUNING_SQL_TEXT_PATH = 'tuning_sql/'
+
 
 class TableConstants:
     AE_WAS_INFO = "ae_was_info"
@@ -78,6 +81,7 @@ class TableConstants:
     AE_EXECUTE_LOG = "ae_execute_log"
     AE_SQL_TEMPLATE = "ae_sql_template"
     AE_DB_SQL_TEMPLATE_MAP = "ae_db_sql_template_map"
+    AE_TXN_SQL_SIMILARITY = "ae_txn_sql_similarity"
 
 
 class ResultConstants:
@@ -102,3 +106,11 @@ class DrainConstants:
     # cluster_id custom tag
     SELECT_TEMPLATE_CLUSTER_ID_PREFIX = 'S_'
     ETC_TEMPLATE_CLUSTER_ID_PREFIX = 'E_'
+
+
+class DateFmtConstants:
+    DATE_FORMAT = "%Y-%m-%d"
+    DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+    DATE_YMD = "%Y%m%d"
+    DATE_YMDHMS = "%Y%m%d%H%M%S"

@@ -10,6 +10,7 @@ from src.sql.model import ExecuteLogModel
 from src.extractor import Extractor
 from src.summarizer import Summarizer
 from src.sql_text_merge import SqlTextMerge
+from src.sql_text_similarity import SqlTextSimilarity
 from src.common.constants import SystemConstants, ResultConstants
 from src.common.utils import SystemUtils
 from src.common.enum_module import ModuleFactoryEnum, MessageEnum
@@ -24,12 +25,13 @@ class Scheduler(cm.CommonModule):
     def __init__(self, logger):
         super().__init__(logger)
         self.scheduler_logger = None
-        self.main_scheduler: BlockingScheduler = None
+        self.block_scheduler: BlockingScheduler = None
         self.bg_scheduler: BackgroundScheduler = None
+        self.sts: SqlTextSimilarity = None
 
     def __del__(self):
-        if self.main_scheduler:
-            self.main_scheduler.shutdown()
+        if self.block_scheduler:
+            self.block_scheduler.shutdown()
         if self.bg_scheduler:
             self.bg_scheduler.shutdown()
 
@@ -43,8 +45,8 @@ class Scheduler(cm.CommonModule):
             self._bg_scheduler_start()
             time.sleep(1)
 
-            self.logger.info(f"Main Scheduler job start")
-            self._main_scheduler_start()
+            self.logger.info(f"Blocking Scheduler job start")
+            self._block_scheduler_start()
         except Exception as e:
             self.logger.exception(e)
 
@@ -56,34 +58,56 @@ class Scheduler(cm.CommonModule):
             minute=self.config['scheduler']['is_alive_sched']['minute'],
             id='_is_alive_logging_job'
         )
-        # self.bg_scheduler.add_job(
-        #     self._sql_text_merge_job,
-        #     CRON,
-        #     # hour='*',
-        #     second='2',
-        #     id='_sql_text_merge_job'
-        # )
-        self.bg_scheduler.start()
 
-    def _main_scheduler_start(self):
-        self.main_scheduler.add_job(
+        self.bg_scheduler.add_job(
             self._main_job,
             CRON,
             hour=self.config['scheduler']['main_sched']['hour'],
             minute=self.config['scheduler']['main_sched']['minute'],
             id='_extract_summary_job'
         )
+
+        if self.config['intermax_repo']['use']:
+            self.sts = SqlTextSimilarity(self.scheduler_logger)
+            self.sts.set_config(self.config)
+            self.sts.pre_load_tuning_sql_text()
+
+            self.bg_scheduler.add_job(
+                self._sql_text_similarity_job,
+                CRON,
+                hour=self.config['scheduler']['sql_text_similarity_sched']['hour'],
+                minute=self.config['scheduler']['sql_text_similarity_sched']['minute'],
+                id='_sql_text_similarity_job'
+
+            )
+            self.bg_scheduler.start()
+        else:
+            self.scheduler_logger.info("SqlTextSimilarity not activate, cause intermax_repo config use false")
+
+    def _block_scheduler_start(self):
+        self.block_scheduler.add_job(
+            self._block_scheduler_job,
+            CRON,
+            hour=self.config['scheduler']['main_sched']['hour'],
+            minute=self.config['scheduler']['main_sched']['minute'],
+            id='_block_scheduler_job'
+        )
         self.scheduler_logger.info(f"Main scheduler start and set config cron expression - "
                                    f"{self.config['scheduler']['main_sched']['hour']} hour "
                                    f"{self.config['scheduler']['main_sched']['minute']} minute")
-        self.main_scheduler.start()
+
+        self.block_scheduler.start()
+        self.logger.info(f"End of Scheduler start")
+
+    def _block_scheduler_job(self):
+        self.scheduler_logger.info("_block_scheduler_job")
 
     def _add_scheduler_logger(self):
         self.scheduler_logger = Logger(self.config['env']).\
             get_default_logger(self.config['log_dir'], SystemConstants.SCHEDULER_LOG_FILE_NAME)
 
     def _init_scheduler(self):
-        self.main_scheduler = BlockingScheduler(timezone='Asia/Seoul')
+        self.block_scheduler = BlockingScheduler(timezone='Asia/Seoul')
         self.bg_scheduler = BackgroundScheduler(timezone='Asia/Seoul')
 
     def _set_signal(self):
@@ -94,9 +118,10 @@ class Scheduler(cm.CommonModule):
     def _terminate(self):
         self.logger.info("terminated")
         self.bg_scheduler.shutdown()
-        self.main_scheduler.shutdown()
+        self.block_scheduler.shutdown()
 
     def _main_job(self):
+        self.scheduler_logger.info("main_job start")
         start_tm = time.time()
 
         result = ResultConstants.FAIL
@@ -141,6 +166,9 @@ class Scheduler(cm.CommonModule):
                 session.query(ExecuteLogModel).filter(ExecuteLogModel.seq == f'{elm.seq}').update(result_dict)
                 session.commit()
 
+        self.scheduler_logger.info("main_job end")
+        return
+
     def _extractor_job(self):
         self.scheduler_logger.info(f"_extractor_job start")
 
@@ -174,18 +202,27 @@ class Scheduler(cm.CommonModule):
 
         self.scheduler_logger.info(f"_sql_text_merge_job end")
 
+    def _sql_text_similarity_job(self):
+        self.scheduler_logger.info(f"_sql_text_similarity_job start")
+
+        self._update_config_custom_values(proc='l')
+        self.sts.set_config(self.config)
+        self.sts.main_process()
+
+        self.scheduler_logger.info(f"_sql_text_similarity_job end")
+
     def _update_config_custom_values(self, proc):
         custom_values = dict()
         custom_values['args'] = {'s_date': SystemUtils.get_date_by_interval(-1, fmt="%Y%m%d"), 'interval': 1, 'proc': proc}
         self.config.update(custom_values)
 
     def _is_alive_logging_job(self):
-        for job in self.main_scheduler.get_jobs():
-            self.scheduler_logger.info("name: {}, trigger: {}, next run: {}".format(
-                job.id,
-                job.trigger,
-                job.next_run_time,
-            ))
+        # for job in self.block_scheduler.get_jobs():
+        #     self.scheduler_logger.info("name: {}, trigger: {}, next run: {}".format(
+        #         job.id,
+        #         job.trigger,
+        #         job.next_run_time,
+        #     ))
 
         for job in self.bg_scheduler.get_jobs():
             if job.id == '_is_alive_logging_job':
@@ -197,4 +234,4 @@ class Scheduler(cm.CommonModule):
                 job.next_run_time,
             ))
 
-        self.scheduler_logger.info(f"This Analysis Module Scheduler is Alive.. PID : {os.getpid()} \n")
+        self.scheduler_logger.info(f"This analysis module scheduler is alive.. PID : {os.getpid()} \n")

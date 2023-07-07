@@ -34,7 +34,7 @@ class CommonSql:
 class AeWasSqlTextSql:
 
     SELECT_AE_WAS_SQL_TEXT = (
-        "select sql_id, sql_text_100, sql_text from ae_was_sql_text"
+        "select sql_id, sql_text from ae_was_sql_text"
     )
 
     SELECT_BY_NO_CLUSTER_ID = (
@@ -73,6 +73,11 @@ class AeWasSqlTextSql:
                       and ATSD.elapsed_time >= #(seconds)
         )
         """
+    )
+
+    SELECT_CLUSTER_ID_BY_SQL_ID = (
+        "select cluster_id from ae_was_sql_text where sql_id = '#(sql_id)'"
+
     )
 
 
@@ -142,4 +147,22 @@ class AeWasDevMapSql:
 
     SELECT_AE_WAS_DEV_MAP = (
         "select was_id from ae_was_dev_map"
+    )
+
+
+class XapmTxnSqlDetail:
+
+    SELECT_XAPM_TXN_SQL_DETAIL = (
+        """
+        select xts.txn_id, xts.sql_id, xst.sql_text 
+        from (
+            select xtsd.txn_id, xtsd.sql_id 
+            from xapm_txn_sql_detail xtsd 
+            where xtsd.time >= '#(start_param)'
+            and xtsd.time < '#(end_param)'
+            group by xtsd.txn_id, xtsd.sql_id 
+        ) as xts
+        join xapm_sql_text xst 
+        on xts.sql_id = xst.sql_id         
+        """
     )

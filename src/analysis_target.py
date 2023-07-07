@@ -9,7 +9,7 @@ from src.common.utils import TargetUtils, SystemUtils, InterMaxUtils, MaxGaugeUt
 from src.common.constants import TableConstants, SystemConstants
 from src.common.enum_module import ModuleFactoryEnum
 from sql.common_sql import CommonSql, AeWasSqlTextSql, AeDbSqlTemplateMapSql, AeDbInfoSql, AeDbSqlTextSql
-from sql.common_sql import AeWasDevMapSql
+from sql.common_sql import AeWasDevMapSql, XapmTxnSqlDetail
 from datetime import datetime, timedelta
 from src.decoder.intermax_decryption import Decoding
 
@@ -76,7 +76,20 @@ class CommonTarget:
 
     @staticmethod
     def _create_engine(engine_template):
-        return create_engine(engine_template, pool_size=20, max_overflow=20)
+        return create_engine(
+            engine_template,
+            echo=False,
+            pool_size=20,
+            max_overflow=20,
+            echo_pool=False,
+            pool_pre_ping=True,
+            connect_args={
+                "keepalives": 1,
+                "keepalives_idle": 30,
+                "keepalives_interval": 10,
+                "keepalives_count": 5,
+            },
+        )
 
 
 class InterMaxTarget(CommonTarget):
@@ -233,6 +246,12 @@ class InterMaxTarget(CommonTarget):
             was_id_except_df = detail_df[~detail_df['was_id'].isin(ae_dev_map_df['was_id'])]
             TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, was_id_except_df)
 
+    def get_xapm_txn_sql_detail(self, start_param, end_param):
+        param_dict = {'start_param': start_param, 'end_param': end_param}
+        query = SystemUtils.sql_replace_to_dict(XapmTxnSqlDetail.SELECT_XAPM_TXN_SQL_DETAIL, param_dict)
+
+        return TargetUtils.get_target_data_by_query(self.logger, self.im_conn, query, "XAPM_SQL_SUMMARY")
+
 
 class MaxGaugeTarget(CommonTarget):
 
@@ -333,6 +352,19 @@ class SaTarget(CommonTarget):
 
             TargetUtils.create_table(self.logger, self.sa_conn, ddl)
 
+    def get_ae_was_sql_text(self, extract_cnt=0):
+        query = AeWasSqlTextSql.SELECT_AE_WAS_SQL_TEXT
+        table_name = TableConstants.AE_WAS_SQL_TEXT
+
+        if extract_cnt > 0:
+            query += f" limit {extract_cnt}"
+
+        try:
+            result_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, query, table_name)
+        except Exception as e:
+            self.logger.exception(e)
+        return result_df
+
     def ae_was_sql_text_meta(self):
         """
         InterMax DB xapm_sql_text 테이블에서 데이터 추출하여 분석 DB ae_was_sql_text 테이블에 insert 기능 함수
@@ -346,11 +378,6 @@ class SaTarget(CommonTarget):
 
             table_name = SystemUtils.extract_tablename_in_filename(init_file)
             self._execute_insert_meta(meta_query, table_name, self.im_conn)
-
-    def get_ae_was_sql_text(self, chunksize):
-        query = AeWasSqlTextSql.SELECT_AE_WAS_SQL_TEXT
-        conn = self.analysis_engine.connect().execution_options(stream_results=True, )
-        return pd.read_sql_query(text(query), conn, chunksize=chunksize)
 
     def get_ae_db_sql_text_by_1seq(self, partition_key, chunksize):
         replace_dict = {'partition_key': partition_key}
@@ -517,7 +544,7 @@ class SaTarget(CommonTarget):
 
     def get_table_data_by_chunksize(self, query, chunksize, coerce=True):
         conn = self.analysis_engine.connect().execution_options(stream_results=True, )
-        return pd.read_sql_query(text(query), conn, chunksize=chunksize, coerce_float=True if coerce else False)
+        return pd.read_sql_query(text(query), conn, chunksize=chunksize, coerce_float=bool(coerce))
 
     def insert_target_table_by_dump(self, table, df):
         TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table, df)
@@ -622,3 +649,13 @@ class SaTarget(CommonTarget):
         update_query = AeWasSqlTextSql.UPDATE_BY_NO_ANALYZED_TARGET
 
         TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, update_query)
+
+    def insert_ae_txn_sql_similarity(self, result_valid_df):
+        table_name = TableConstants.AE_TXN_SQL_SIMILARITY
+        TargetUtils.psql_insert_copy(self.logger, table_name, self.analysis_engine, result_valid_df)
+
+    def get_ae_was_sql_text_by_sql_id(self, sql_id):
+        table_name = TableConstants.AE_WAS_SQL_TEXT
+        query = SystemUtils.sql_replace_to_dict(AeWasSqlTextSql.SELECT_CLUSTER_ID_BY_SQL_ID, {'sql_id': sql_id})
+        df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, query, table_name)
+        return df

@@ -1,7 +1,6 @@
 import itertools
 import numpy as np
 import pandas as pd
-import re
 
 from datetime import datetime, timedelta
 
@@ -9,7 +8,7 @@ from src import common_module as cm
 from src.common.timelogger import TimeLogger
 from src.common.constants import SystemConstants
 from src.common.file_export import ParquetFile
-from src.common.utils import SystemUtils, MaxGaugeUtils
+from src.common.utils import SystemUtils, MaxGaugeUtils, SqlUtils
 
 
 class SqlTextMerge(cm.CommonModule):
@@ -34,11 +33,22 @@ class SqlTextMerge(cm.CommonModule):
         self._init_sa_target()
 
         self.export_parquet_root_path = f'{self.config["home"]}/{SystemConstants.EXPORT_PARQUET_PATH}'
-        self.chunk_size = self.config.get('data_handling_chunksize', 10000) * 4
-        self.sql_match_sensitive = self.config.get('sql_match_sensitive', 5)
+        self.chunk_size = self.config.get('data_handling_chunksize', 10000) * 3
+        self.sql_match_sensitive = int(self._calc_sql_match_sensitive())
 
         self._export_db_sql_text()
         self._sql_text_merge()
+
+    def _calc_sql_match_sensitive(self):
+        sample_df = self.st.get_ae_was_sql_text(extract_cnt=200_000)
+
+        sample_df = SqlUtils.remove_unnecess_char(sample_df, 'sql_text', contains_comma=True)
+        token_cnt = sample_df['sql_text'].str.count(r"\s+")
+
+        m = np.mean(token_cnt)
+        result = m // 50
+
+        return result if result > 0 else 1
 
     def _sql_text_merge(self):
         """
@@ -87,7 +97,7 @@ class SqlTextMerge(cm.CommonModule):
             self.logger.info('End of all export file compare')
 
             result_df = pd.concat(result_df_list, ignore_index=True) if len(result_df_list) > 0 else pd.DataFrame()
-            result_df = result_df.drop_duplicates(subset=['sql_id','sql_uid'])
+            result_df = result_df.drop_duplicates(subset=['sql_id', 'sql_uid'])
 
             if len(result_df) == 0:
                 continue
@@ -150,7 +160,7 @@ class SqlTextMerge(cm.CommonModule):
         self.st.insert_merged_result(result_df)
 
     def _preprocessing(self, xapm_sql_df):        
-        xapm_sql_df = self._remove_unnecess_char(xapm_sql_df, 'sql_text')
+        xapm_sql_df = SqlUtils.remove_unnecess_char(xapm_sql_df, 'sql_text', contains_comma=True)
         xapm_sql_df = self._split_parse_sql_text(xapm_sql_df, 'sql_text', self.MATCH_MODE, self.sql_match_sensitive)
         return xapm_sql_df
 
@@ -179,26 +189,6 @@ class SqlTextMerge(cm.CommonModule):
         xapm_sql_df['sql_text_len'] = xapm_sql_df[target_c].apply(len).astype(np.int32)
 
         return xapm_sql_df
-
-    @staticmethod
-    def _remove_unnecess_char(df, target_c: str, dest_c: str = None):
-        """
-        정규식을 이용한 /t, /n, /r 치환 함수
-        :param df: 원본 데이터프레임
-        :param target_c: 대상 타겟 컬럼
-        :param dest_c: 목적지 컬럼 (optional) if None target_c
-        :return: 치환된 데이터프레임
-        """
-        dest_c = target_c if dest_c is None else dest_c
-
-        repls = {r'\\t': ' ', r'\\n': ' ', r'\\r': ' ', '\t': ' ', '\n': ' ', '\r': ' '}
-        rep = dict((re.escape(k), v) for k, v in repls.items())
-        pattern = re.compile("|".join(rep.keys()))
-
-        df[dest_c] = df[target_c].apply(
-            lambda x: pattern.sub(lambda m: rep[re.escape(m.group(0))], x)
-        )
-        return df
 
     def _get_export_filename_suffix(self):
         """

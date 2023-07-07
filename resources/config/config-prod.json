@@ -28,11 +28,11 @@
 		"scheduler": {
 		"is_alive_sched": {
 			"hour": "*",
-			"minute": "5"
+			"minute": "0,30"
 		},
 		"main_sched": {
-			"hour": "16",
-			"minute": "56"
+			"hour": "3",
+			"minute": "5"
 		}
 	},
 	"sql_debug_flag": true,

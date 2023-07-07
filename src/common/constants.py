@@ -45,6 +45,12 @@ class SystemConstants:
     # sql_text_template 관련 파일 경로
     DRAIN_CONF_PATH = '/resources/drain/'
 
+    # decoding jar 파일
+    DECODING_JAR_FILE_PATH = '/resources/intermax_decoding'
+
+    # jar 파일 확장자
+    JAR_FILE_EXT = '.jar'
+
     # 튜닝된 sql text path
     TUNING_SQL_TEXT_PATH = 'tuning_sql/'
 

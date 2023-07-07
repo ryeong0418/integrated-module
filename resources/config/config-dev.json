@@ -41,8 +41,8 @@
 	},
 	"sql_debug_flag": true,
 	"data_handling_chunksize": 10000,
-	"sql_match_time": 0,
+	"sql_match_time": 0,  
+	"extract_bind_value": true,	
 	"sql_template_select_only": false,
-	"bind_sql_elapse": false,
 	"valid_sql_text_similarity": 0.7
 }

@@ -2,9 +2,9 @@
 
 PUSHD %~DP0
 
-for %%i in (%~dp0..) do set ParrentPath=%%~fi
+for %%i in (%~dp0..) do set ParentPath=%%~fi
 
-type "%ParrentPath%\exem_analysis_module.txt"
+type "%ParentPath%\exem_analysis_module.txt"
 
 SET result="unknown error"
 

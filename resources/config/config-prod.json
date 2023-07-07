@@ -18,14 +18,14 @@
 		"use": true
 	},
 	"analysis_repo": {
-		"db_type": "postgres",
-		"host": "127.0.0.1",
-		"port": 5432,
-		"sid": "aeproject",
-		"user": "aeproject",
-		"password": "7WRPw6hnKS5KJpUcZF8F"
+		"db_type": "",
+		"host": "",
+		"port": 0,
+		"sid": "",
+		"user": "",
+		"password": ""
 	},
-	"scheduler": {
+		"scheduler": {
 		"is_alive_sched": {
 			"hour": "*",
 			"minute": "0,30"
@@ -39,10 +39,10 @@
 			"minute": "3, 13, 23, 33, 43, 53"
 		}
 	},
-	"sql_debug_flag": false,
+	"sql_debug_flag": true,
 	"data_handling_chunksize": 10000,
-	"sql_match_time": 200,
+	"sql_match_time": 0,
+	"extract_bind_value": true,
 	"sql_template_select_only": false,
-	"bind_sql_elapse": false,
 	"valid_sql_text_similarity": 0.7
 }

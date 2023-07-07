@@ -11,6 +11,7 @@ from src.common.enum_module import ModuleFactoryEnum
 from sql.common_sql import CommonSql, AeWasSqlTextSql, AeDbSqlTemplateMapSql, AeDbInfoSql, AeDbSqlTextSql
 from sql.common_sql import AeWasDevMapSql, XapmTxnSqlDetail
 from datetime import datetime, timedelta
+from src.decoder.intermax_decryption import Decoding
 
 
 class CommonTarget:
@@ -157,16 +158,21 @@ class InterMaxTarget(CommonTarget):
                         self._excute_upsert_intermax_data(detail_query, table_name)
 
                     else:
-
                         im_delete_query = SystemUtils.sql_replace_to_dict(delete_query, delete_dict)
                         self.logger.info(f"delete query execute : {im_delete_query}")
                         TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, im_delete_query)
 
-                        if table_name == "ae_bind_sql_elapse" or table_name == "ae_was_os_stat_osm":
+                        if table_name == "ae_bind_sql_elapse":
+                            self._excute_insert_bind_value_date(detail_query, table_name)
+
+                        elif table_name == "ae_was_os_stat_osm":
                             self._execute_insert_intermax_detail_data(detail_query, table_name)
 
                         else:
-                            self._excute_insert_dev_except_data(detail_query, table_name)
+                            ae_dev_map_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn,
+                                                                                 AeWasDevMapSql.SELECT_AE_WAS_DEV_MAP,
+                                                                                 table_name)
+                            self._excute_insert_dev_except_data(detail_query, table_name, ae_dev_map_df)
 
                 except Exception as e:
                     self.logger.exception(f"{table_name} table, {date} date detail data insert error")
@@ -191,19 +197,44 @@ class InterMaxTarget(CommonTarget):
             df = TargetUtils.meta_table_value(table_name, query_df)
             TargetUtils.psql_insert_copy(self.logger, table_name, self.analysis_engine, df)
 
+    def _excute_insert_bind_value_date(self,query,table_name):
+
+        """
+        분석 모듈 DB에 data insert 기능 함수
+        :param query: txt파일에 입력된 query문
+
+        실행 테이블: (InterMax 테이블) ae_bind_sql_elapse
+
+        bind_list 컬럼값을 복호화하여 bind_value 컬럼에 insert
+        """
+        decoding = Decoding(self.config)
+        decoding.set_path()
+
+        for df in self._get_intermax_data_by_chunksize(query):
+
+            if self.config['extract_bind_value']:
+                df['bind_value'] = df['bind_list'].apply(decoding.execute_bind_list_decoding)
+                df['bind_value'] = df['bind_value'].astype(str)
+                TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
+
+            else:
+                TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
+
+
     def _execute_insert_intermax_detail_data(self, query, table_name):
+
         """
         분석 모듈 DB에 data insert 기능 함수
         :param query: txt파일에 입력된 query문
 
         실행 테이블: (메타 테이블) ae_was_db_info, ae_host_info, ae_was_info,
-                   (InterMax 테이블) ae_bind_sql_elapse, ae_was_os_stat_osm
+                   (InterMax 테이블)  ae_was_os_stat_osm
         """
+
         for df in self._get_intermax_data_by_chunksize(query):
-            df = TargetUtils.add_custom_table_value(df, table_name, self.config['bind_sql_elapse'])
             TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
 
-    def _excute_insert_dev_except_data(self, query, table_name):
+    def _excute_insert_dev_except_data(self, query, table_name,ae_dev_map_df):
         """
         분석 모듈 DB ae_was_dev_map 테이블에서 was_id에 해당하는 값들을 제외하고 data insert 기능 함수
         :param query: txt파일에 입력된 query문
@@ -212,8 +243,6 @@ class InterMaxTarget(CommonTarget):
         """
 
         for detail_df in self._get_intermax_data_by_chunksize(query):
-            ae_dev_map_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn,
-                                                                 AeWasDevMapSql.SELECT_AE_WAS_DEV_MAP, table_name)
             was_id_except_df = detail_df[~detail_df['was_id'].isin(ae_dev_map_df['was_id'])]
             TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, was_id_except_df)
 

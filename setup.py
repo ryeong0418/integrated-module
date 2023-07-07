@@ -38,7 +38,8 @@ setup(
         "resources": [
             '*/*-prod.json',
             '*/*-dev.json',
-            'drain/drain3.ini'
+            'drain/drain3.ini',
+            'intermax_decoding/intermax_decryption.jar'
         ],
         "sql": [
             '*/*/*.txt',

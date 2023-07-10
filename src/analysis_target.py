@@ -1,17 +1,25 @@
 import pandas as pd
+import numpy as np
 import psycopg2 as db
 import psycopg2.extras
+import sys
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import Table, MetaData
+from sqlalchemy.dialects.postgresql import insert
+from psycopg2 import errors
+from psycopg2.errorcodes import DUPLICATE_TABLE
 
-from src.common.utils import TargetUtils, SystemUtils, InterMaxUtils, MaxGaugeUtils
+from datetime import datetime, timedelta
+
+from src.decoder.intermax_decryption import Decoding
+from src.common.utils import TargetUtils, SystemUtils, InterMaxUtils, MaxGaugeUtils, SqlUtils
 from src.common.constants import TableConstants, SystemConstants
 from src.common.enum_module import ModuleFactoryEnum
+from src.common.timelogger import TimeLogger
 from sql.common_sql import CommonSql, AeWasSqlTextSql, AeDbSqlTemplateMapSql, AeDbInfoSql, AeDbSqlTextSql
 from sql.common_sql import AeWasDevMapSql, XapmTxnSqlDetail
-from datetime import datetime, timedelta
-from src.decoder.intermax_decryption import Decoding
 
 
 class CommonTarget:
@@ -38,8 +46,8 @@ class CommonTarget:
 
         self.sa_cursor = None
 
-        self.chunksize = self.config.get('data_handling_chunksize', 10_000)
-        self.extract_chunksize = self.chunksize * 5
+        self.data_handling_chunksize = self.config.get('data_handling_chunksize', 10_000)
+        self.extract_chunksize = self.data_handling_chunksize * 5
         self.sql_match_time = self.config.get('sql_match_time', 0)
         self.sql_file_root_path = f"{self.config['home']}/" \
                                   f"{SystemConstants.SQL}/" \
@@ -47,6 +55,7 @@ class CommonTarget:
 
         self.update_cluster_cnt = 0
         self.intermax_decoder = None
+        self.sql_debug_flag = self.config.get('sql_debug_flag', False)
 
     def __del__(self):
         if self.im_conn:
@@ -70,16 +79,16 @@ class CommonTarget:
         :param target_conn : InterMax, MaxGauge DB connection 정보
         """
         replace_dict = {'table_name': table_name}
-        delete_table_query = SystemUtils.sql_replace_to_dict(CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY, replace_dict)
-        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, delete_table_query)
-        meta_df = TargetUtils.get_target_data_by_query(self.logger, target_conn, query, table_name, )
-        TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, meta_df)
+        delete_table_query = SqlUtils.sql_replace_to_dict(CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY, replace_dict)
+        self._default_execute_query(self.sa_conn, delete_table_query)
+        meta_df = self._get_target_data_by_query(target_conn, query, table_name, )
+        self._insert_engine_by_df(self.analysis_engine, table_name, meta_df)
 
-    @staticmethod
-    def _create_engine(engine_template):
+    def _create_engine(self, engine_template):
+        self.logger.info(f"Create engine info : {engine_template}")
         return create_engine(
             engine_template,
-            echo=False,
+            echo=self.sql_debug_flag,
             pool_size=20,
             max_overflow=20,
             echo_pool=False,
@@ -91,6 +100,87 @@ class CommonTarget:
                 "keepalives_count": 5,
             },
         )
+
+    def _get_target_data_by_query(self, target_conn, query, table_name="UNKNOWN TABLE"):
+        """
+        각 분석 대상의 DB에서 query 결과를 DataFrame 담아오는 함수
+        :param target_conn: 각 타겟 connect object
+        :param query: 각 타겟 호출 SQL
+        :param table_name: 분석 모듈 DB에 저장될 테이블 명 (for logging)
+        :return: 각 타겟의 query 결과 정보 (DataFrame)
+        """
+
+        with TimeLogger(f"[{CommonTarget.__name__}] {sys._getframe(0).f_code.co_name}(), {table_name} to extract ",
+                        self.logger):
+            df = pd.read_sql(query, target_conn)
+
+        return df
+
+    def _insert_engine_by_df(self, engine, table_name, df):
+        """
+        분석 모듈 DB에 DataFrame의 데이터 저장 함수
+        :param engine: 저장 하려는 타겟 SqlAlchemy engine
+        :param table_name: 저장 하려는 DB 테이블
+        :param df: 저장하려는 DataFrame
+        :return:
+        """
+        with TimeLogger(f"[{CommonTarget.__name__}] {sys._getframe(0).f_code.co_name}(), {table_name} to import ",
+                        self.logger):
+            df.to_sql(
+                name=table_name,
+                con=engine,
+                schema='public',
+                if_exists='append',
+                index=False
+            )
+        return df
+
+    def _default_execute_query(self, conn, query):
+        """
+        분석 모듈 DB 기본 sql 실행 쿼리
+        :param conn: sql 실행하려는 타겟 DB Connection Object
+        :param query: 실행 하려는 쿼리
+        :return:
+        """
+        try:
+            cursor = conn.cursor()
+            cursor.execute(query)
+
+        except errors.lookup(DUPLICATE_TABLE):
+            self.logger.warn("This DDL Query DUPLICATE_TABLE.. SKIP")
+
+        except Exception as e:
+            self.logger.exception(e)
+        finally:
+            conn.commit()
+            cursor.close()
+
+    def _psql_insert_copy(self, table, engine, df):
+
+        if not df.empty:
+            self.logger.info(f"{table}  upsert data")
+
+            metadata = MetaData()
+            t = Table(table, metadata, autoload_with=engine)
+            insert_values = df.replace({np.nan: None}).to_dict(orient='records')
+
+            insert_stmt = insert(t).values(insert_values)
+            update_stmt = {exc_k.key: exc_k for exc_k in insert_stmt.excluded}
+
+            upsert_values = insert_stmt.on_conflict_do_update(
+                index_elements=t.primary_key,
+                set_=update_stmt
+            ).returning(t)
+
+            with engine.connect() as connection:
+                connection.execute(upsert_values)
+                connection.commit()
+
+    def _get_df_by_chunk_size(self, engine: create_engine, query: str, chunk_size: int = 0, coerce=True):
+        if chunk_size == 0:
+            chunk_size = self.extract_chunksize
+        conn = engine.connect().execution_options(stream_results=True)
+        return pd.read_sql_query(text(query), conn, chunksize=chunk_size, coerce_float=coerce)
 
 
 class InterMaxTarget(CommonTarget):
@@ -150,7 +240,7 @@ class InterMaxTarget(CommonTarget):
             for date in date_conditions:
 
                 table_suffix_dict = {'table_suffix': date}
-                detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
+                detail_query = SqlUtils.sql_replace_to_dict(query, table_suffix_dict)
                 delete_dict = {'table_name': table_name, 'date': date}
 
                 try:
@@ -159,9 +249,9 @@ class InterMaxTarget(CommonTarget):
                         self._excute_upsert_intermax_data(detail_query, table_name)
 
                     else:
-                        im_delete_query = SystemUtils.sql_replace_to_dict(delete_query, delete_dict)
+                        im_delete_query = SqlUtils.sql_replace_to_dict(delete_query, delete_dict)
                         self.logger.info(f"delete query execute : {im_delete_query}")
-                        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, im_delete_query)
+                        self._default_execute_query(self.sa_conn, im_delete_query)
 
                         if table_name == "ae_bind_sql_elapse":
                             self._excute_insert_bind_value_date(detail_query, table_name)
@@ -170,7 +260,7 @@ class InterMaxTarget(CommonTarget):
                             self._execute_insert_intermax_detail_data(detail_query, table_name)
 
                         else:
-                            ae_dev_map_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn,
+                            ae_dev_map_df = self._get_target_data_by_query(self.sa_conn,
                                                                                  AeWasDevMapSql.SELECT_AE_WAS_DEV_MAP,
                                                                                  table_name)
                             self._excute_insert_dev_except_data(detail_query, table_name, ae_dev_map_df)
@@ -183,8 +273,7 @@ class InterMaxTarget(CommonTarget):
         """
         InterMax SQL query문을 chunksize만큼 dataframe 형태로 읽어서 반환
         """
-        im_conn = self.im_engine.connect().execution_options(stream_results=True)
-        return pd.read_sql_query(text(query), im_conn, chunksize=self.extract_chunksize)
+        return self._get_df_by_chunk_size(self.im_engine, query)
 
     def _excute_upsert_intermax_data(self, query, table_name):
         """
@@ -195,8 +284,8 @@ class InterMaxTarget(CommonTarget):
                    (InterMax 테이블) ae_was_sql_text
         """
         for query_df in self._get_intermax_data_by_chunksize(query):
-            df = TargetUtils.meta_table_value(table_name, query_df)
-            TargetUtils.psql_insert_copy(self.logger, table_name, self.analysis_engine, df)
+            df = InterMaxUtils.meta_table_value(table_name, query_df)
+            self._psql_insert_copy(table_name, self.analysis_engine, df)
 
     def _excute_insert_bind_value_date(self,query,table_name):
 
@@ -217,11 +306,11 @@ class InterMaxTarget(CommonTarget):
                     self.intermax_decoder.set_path()
 
                 df['bind_value'] = df['bind_list'].apply(
-                    lambda bind_str: self.intermax_decoder.execute_bind_list_decoding(bind_str)
+                    self.intermax_decoder.execute_bind_list_decoding
                 )
                 df['bind_value'] = df['bind_value'].astype(str)
 
-            TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
+            self._insert_engine_by_df(self.analysis_engine, table_name, df)
 
     def _execute_insert_intermax_detail_data(self, query, table_name):
 
@@ -234,7 +323,7 @@ class InterMaxTarget(CommonTarget):
         """
 
         for df in self._get_intermax_data_by_chunksize(query):
-            TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
+            self._insert_engine_by_df(self.analysis_engine, table_name, df)
 
     def _excute_insert_dev_except_data(self, query, table_name,ae_dev_map_df):
         """
@@ -246,13 +335,13 @@ class InterMaxTarget(CommonTarget):
 
         for detail_df in self._get_intermax_data_by_chunksize(query):
             was_id_except_df = detail_df[~detail_df['was_id'].isin(ae_dev_map_df['was_id'])]
-            TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, was_id_except_df)
+            self._insert_engine_by_df(self.analysis_engine, table_name, was_id_except_df)
 
     def get_xapm_txn_sql_detail(self, start_param, end_param):
         param_dict = {'start_param': start_param, 'end_param': end_param}
-        query = SystemUtils.sql_replace_to_dict(XapmTxnSqlDetail.SELECT_XAPM_TXN_SQL_DETAIL, param_dict)
+        query = SqlUtils.sql_replace_to_dict(XapmTxnSqlDetail.SELECT_XAPM_TXN_SQL_DETAIL, param_dict)
 
-        return TargetUtils.get_target_data_by_query(self.logger, self.im_conn, query, "XAPM_SQL_SUMMARY")
+        return self._get_target_data_by_query(self.im_conn, query, "XAPM_SQL_SUMMARY")
 
 
 class MaxGaugeTarget(CommonTarget):
@@ -287,7 +376,7 @@ class MaxGaugeTarget(CommonTarget):
         ae_db_info_query = AeDbInfoSql.SELECT_AE_DB_INFO
 
         ae_db_info_name = TableConstants.AE_DB_INFO
-        db_info_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, ae_db_info_query, ae_db_info_name)
+        db_info_df = self._get_target_data_by_query(self.sa_conn, ae_db_info_query, ae_db_info_name)
 
         delete_query = CommonSql.DELETE_TABLE_BY_PARTITION_KEY_QUERY
         extractor_file_path = f"{self.sql_file_root_path}/db/"
@@ -309,11 +398,11 @@ class MaxGaugeTarget(CommonTarget):
                     delete_suffix_dict = {'table_name': table_name, 'partition_key': date + db_id}
 
                     try:
-                        mg_delete_query = SystemUtils.sql_replace_to_dict(delete_query, delete_suffix_dict)
+                        mg_delete_query = SqlUtils.sql_replace_to_dict(delete_query, delete_suffix_dict)
                         self.logger.info(f"delete query execute : {mg_delete_query}")
-                        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, mg_delete_query)
+                        self._default_execute_query(self.sa_conn, mg_delete_query)
 
-                        detail_query = SystemUtils.sql_replace_to_dict(query, table_suffix_dict)
+                        detail_query = SqlUtils.sql_replace_to_dict(query, table_suffix_dict)
                         self._execute_insert_maxgauge_detail_data(detail_query, table_name)
 
                     except Exception as e:
@@ -326,10 +415,10 @@ class MaxGaugeTarget(CommonTarget):
         :param query: txt파일에 입력된 query문
         실행 테이블: ae_db_sql_text, ae_session_info, ae_session_stat, ae_sql_stat_10min, ae_sql_wait_10min
         """
-        mg_conn = self.mg_engine.connect().execution_options(stream_results=True)
-        get_read_sql_query = pd.read_sql_query(text(query), mg_conn, chunksize=self.extract_chunksize)
+        get_read_sql_query = self._get_df_by_chunk_size(self.mg_engine, query)
+
         for df in get_read_sql_query:
-            TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
+            self._insert_engine_by_df(self.analysis_engine, table_name, df)
 
 
 class SaTarget(CommonTarget):
@@ -340,10 +429,6 @@ class SaTarget(CommonTarget):
         self.analysis_engine = self._create_engine(self.analysis_engine_template)
         self.sa_cursor = self.sa_conn.cursor()
 
-        self.logger.info(f"analysis_repo DB 접속 정보 {self.analysis_conn_str}")
-        self.logger.info(f"intermax_repo DB 접속 정보 {self.im_conn_str}")
-        self.logger.info(f"maxgauge_repo DB 접속 정보 {self.mg_conn_str}")
-
     def create_table(self):
         init_path = f"{self.sql_file_root_path}/{SystemConstants.DDL}/"
         init_files = SystemUtils.get_filenames_from_path(init_path)
@@ -352,7 +437,7 @@ class SaTarget(CommonTarget):
             with open(f"{init_path}{init_file}", mode='r', encoding='utf-8') as file:
                 ddl = file.read()
 
-            TargetUtils.create_table(self.logger, self.sa_conn, ddl)
+            self._default_execute_query(self.sa_conn, ddl)
 
     def get_ae_was_sql_text(self, extract_cnt=0):
         query = AeWasSqlTextSql.SELECT_AE_WAS_SQL_TEXT
@@ -362,7 +447,7 @@ class SaTarget(CommonTarget):
             query += f" limit {extract_cnt}"
 
         try:
-            result_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, query, table_name)
+            result_df = self._get_target_data_by_query(self.sa_conn, query, table_name)
         except Exception as e:
             self.logger.exception(e)
         return result_df
@@ -383,7 +468,7 @@ class SaTarget(CommonTarget):
 
     def get_ae_db_sql_text_by_1seq(self, partition_key, chunksize):
         replace_dict = {'partition_key': partition_key}
-        query = SystemUtils.sql_replace_to_dict(AeDbSqlTextSql.SELECT_AE_DB_SQL_TEXT_1SEQ, replace_dict)
+        query = SqlUtils.sql_replace_to_dict(AeDbSqlTextSql.SELECT_AE_DB_SQL_TEXT_1SEQ, replace_dict)
 
         return pd.read_sql_query(query, self.sa_conn, chunksize=chunksize)
 
@@ -418,18 +503,17 @@ class SaTarget(CommonTarget):
                 table_name = summarizer_temp_file.split('.')[0]
 
                 replace_dict = {'table_name': table_name}
-                delete_table_query = SystemUtils.sql_replace_to_dict(CommonSql.DELETE_TABLE_DEFAULT_QUERY,
+                delete_table_query = SqlUtils.sql_replace_to_dict(CommonSql.DELETE_TABLE_DEFAULT_QUERY,
                                                                      replace_dict)
 
                 with open(f"{summarizer_temp_path}{summarizer_temp_file}", mode='r', encoding='utf-8') as file:
                     query = file.read()
-                    temp_query = SystemUtils.sql_replace_to_dict(query, date_dict)
+                    temp_query = SqlUtils.sql_replace_to_dict(query, date_dict)
 
                     try:
-                        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, delete_table_query)
-                        temp_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, temp_query,
-                                                                       table_name)
-                        TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, temp_df)
+                        self._default_execute_query(self.sa_conn, delete_table_query)
+                        temp_df = self._get_target_data_by_query(self.sa_conn, temp_query, table_name)
+                        self._insert_engine_by_df(self.analysis_engine, table_name, temp_df)
 
                     except Exception as e:
                         self.logger.exception(
@@ -462,28 +546,27 @@ class SaTarget(CommonTarget):
             with open(f"{summary_path}{summary_file}", mode='r', encoding='utf-8') as file:
                 query = file.read()
 
-                join_query = SystemUtils.sql_replace_to_dict(query, date_dict)
+                join_query = SqlUtils.sql_replace_to_dict(query, date_dict)
                 table_name = summary_file.split('.')[0]
                 datetime_format = datetime.strptime(date_dict['StartDate'].split()[0], '%Y-%m-%d')
                 formatted_date = datetime_format.strftime('%Y%m%d')
                 delete_dict = {'table_name': table_name, 'date': formatted_date}
 
                 try:
-                    sa_delete_query = SystemUtils.sql_replace_to_dict(delete_query, delete_dict)
-                    TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, sa_delete_query)
+                    sa_delete_query = SqlUtils.sql_replace_to_dict(delete_query, delete_dict)
+                    self._default_execute_query(self.sa_conn, sa_delete_query)
                     self.logger.info(f"delete query execute : {sa_delete_query}")
 
-                    for df in self.get_table_data_by_chunksize(join_query, self.extract_chunksize):
-                        TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
+                    for df in self._get_df_by_chunk_size(self.analysis_engine, join_query):
+                        self._insert_engine_by_df(self.analysis_engine, table_name, df)
 
                 except Exception as e:
                     self.logger.exception(f"{summary_file.split('.')[0]} table, summary insert execute error")
                     self.logger.exception(e)
 
     def sql_query_convert_df(self, sql_query):
-
         table_name = TableConstants.AE_TXN_SQL_SUMMARY
-        df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, sql_query, table_name)
+        df = self._get_target_data_by_query(self.sa_conn, sql_query, table_name)
 
         return df
 
@@ -510,7 +593,7 @@ class SaTarget(CommonTarget):
         query = AeDbInfoSql.SELECT_AE_DB_INFO
         table_name = TableConstants.AE_DB_INFO
 
-        df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, query, table_name, )
+        df = self._get_target_data_by_query(self.sa_conn, query, table_name, )
         df['lpad_db_id'] = df['db_id'].astype('str').str.pad(3, side='left', fillchar='0')
         return df
 
@@ -524,7 +607,7 @@ class SaTarget(CommonTarget):
         :param table: export할 테이블 str
         :return: select query
         """
-        query = SystemUtils.sql_replace_to_dict(CommonSql.SELECT_TABLE_COLUMN_TYPE, {'table': table})
+        query = SqlUtils.sql_replace_to_dict(CommonSql.SELECT_TABLE_COLUMN_TYPE, {'table': table})
 
         cols = pd.read_sql(query, self.sa_conn)
 
@@ -532,7 +615,7 @@ class SaTarget(CommonTarget):
         time_col_type_list = ['time']
         sel_list = []
 
-        for idx, row in cols.iterrows():
+        for _, row in cols.iterrows():
             if any(num_str in row['data_type'] for num_str in num_col_type_list):
                 sel_list.append(f"coalesce({row['column_name']}, 0) as {row['column_name']}")
             elif any(num_str in row['data_type'] for num_str in time_col_type_list):
@@ -545,11 +628,10 @@ class SaTarget(CommonTarget):
         return f"SELECT {sel} FROM {table}"
 
     def get_table_data_by_chunksize(self, query, chunksize, coerce=True):
-        conn = self.analysis_engine.connect().execution_options(stream_results=True, )
-        return pd.read_sql_query(text(query), conn, chunksize=chunksize, coerce_float=bool(coerce))
+        return self._get_df_by_chunk_size(self.analysis_engine, query, chunksize, bool(coerce))
 
     def insert_target_table_by_dump(self, table, df):
-        TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table, df)
+        self._insert_engine_by_df(self.analysis_engine, table, df)
 
     def term_extract_sql_text(self, chunksize):
 
@@ -558,11 +640,9 @@ class SaTarget(CommonTarget):
 
         date_dict = {'StartDate': str(s_date), 'EndDate': str(e_date), 'seconds': str(self.sql_match_time)}
         query = AeWasSqlTextSql.SELECT_SQL_ID_AND_SQL_TEXT
-        sql_id_and_sql_text = SystemUtils.sql_replace_to_dict(query, date_dict)
+        sql_id_and_sql_text = SqlUtils.sql_replace_to_dict(query, date_dict)
 
-        sa_conn = self.analysis_engine.connect().execution_options(stream_results=True)
-        get_read_sql = pd.read_sql_query(text(sql_id_and_sql_text), sa_conn, chunksize=chunksize)
-        return get_read_sql
+        return self._get_df_by_chunk_size(self.analysis_engine, sql_id_and_sql_text, chunksize,)
 
     def update_cluster_id_by_sql_id(self, df):
         self.logger.info(f"Execute update_cluster_id_by_sql_id query total : {len(df)}")
@@ -575,10 +655,10 @@ class SaTarget(CommonTarget):
         query = AeWasSqlTextSql.UPDATE_CLUSTER_ID_BY_SQL_ID
 
         try:
-            exec_query = SystemUtils.sql_replace_to_dict(query,
+            exec_query = SqlUtils.sql_replace_to_dict(query,
                                                          {'cluster_id': row['cluster_id'], 'sql_id': row['sql_id']}
                                                          )
-            TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, exec_query)
+            self._default_execute_query(self.sa_conn, exec_query)
 
             self.update_cluster_cnt += 1
         except IntegrityError as ie:
@@ -600,10 +680,10 @@ class SaTarget(CommonTarget):
         query = AeDbSqlTemplateMapSql.UPSERT_CLUSTER_ID_BY_SQL_UID
 
         try:
-            exec_query = SystemUtils.sql_replace_to_dict(query,
+            exec_query = SqlUtils.sql_replace_to_dict(query,
                                                          {'cluster_id': row['cluster_id'], 'sql_uid': row['sql_uid']}
                                                          )
-            TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, exec_query)
+            self._default_execute_query(self.sa_conn, exec_query)
 
             self.update_cluster_cnt += 1
         except IntegrityError as ie:
@@ -619,10 +699,10 @@ class SaTarget(CommonTarget):
     def insert_ae_sql_template(self, df):
         table_name = TableConstants.AE_SQL_TEMPLATE
         truncate_query = CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY
-        truncate_query = SystemUtils.sql_replace_to_dict(truncate_query, {'table_name': table_name})
+        truncate_query = SqlUtils.sql_replace_to_dict(truncate_query, {'table_name': table_name})
 
-        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, truncate_query)
-        TargetUtils.insert_analysis_by_df(self.logger, self.analysis_engine, table_name, df)
+        self._default_execute_query(self.sa_conn, truncate_query)
+        self._insert_engine_by_df(self.analysis_engine, table_name, df)
 
     def get_cluster_cnt_by_grouping(self, extract_cnt):
         if self.config['intermax_repo']['use']:
@@ -637,27 +717,27 @@ class SaTarget(CommonTarget):
             query += f"limit {extract_cnt}"
 
         try:
-            result_df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, query, table_name)
+            result_df = self._get_target_data_by_query(self.sa_conn, query, table_name)
         except Exception as e:
             self.logger.exception(e)
         return result_df if result_df is not None else pd.DataFrame()
 
     def get_ae_was_sql_text_by_no_cluster(self, chunk_size):
         query = AeWasSqlTextSql.SELECT_BY_NO_CLUSTER_ID
-        conn = self.analysis_engine.connect().execution_options(stream_results=True, )
-        return pd.read_sql_query(text(query), conn, chunksize=chunk_size)
+
+        return self._get_df_by_chunk_size(self.analysis_engine, query, chunk_size,)
 
     def update_unanalyzed_was_sql_text(self):
         update_query = AeWasSqlTextSql.UPDATE_BY_NO_ANALYZED_TARGET
 
-        TargetUtils.default_sa_execute_query(self.logger, self.sa_conn, update_query)
+        self._default_execute_query(self.sa_conn, update_query)
 
     def insert_ae_txn_sql_similarity(self, result_valid_df):
         table_name = TableConstants.AE_TXN_SQL_SIMILARITY
-        TargetUtils.psql_insert_copy(self.logger, table_name, self.analysis_engine, result_valid_df)
+        self._psql_insert_copy(table_name, self.analysis_engine, result_valid_df)
 
     def get_ae_was_sql_text_by_sql_id(self, sql_id):
         table_name = TableConstants.AE_WAS_SQL_TEXT
-        query = SystemUtils.sql_replace_to_dict(AeWasSqlTextSql.SELECT_CLUSTER_ID_BY_SQL_ID, {'sql_id': sql_id})
-        df = TargetUtils.get_target_data_by_query(self.logger, self.sa_conn, query, table_name)
+        query = SqlUtils.sql_replace_to_dict(AeWasSqlTextSql.SELECT_CLUSTER_ID_BY_SQL_ID, {'sql_id': sql_id})
+        df = self._get_target_data_by_query(self.sa_conn, query, table_name)
         return df

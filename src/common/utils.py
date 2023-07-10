@@ -1,22 +1,12 @@
 import importlib.util
 import argparse
-import sys
 import os
 import pandas as pd
 import time
 import re
 
 from pathlib import Path
-from psycopg2 import errors
-from psycopg2.errorcodes import DUPLICATE_TABLE
 from datetime import datetime, timedelta
-
-from src.common.timelogger import TimeLogger
-
-from sqlalchemy import Table, MetaData
-from sqlalchemy.dialects.postgresql import insert
-import numpy as np
-from src.decoder.intermax_decryption import Decoding
 
 
 class SystemUtils:
@@ -101,21 +91,6 @@ class SystemUtils:
         for i in range(a[to]):
             r = r / bsize
         return round(r, 2)
-
-    @staticmethod
-    def sql_replace_to_dict(sql, replace_dict):
-        """
-        sql query에 동적 parameter를 set 하기 위한 함수
-        :param sql: SQL 원본 쿼리
-        :param replace_dict: 변경이 필요한 파라미터의 dict
-                (ex) table_name를 치환하기 위해서는 원본 쿼리에 #(table_name) 형식으로 만들어 준다
-        :return: 치환된 sql query
-        :exception: 치환되지 않는 형태의 오류 발생시 원본 쿼리와 각 동적 parameter dict 키 매핑 확인
-        """
-        for key in replace_dict.keys():
-            sql = sql.replace(f"#({key})", replace_dict[key])
-
-        return sql
 
     @staticmethod
     def get_file_in_path(query_folder, sql_name):
@@ -214,44 +189,6 @@ class SystemUtils:
 class TargetUtils:
 
     @staticmethod
-    def get_db_conn_str(repo_info):
-        """
-        DB connection string를 만들기위한 함수
-        :param repo_info: 대상 repository의 정보 (dict)
-        :return: 접속 정보 str
-        """
-        return "dbname={} host={} port={} user={} password={}".format(
-            repo_info['sid'],
-            repo_info['host'],
-            repo_info['port'],
-            repo_info['user'],
-            repo_info['password']
-        )
-
-    @staticmethod
-    def create_table(logger, conn, ddl_query):
-        """
-        분석 모듈에서 사용할 테이블 생성 함수
-        :param logger: logger
-        :param conn: connect object
-        :param ddl_query: 쿼리 (DDL)
-        :return:
-        """
-        cur = conn.cursor()
-
-        try:
-            cur.execute(ddl_query)
-
-        except errors.lookup(DUPLICATE_TABLE):
-            logger.warn("This DDL Query DUPLICATE_TABLE.. SKIP")
-
-        except Exception as e:
-            logger.exception(f"{e}")
-
-        finally:
-            conn.commit()
-
-    @staticmethod
     def get_engine_template(repo_info):
         """
         분석 모듈 DB 저장을 위한 SqlAlchemy engine 생성을 위한 string 생성 함수
@@ -267,102 +204,19 @@ class TargetUtils:
         )
 
     @staticmethod
-    def get_target_data_by_query(logger, target_conn, query, table_name="UNKNOWN TABLE"):
+    def get_db_conn_str(repo_info):
         """
-        각 분석 대상의 DB에서 query 결과를 DataFrame 담아오는 함수
-        :param logger: logger
-        :param target_conn: 각 타겟 connect object
-        :param query: 각 타겟 호출 SQL
-        :param table_name: 분석 모듈 DB에 저장될 테이블 명 (for logging)
-        :return: 각 타겟의 query 결과 정보 (DataFrame)
+        DB connection string를 만들기위한 함수
+        :param repo_info: 대상 repository의 정보 (dict)
+        :return: 접속 정보 str
         """
-
-        with TimeLogger(f"[{TargetUtils.__name__}] {sys._getframe(0).f_code.co_name}(), "
-                        f"{table_name} to extract ", logger):
-            df = pd.read_sql(query, target_conn)
-
-        return df
-
-    @staticmethod
-    def insert_analysis_by_df(logger, analysis_engine, table_name, df):
-        """
-        분석 모듈 DB에 DataFrame의 데이터 저장 함수
-        :param logger: logger
-        :param analysis_engine: 분석 모듈 SqlAlchemy engine
-        :param table_name: 분석 모듈 저장 DB 테이블
-        :param df: 저장하려는 DataFrame
-        :return:
-        """
-        with TimeLogger(f"[{TargetUtils.__name__}] {sys._getframe(0).f_code.co_name}(), "
-                        f"{table_name} to import ", logger):
-            df.to_sql(
-                name=table_name,
-                con=analysis_engine,
-                schema='public',
-                if_exists='append',
-                index=False
-            )
-        return df
-
-    @staticmethod
-    def default_sa_execute_query(logger, sa_conn, query):
-
-        """
-        분석 모듈 DB 기본 sql 실행 쿼리
-        :param logger: logger
-        :param sa_conn: 분석 모듈 DB Connection Object
-        :param query: 실행 하려는 쿼리
-        :return:
-        """
-        try:
-            cursor = sa_conn.cursor()
-            cursor.execute(query)
-
-        except Exception as e:
-            logger.exception(e)
-        finally:
-            sa_conn.commit()
-            cursor.close()
-
-    @staticmethod
-    def meta_table_value(table_name, df):
-
-        if table_name == 'ae_was_dev_map':
-            df['isdev'] = 1
-
-        return df
-
-    @staticmethod
-    def psql_insert_copy(logger, table, analysis_engine, df):
-
-        if not df.empty:
-
-            logger.info(f"{table}  upsert data")
-
-            metadata = MetaData()
-            users = Table(table, metadata, autoload_with=analysis_engine)
-            insert_values = df.replace({np.nan: None}).to_dict(orient='records')
-
-            insert_stmt = insert(users).values(insert_values)
-            update_stmt = {exc_k.key: exc_k for exc_k in insert_stmt.excluded}
-
-            upsert_values = insert_stmt.on_conflict_do_update(
-                index_elements=users.primary_key,
-                set_=update_stmt
-            ).returning(users)
-
-            with analysis_engine.connect() as connection:
-                connection.execute(upsert_values)
-                connection.commit()
-
-    @staticmethod
-    def add_custom_table_value(df, table_name):
-
-        if table_name == 'ae_bind_sql_elapse':
-            df['bind_value'] = df['bind_list'].apply(Decoding.excute_bind_list_decoding)
-            df['bind_value'] = df['bind_value'].astype(str)
-
-        return df
+        return "dbname={} host={} port={} user={} password={}".format(
+            repo_info['sid'],
+            repo_info['host'],
+            repo_info['port'],
+            repo_info['user'],
+            repo_info['password']
+        )
 
 
 class InterMaxUtils:
@@ -378,6 +232,14 @@ class InterMaxUtils:
             date_conditions.append(date_condition)
 
         return date_conditions
+
+    @staticmethod
+    def meta_table_value(table_name, df):
+
+        if table_name == 'ae_was_dev_map':
+            df['isdev'] = 1
+
+        return df
 
 
 class MaxGaugeUtils:
@@ -452,3 +314,18 @@ class SqlUtils:
                                                     regex=True)
         df['sql_text'] = df['sql_text'].str.replace(r"\d{4}\-\d{2}\-\d{2}", '<DATE>', regex=True)
         return df
+
+    @staticmethod
+    def sql_replace_to_dict(sql, replace_dict):
+        """
+        sql query에 동적 parameter를 set 하기 위한 함수
+        :param sql: SQL 원본 쿼리
+        :param replace_dict: 변경이 필요한 파라미터의 dict
+                (ex) table_name를 치환하기 위해서는 원본 쿼리에 #(table_name) 형식으로 만들어 준다
+        :return: 치환된 sql query
+        :exception: 치환되지 않는 형태의 오류 발생시 원본 쿼리와 각 동적 parameter dict 키 매핑 확인
+        """
+        for key in replace_dict.keys():
+            sql = sql.replace(f"#({key})", replace_dict[key])
+
+        return sql

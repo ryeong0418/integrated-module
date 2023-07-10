@@ -148,7 +148,8 @@ disable=abstract-method,
 		broad-exception-caught,
 		expression-not-assigned,
 		inconsistent-quotes,
-		missing-module-docstring
+		missing-module-docstring,
+		protected-access
 
 
 [REPORTS]

@@ -39,7 +39,7 @@
 			"minute": "3, 13, 23, 33, 43, 53"
 		}
 	},
-	"sql_debug_flag": true,
+	"sql_debug_flag": false,
 	"data_handling_chunksize": 10000,
 	"sql_match_time": 0,  
 	"extract_bind_value": true,	

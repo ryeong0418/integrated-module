@@ -9,7 +9,7 @@ class ModuleFactoryEnum(Enum):
     b = "scheduler"
     m = "sql_text_merge"
     t = "sql_text_template"
-    l = "sql_text_similarity"
+    l = "sql_text_similar"
 
 
 class MessageEnum(Enum):

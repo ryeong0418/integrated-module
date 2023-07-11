@@ -493,7 +493,8 @@ class SaTarget(CommonTarget):
         replace_dict = {'partition_key': partition_key}
         query = SqlUtils.sql_replace_to_dict(AeDbSqlTextSql.SELECT_AE_DB_SQL_TEXT_1SEQ, replace_dict)
 
-        return pd.read_sql_query(query, self.sa_conn, chunksize=chunksize)
+        return self._get_df_by_chunk_size(self.analysis_engine, query, chunk_size=chunksize)
+        # return pd.read_sql_query(query, self.sa_conn, chunksize=chunksize)
 
     def get_all_ae_db_sql_text_by_1seq(self, df, chunksize):
         query_with_data = AeDbSqlTextSql.SELECT_AE_DB_SQL_TEXT_WITH_DATA
@@ -593,17 +594,19 @@ class SaTarget(CommonTarget):
 
         return df
 
-    def get_maxgauge_date_conditions(self, ):
-        return MaxGaugeUtils.set_maxgauge_date(self.config['args']['s_date'], self.config['args']['interval'])
-
-    def insert_merged_result(self, merged_df):
+    def insert_ae_sql_text_by_merged_df(self, merged_df):
         table_name = TableConstants.AE_SQL_TEXT
         total_len = 0
 
         for i in range(len(merged_df)):
             try:
-                merged_df.iloc[i:i + 1].to_sql(table_name, if_exists='append', con=self.analysis_engine,
-                                               schema='public', index=False)
+                merged_df.iloc[i:i + 1].to_sql(
+                    table_name,
+                    if_exists='append',
+                    con=self.analysis_engine,
+                    schema='public',
+                    index=False
+                )
                 total_len += 1
             except IntegrityError:
                 pass
@@ -656,16 +659,12 @@ class SaTarget(CommonTarget):
     def insert_target_table_by_dump(self, table, df):
         self._insert_engine_by_df(self.analysis_engine, table, df)
 
-    def term_extract_sql_text(self, chunksize):
-
-        s_date = datetime.strptime(str(self.config['args']['s_date']), '%Y%m%d')
-        e_date = s_date + timedelta(days=int(self.config['args']['interval']))
-
+    def get_ae_was_sql_text_by_term(self, s_date, e_date, chunksize):
         date_dict = {'StartDate': str(s_date), 'EndDate': str(e_date), 'seconds': str(self.sql_match_time)}
         query = AeWasSqlTextSql.SELECT_SQL_ID_AND_SQL_TEXT
-        sql_id_and_sql_text = SqlUtils.sql_replace_to_dict(query, date_dict)
+        replaced_query = SqlUtils.sql_replace_to_dict(query, date_dict)
 
-        return self._get_df_by_chunk_size(self.analysis_engine, sql_id_and_sql_text, chunksize,)
+        return self._get_df_by_chunk_size(self.analysis_engine, replaced_query, chunksize,)
 
     def update_cluster_id_by_sql_id(self, df):
         self.logger.info(f"Execute update_cluster_id_by_sql_id query total : {len(df)}")

@@ -14,6 +14,11 @@ from resources.logger_manager import Logger
 
 
 class SqlTextTemplate(cm.CommonModule):
+    """
+    SqlTextTemplate Class
+
+    리터럴 쿼리 분석을 위한 Class
+    """
 
     def __init__(self, logger):
         super().__init__(logger)
@@ -59,9 +64,13 @@ class SqlTextTemplate(cm.CommonModule):
         self._print_drain_tree()
 
     def _wait_end_of_threads(self):
+        """
+        cluster_id를 update하는 thread 종료를 기다리기 위한 함수
+        :return:
+        """
         self.logger.debug(f"Total child thread count {len(self.chd_threads)}")
 
-        while any([t.is_alive() for t in self.chd_threads]):
+        while any(t.is_alive() for t in self.chd_threads):
             self.wait_times_cnt += 1
             self.logger.info(f"Child thread waiting one seconds.. {self.wait_times_cnt} times")
             time.sleep(1)
@@ -69,10 +78,18 @@ class SqlTextTemplate(cm.CommonModule):
         [self.chd_threads.pop(idx) for idx, t in enumerate(self.chd_threads) if not t.is_alive()]
 
     def _add_sql_text_template_logger(self):
+        """
+        Drain 모듈에서 sql text template 관련 logging 위해 looger를 생성하는 함수
+        :return:
+        """
         self.sql_text_template_logger = Logger(self.config['env']).\
             get_default_logger(self.config['log_dir'], SystemConstants.SQL_TEXT_TEMPLATE_LOG_FILE_NAME)
 
     def _was_sql_text_template(self):
+        """
+        Was sql text 전처리 및 drain 알고리즘으로 cluster 분석 하는 함수
+        :return:
+        """
         self.sql_text_template_logger.info("--- Start was sql text drain processing")
 
         start_time = time.time()
@@ -87,6 +104,11 @@ class SqlTextTemplate(cm.CommonModule):
         self._after_drain_finished(start_time)
 
     def _preprocessing(self, df):
+        """
+        sql text 전처리 함수
+        :param df: 전처리 전 데이터 프레임
+        :return: 전처리 후 select, ~select 데이터 프레임
+        """
         sel_list = ['select']
         etc_list = ['insert', 'update', 'delete']
 
@@ -111,10 +133,19 @@ class SqlTextTemplate(cm.CommonModule):
         return sel_df, etc_df
 
     def _print_drain_tree(self):
+        """
+        Drain에서 분석한 분석 tree를 출력하기 위한 함수
+        :return:
+        """
         self.sel_worker.print_drain_tree()
         self.etc_worker.print_drain_tree()
 
     def _save_top_cluster_template(self, extract_cnt=1000):
+        """
+        Top cluster의 갯수 및 template 저장하기 위한 함수
+        :param extract_cnt: 저장하려는 cluster 갯수
+        :return:
+        """
         sel_cluster_df = self.sel_worker.get_top_cluster_template()
         etc_cluster_df = self.etc_worker.get_top_cluster_template()
 
@@ -128,15 +159,25 @@ class SqlTextTemplate(cm.CommonModule):
         self.st.insert_ae_sql_template(merged_df)
 
     def _update_unanalyzed_was_sql_text(self):
+        """
+        was sql text 중 분석하지 않는 데이터 처리를 위한 함수
+        :return:
+        """
         self.st.update_unanalyzed_was_sql_text()
 
     def _db_sql_text_template(self):
+        """
+        DB sql text 전처리 및 drain 알고리즘으로 cluster 분석 하는 함수
+        :return:
+        """
         start_time = time.time()
 
         ae_db_info_df = self.st.get_ae_db_info()
         ae_db_infos = ae_db_info_df['lpad_db_id'].to_list()
 
-        date_conditions = self.st.get_maxgauge_date_conditions()
+        date_conditions = MaxGaugeUtils.set_maxgauge_date(
+            self.config['args']['s_date'], self.config['args']['interval']
+        )
 
         for partition_key in [f"{date}{db_info}" for db_info in ae_db_infos for date in date_conditions]:
 
@@ -156,6 +197,11 @@ class SqlTextTemplate(cm.CommonModule):
         self._after_drain_finished(start_time)
 
     def _after_drain_finished(self, start_time):
+        """
+        Drain 분석 종료 후 결과를 로깅하기 위한 함수
+        :param start_time: Drain 분석 시작 시간
+        :return:
+        """
         total_match_cnt = self.sel_worker.line_count + self.etc_worker.line_count
 
         time_took = time.time() - start_time
@@ -164,6 +210,13 @@ class SqlTextTemplate(cm.CommonModule):
                          f"Total of {total_match_cnt} lines, rate {rate:.1f} lines/sec")
 
     def _drain_match_and_upt(self, sel_df, etc_df, upt_func=None):
+        """
+        Drain 분석 후 결과를 저장 하기 위한 함수
+        :param sel_df: select가 포함된 sql text를 분석한 데이터 프레임
+        :param etc_df: select가 포함되지 않은 sql text를 분석한 데이터 프레임
+        :param upt_func: 분석한 결과 데이터 프레임을 update 하는 함수 (Background 실행 : Max thread = 1)
+        :return:
+        """
 
         sel_df = self.sel_worker.match(sel_df, 'sql_text')
         etc_df = self.etc_worker.match(etc_df, 'sql_text')

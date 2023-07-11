@@ -14,6 +14,11 @@ INTERVAL_MINUTE = 10
 
 
 class SqlTextSimilar(cm.CommonModule):
+    """
+    SqlTextSimilar Class
+
+    Sql text 유사도 분석을 위한 Class
+    """
 
     def __init__(self, logger):
         super().__init__(logger)
@@ -25,6 +30,10 @@ class SqlTextSimilar(cm.CommonModule):
         self.is_exist_tuning_sql = False
 
     def pre_load_tuning_sql_text(self):
+        """
+        스케쥴러에서 실행 후 로컬 디렉토리에 저장된 tuning sql text를 미리 파싱해 놓기 위한 함수
+        :return:
+        """
         self._set_tuning_sql_text()
         self.valid_sql_text_similarity = self.config.get('valid_sql_text_similarity', 0.6)
 
@@ -42,8 +51,12 @@ class SqlTextSimilar(cm.CommonModule):
 
     @staticmethod
     def _preprocessing_xapm_sql_df(xapm_sql_df):
-        xapm_sql_df = xapm_sql_df[xapm_sql_df['sql_text'].str.contains('sql is too big') == False]
-
+        """
+        InterMax의 xapm_txn_sql_detail의 sql text를 전처리 하기 위한 함수
+        :param xapm_sql_df: xapm_txn_sql_detail의 sql text
+        :return: 전처리 된 xapm_txn_sql_detail의 sql text
+        """
+        xapm_sql_df = xapm_sql_df[~xapm_sql_df['sql_text'].str.contains('sql is too big')]
         xapm_sql_df = SqlUtils.remove_unnecess_char(xapm_sql_df, 'sql_text', contains_comma=True)
         xapm_sql_df['sql_text'] = xapm_sql_df['sql_text'].str.lower().str.replace(r'\s+', ' ', regex=True)
         xapm_sql_df = SqlUtils.rex_processing(xapm_sql_df)
@@ -52,6 +65,10 @@ class SqlTextSimilar(cm.CommonModule):
         return xapm_sql_df
 
     def _set_tuning_sql_text(self):
+        """
+        로컬 디렉토리에 저장된 tuning sql text를 파싱하는 함수
+        :return:
+        """
         home_parent_path = Path(self.config['home']).parent
         tuning_sql_path = os.path.join(home_parent_path, SystemConstants.TUNING_SQL_TEXT_PATH)
 
@@ -89,6 +106,11 @@ class SqlTextSimilar(cm.CommonModule):
         self._set_tuning_sql_text_in_txt(tuning_sql_path)
 
     def _set_tuning_sql_text_in_txt(self, tuning_sql_path):
+        """
+        tuning sql text를 로드하고 전처리하는 함수
+        :param tuning_sql_path: tuning sql text 디렉토리
+        :return:
+        """
         self._init_sa_target()
 
         for sql_id, pre_sql_text in self.origin_sql_id_dict.items():
@@ -116,6 +138,11 @@ class SqlTextSimilar(cm.CommonModule):
 
     @staticmethod
     def _preprocessing_tuning_sql(sql_text):
+        """
+        tuning sql text 전처리 함수
+        :param sql_text: tuning sql text
+        :return: 전처리 된 tuning sql text
+        """
         sql_text = sql_text.lower().strip()
         sql_text = sql_text.replace(',', ' ')
         sql_text = re.sub(r'\s+in\s?\([^)]*\)', ' in(<:args:>)', sql_text)
@@ -127,6 +154,11 @@ class SqlTextSimilar(cm.CommonModule):
 
     @staticmethod
     def _get_sql_text_in_file(sql_file):
+        """
+        tuning sql text file를 로드하여 sql text를 만드는 함수
+        :param sql_file: tuning sql text file
+        :return: sql text
+        """
         sql = []
         with open(sql_file, 'r', encoding='utf-8') as file:
             while True:
@@ -140,6 +172,10 @@ class SqlTextSimilar(cm.CommonModule):
         return ' '.join(sql)
 
     def _get_xapm_txn_sql_detail(self):
+        """
+        xapm_txn_sql_detail 데이터를 가져오는 함수. 이전 10분 데이터 (0분 ~ 10분)
+        :return: 조회한 sql text 데이터 프레임
+        """
         self._init_im_target()
 
         start_date, end_date = self._get_time_param()
@@ -151,6 +187,10 @@ class SqlTextSimilar(cm.CommonModule):
 
     @staticmethod
     def _get_time_param():
+        """
+        현재 시간에서 이전 10분을(0분 ~10분) 계산하기 위한 함수
+        :return:
+        """
         now = datetime.now()
 
         start_date = \
@@ -163,6 +203,11 @@ class SqlTextSimilar(cm.CommonModule):
             end_date.strftime(DateFmtConstants.DATETIME_FORMAT)
 
     def _analysis_sql_text_similarity(self, xapm_sql_df):
+        """
+        로컬에 저장된 tuning sql text와 xapm_txn_sql_detail의 sql text의 유사도 분석 함수
+        :param xapm_sql_df: xapm_txn_sql_detail 데이터 프레임
+        :return: 유사도 분석 결과 유효한 데이터 프레임
+        """
         valid_df_list = []
 
         for origin_sql_id, pre_sql_text in self.origin_sql_id_dict.items():
@@ -182,18 +227,28 @@ class SqlTextSimilar(cm.CommonModule):
 
         self.logger.info(f"valid similarity sql id {len(result_valid_df)} times")
 
-        for idx, row in result_valid_df.iterrows():
+        for _, row in result_valid_df.iterrows():
             self.logger.info(f"{row['origin_sql_id']} ({row['origin_cluster_id']}) "
                              f"-> {row['sql_id']} , {row['similarity']}")
 
         return result_valid_df
 
     def _insert_ae_txn_sql_similarity(self, result_valid_df):
+        """
+        ae_txn_sql_similarity에 저장하는 함수
+        :param result_valid_df: 유사도 분석 결과 유효한 데이터 프레임
+        :return:
+        """
         self._init_sa_target()
         self.st.insert_ae_txn_sql_similarity(result_valid_df)
         self._teardown_sa_target()
 
     def _remove_sql_id_in_object(self, del_sql_id_list):
+        """
+        로컬 디렉토리에 tuning sql 제거 시 해당 객체를 제거하기 위한 함수 (해당 sql_id 유사도 분석 중지)
+        :param del_sql_id_list: 삭제 하려는 sql_id 리스트
+        :return:
+        """
         for del_sql_id in del_sql_id_list:
             if self.origin_sql_id_dict.get(del_sql_id):
                 del self.origin_sql_id_dict[del_sql_id]
@@ -202,6 +257,12 @@ class SqlTextSimilar(cm.CommonModule):
 
     @staticmethod
     def jaccard_similarity(list1, list2):
+        """
+        자카드 유사도 알고리즘
+        :param list1: 분석 대상 리스트
+        :param list2: 분석 대상 리스트
+        :return: 유사도
+        """
         s1 = set(list1)
         s2 = set(list2)
         return float(len(s1.intersection(s2)) / len(s1.union(s2)))

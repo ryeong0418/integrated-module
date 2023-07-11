@@ -50,7 +50,7 @@ class CommonTarget:
         self.extract_chunksize = self.data_handling_chunksize * 5
         self.sql_match_time = self.config.get('sql_match_time', 0)
         self.sql_file_root_path = f"{self.config['home']}/" \
-                                  f"{SystemConstants.SQL}/" \
+                                  f"{SystemConstants.SQL_ROOT_PATH}/" \
                                   f"{ModuleFactoryEnum[self.config['args']['proc']].value}"
 
         self.update_cluster_cnt = 0
@@ -113,6 +113,23 @@ class CommonTarget:
         with TimeLogger(f"[{CommonTarget.__name__}] {sys._getframe(0).f_code.co_name}(), {table_name} to extract ",
                         self.logger):
             df = pd.read_sql(query, target_conn)
+
+        return df
+
+    def _get_target_data_by_query_ver2(self, engine, query, table_name="UNKNOWN TABLE"):
+        """
+        각 분석 대상의 DB에서 query 결과를 DataFrame 담아오는 함수
+        :param target_conn: 각 타겟 connect object
+        :param query: 각 타겟 호출 SQL
+        :param table_name: 분석 모듈 DB에 저장될 테이블 명 (for logging)
+        :return: 각 타겟의 query 결과 정보 (DataFrame)
+        """
+
+        with TimeLogger(f"[{CommonTarget.__name__}] {sys._getframe(0).f_code.co_name}(), {table_name} to extract ",
+                        self.logger):
+
+            with engine.connect() as conn:
+                df = pd.read_sql_query(text(query), conn)
 
         return df
 
@@ -182,6 +199,9 @@ class CommonTarget:
         conn = engine.connect().execution_options(stream_results=True)
         return pd.read_sql_query(text(query), conn, chunksize=chunk_size, coerce_float=coerce)
 
+    def get_data_by_meta_query(self, meta_query):
+        pass
+
 
 class InterMaxTarget(CommonTarget):
 
@@ -190,6 +210,12 @@ class InterMaxTarget(CommonTarget):
         self.sa_conn = db.connect(self.analysis_conn_str)
         self.im_engine = self._create_engine(self.im_engine_template)
         self.analysis_engine = self._create_engine(self.analysis_engine_template)
+
+    def get_im_engine(self):
+        return self.im_engine
+
+    def get_data_by_meta_query(self, meta_query):
+        return self._get_df_by_chunk_size(self.im_engine, meta_query)
 
     def insert_intermax_meta_data(self):
         """
@@ -352,6 +378,12 @@ class MaxGaugeTarget(CommonTarget):
         self.analysis_engine = self._create_engine(self.analysis_engine_template)
         self.mg_engine = self._create_engine(self.mg_engine_template)
 
+    def get_mg_engine(self):
+        return self.mg_engine
+
+    def get_data_by_meta_query(self, meta_query):
+        return self._get_df_by_chunk_size(self.mg_engine, meta_query)
+
     def insert_maxgauge_meta_data(self):
         """
         MaxGauge 메타 데이터 테이블 query문 불러와 insert 기능 함수
@@ -424,20 +456,25 @@ class MaxGaugeTarget(CommonTarget):
 class SaTarget(CommonTarget):
 
     def init_process(self):
-        self.sa_conn = db.connect(self.analysis_conn_str)
-        self.im_conn = db.connect(self.im_conn_str)
         self.analysis_engine = self._create_engine(self.analysis_engine_template)
+        self.sa_conn = self.analysis_engine.raw_connection()
         self.sa_cursor = self.sa_conn.cursor()
 
-    def create_table(self):
-        init_path = f"{self.sql_file_root_path}/{SystemConstants.DDL}/"
-        init_files = SystemUtils.get_filenames_from_path(init_path)
+    def create_table(self, ddl):
+        self._default_execute_query(self.sa_conn, ddl)
 
-        for init_file in init_files:
-            with open(f"{init_path}{init_file}", mode='r', encoding='utf-8') as file:
-                ddl = file.read()
+    def insert_init_meta(self, meta_df, target_table_name):
+        """"
+        InterMax, MaxGauge 메타 데이터를 분석 DB에 truncate후 insert하는 기능
 
-            self._default_execute_query(self.sa_conn, ddl)
+        :param meta_df : 각 타겟의 메타 데이터
+        :param target_table_name : 분석 모듈에 저장할 Table 이름
+        """
+        replace_dict = {'table_name': target_table_name}
+        delete_table_query = SqlUtils.sql_replace_to_dict(CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY, replace_dict)
+        self._default_execute_query(self.sa_conn, delete_table_query)
+
+        self._insert_engine_by_df(self.analysis_engine, target_table_name, meta_df)
 
     def get_ae_was_sql_text(self, extract_cnt=0):
         query = AeWasSqlTextSql.SELECT_AE_WAS_SQL_TEXT
@@ -451,20 +488,6 @@ class SaTarget(CommonTarget):
         except Exception as e:
             self.logger.exception(e)
         return result_df
-
-    def ae_was_sql_text_meta(self):
-        """
-        InterMax DB xapm_sql_text 테이블에서 데이터 추출하여 분석 DB ae_was_sql_text 테이블에 insert 기능 함수
-        """
-        init_path = f"{self.sql_file_root_path}/{SystemConstants.META}/"
-        init_files = SystemUtils.get_filenames_from_path(init_path)
-
-        for init_file in init_files:
-            with open(f"{init_path}{init_file}", mode='r', encoding='utf-8') as file:
-                meta_query = file.read()
-
-            table_name = SystemUtils.extract_tablename_in_filename(init_file)
-            self._execute_insert_meta(meta_query, table_name, self.im_conn)
 
     def get_ae_db_sql_text_by_1seq(self, partition_key, chunksize):
         replace_dict = {'partition_key': partition_key}

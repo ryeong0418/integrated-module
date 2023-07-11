@@ -38,9 +38,9 @@ class SystemConstants:
     PID_TMP_FILE_NAME = 'pid.tmp'
 
     # sql path
-    SQL = 'sql'
-    DDL = 'ddl'
-    META = 'meta'
+    SQL_ROOT_PATH = 'sql/'
+    DDL_PATH = 'ddl/'
+    META_PATH = 'meta/'
 
     # sql_text_template 관련 파일 경로
     DRAIN_CONF_PATH = '/resources/drain/'
@@ -53,6 +53,9 @@ class SystemConstants:
 
     # 튜닝된 sql text path
     TUNING_SQL_TEXT_PATH = 'tuning_sql/'
+
+    WAS_PATH = 'was/'
+    DB_PATH = 'db/'
 
 
 class TableConstants:

@@ -138,8 +138,8 @@ class SystemUtils:
         :param suffix: 끝이 suffix를 포함하는 파일 (optional)
         :return: 파일 이름 list
         """
-        if not os.path.isdir(path):
-            os.mkdir(path)
+        if not os.path.exists(path):
+            os.makedirs(path)
 
         return [x for x in os.listdir(path) if str(x).startswith(prefix) and str(x).endswith(suffix)]
 

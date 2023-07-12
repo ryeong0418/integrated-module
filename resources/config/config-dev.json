@@ -23,7 +23,7 @@
 		"port": 5432,
 		"sid": "postgres",
 		"user": "postgres",
-		"password": "postgres"
+		"password": "dmddyd2307!"
 	},
 	"scheduler": {
 		"is_alive_sched": {

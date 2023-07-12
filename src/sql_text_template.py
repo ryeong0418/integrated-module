@@ -99,7 +99,7 @@ class SqlTextTemplate(cm.CommonModule):
             with TimeLogger(inspect.currentframe().f_code.co_name, self.sql_text_template_logger):
                 sel_df, etc_df = self._preprocessing(df)
 
-            self._drain_match_and_upt(sel_df, etc_df, self.st.update_cluster_id_by_sql_id)
+            self._drain_match_and_upt(sel_df, etc_df, 'was', self.st.update_cluster_id_by_sql_id)
 
         self._after_drain_finished(start_time)
 
@@ -192,7 +192,7 @@ class SqlTextTemplate(cm.CommonModule):
                 with TimeLogger(inspect.currentframe().f_code.co_name, self.sql_text_template_logger):
                     sel_df, etc_df = self._preprocessing(grouping_df)
 
-                self._drain_match_and_upt(sel_df, etc_df, self.st.upsert_cluster_id_by_sql_uid)
+                self._drain_match_and_upt(sel_df, etc_df, 'db', self.st.update_cluster_id_by_sql_id)
 
         self._after_drain_finished(start_time)
 
@@ -209,7 +209,7 @@ class SqlTextTemplate(cm.CommonModule):
         self.logger.info(f"--- Done processing file in {time_took:.2f} sec. "
                          f"Total of {total_match_cnt} lines, rate {rate:.1f} lines/sec")
 
-    def _drain_match_and_upt(self, sel_df, etc_df, upt_func=None):
+    def _drain_match_and_upt(self, sel_df, etc_df, target, upt_func=None):
         """
         Drain 분석 후 결과를 저장 하기 위한 함수
         :param sel_df: select가 포함된 sql text를 분석한 데이터 프레임
@@ -226,7 +226,7 @@ class SqlTextTemplate(cm.CommonModule):
         if upt_func is not None:
             self._wait_end_of_threads()
 
-            bgt = BackgroundTask(self.logger, upt_func, df=result_df)
+            bgt = BackgroundTask(self.logger, upt_func, df=result_df, target=target)
             bgt.start()
 
             self.chd_threads.append(bgt)

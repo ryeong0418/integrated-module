@@ -17,7 +17,7 @@ SET CLASSPATH=%ZULU_DIR%\lib;
 SET PATH=%PATH%;%JAVA_HOME%\bin\;
 
 call .venv\Scripts\activate
-python smart_analyzer.py --proc s --s_date %1 --interval 1 > Output
+python smart_analyzer.py --proc s --s_date %1 --interval %2 > Output
 
 SET /p result=<Output
 

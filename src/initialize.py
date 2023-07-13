@@ -37,7 +37,7 @@ class Initialize(cm.CommonModule):
         if self.config['maxgauge_repo']['use']:
             self._init_mg_target()
 
-            self._insert_init_meta_by_target(SystemConstants.DB_PATH, self.mgt)
+            #self._insert_init_meta_by_target(SystemConstants.DB_PATH, self.mgt)
             self._teardown_mg_target()
 
     def _insert_init_meta_by_target(self, target, target_instance):

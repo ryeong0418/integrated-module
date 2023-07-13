@@ -131,6 +131,7 @@ class SystemUtils:
 
     @staticmethod
     def get_filenames_from_path(path: str, prefix: str = '', suffix: str = ''):
+
         """
         path에 모든 파일 이름을 가져오는 함수
         :param path: 파일 이름을 가져오려는 절대 경로
@@ -138,6 +139,7 @@ class SystemUtils:
         :param suffix: 끝이 suffix를 포함하는 파일 (optional)
         :return: 파일 이름 list
         """
+
         if not os.path.isdir(path):
             os.mkdir(path)
 
@@ -193,11 +195,13 @@ class TargetUtils:
 
     @staticmethod
     def get_engine_template(repo_info):
+
         """
         분석 모듈 DB 저장을 위한 SqlAlchemy engine 생성을 위한 string 생성 함수
         :param repo_info: 분석 모듈 DB repository 정보
         :return: engine 생성을 위한 str
         """
+
         return "postgresql+psycopg2://{}:{}@{}:{}/{}".format(
             repo_info['user'],
             repo_info['password'],
@@ -270,6 +274,17 @@ class MaxGaugeUtils:
             date_conditions.append(date_condition)
 
         return date_conditions
+
+
+class SummarizerUtils:
+
+    @staticmethod
+    def summarizer_set_date(input_date):
+        start_date = datetime.strptime(input_date, '%Y%m%d')
+        end_date = start_date + timedelta(days=1)
+        start_date = start_date.strftime('%Y-%m-%d 00:00:00')
+        end_date = end_date.strftime('%Y-%m-%d 00:00:00')
+        return start_date, end_date
 
 
 class SqlUtils:

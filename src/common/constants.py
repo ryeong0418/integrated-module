@@ -56,6 +56,8 @@ class SystemConstants:
 
     WAS_PATH = 'was/'
     DB_PATH = 'db/'
+    TEMP_PATH = 'temp/'
+    SUMMARY_PATH = 'summary/'
 
 
 class TableConstants:

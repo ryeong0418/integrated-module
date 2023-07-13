@@ -20,8 +20,8 @@ class Visualization(cm.CommonModule):
         query_folder = self.config['home'] + '/' + SystemConstants.SQL_PATH
         excel_path = self.config['home'] + '/' + SystemConstants.EXCEL_PATH
 
-        Path(query_folder).mkdir(exist_ok=True, parents=True)
-        Path(excel_path).mkdir(exist_ok=True, parents=True)
+        SystemUtils.get_filenames_from_path(query_folder)
+        SystemUtils.get_filenames_from_path(excel_path)
 
         sql_name_list = os.listdir(query_folder)
         sql_split = [i.split(" ") for i in sql_name_list]

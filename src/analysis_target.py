@@ -71,7 +71,8 @@ class CommonTarget:
         if self.mg_engine:
             self.mg_engine.dispose()
 
-    def _execute_insert_meta(self, query, table_name, target_conn):
+
+    def insert_meta(self, query, table_name, target_conn, st_engine):
         """
         InterMax, MaxGauge 메타 데이터를 분석 DB에 truncate후 insert하는 기능
 
@@ -80,15 +81,15 @@ class CommonTarget:
         """
         replace_dict = {'table_name': table_name}
         delete_table_query = SqlUtils.sql_replace_to_dict(CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY, replace_dict)
-        self._default_execute_query(self.sa_conn, delete_table_query)
+        self._default_execute_query(st_engine.raw_connection(), delete_table_query)
         meta_df = self._get_target_data_by_query(target_conn, query, table_name, )
-        self._insert_engine_by_df(self.analysis_engine, table_name, meta_df)
+        self._insert_engine_by_df(st_engine, table_name, meta_df)
 
     def _create_engine(self, engine_template):
         self.logger.info(f"Create engine info : {engine_template}")
         return create_engine(
             engine_template,
-            echo=self.sql_debug_flag,
+            #echo=self.sql_debug_flag,
             pool_size=20,
             max_overflow=20,
             echo_pool=False,
@@ -102,6 +103,7 @@ class CommonTarget:
         )
 
     def _get_target_data_by_query(self, target_conn, query, table_name="UNKNOWN TABLE"):
+        print('hhhhhhh',table_name)
         """
         각 분석 대상의 DB에서 query 결과를 DataFrame 담아오는 함수
         :param target_conn: 각 타겟 connect object
@@ -179,8 +181,8 @@ class CommonTarget:
 
             metadata = MetaData()
             t = Table(table, metadata, autoload_with=engine)
-            insert_values = df.replace({np.nan: None}).to_dict(orient='records')
 
+            insert_values = df.replace({np.nan: None}).to_dict(orient='records')
             insert_stmt = insert(t).values(insert_values)
             update_stmt = {exc_k.key: exc_k for exc_k in insert_stmt.excluded}
 
@@ -206,102 +208,29 @@ class CommonTarget:
 class InterMaxTarget(CommonTarget):
 
     def init_process(self):
-        self.im_conn = db.connect(self.im_conn_str)
-        self.sa_conn = db.connect(self.analysis_conn_str)
         self.im_engine = self._create_engine(self.im_engine_template)
-        self.analysis_engine = self._create_engine(self.analysis_engine_template)
+        self.im_conn = self.im_engine.raw_connection()
 
     def get_im_engine(self):
         return self.im_engine
 
+    def get_im_conn(self):
+        return self.im_conn
+
     def get_data_by_meta_query(self, meta_query):
         return self._get_df_by_chunk_size(self.im_engine, meta_query)
 
-    def insert_intermax_meta_data(self):
-        """
-        InterMax 메타 데이터 테이블 query문 불러와 insert 또는 upsert 기능 함수
-        upsert 실행 테이블 : ae_was_dev_map, ae_txn_name
-        insert 실행 테이블 : ae_was_db_info, ae_host_info, ae_was_info
-        """
-        extractor_file_path = f"{self.sql_file_root_path}/was/meta/"
-        extractor_files = SystemUtils.get_filenames_from_path(extractor_file_path)
-
-        for extractor_file in extractor_files:
-
-            with open(f"{extractor_file_path}{extractor_file}", mode='r', encoding='utf-8') as file:
-                query = file.read()
-
-            table_name = SystemUtils.extract_tablename_in_filename(extractor_file)
-
-            if table_name == "ae_was_dev_map" or table_name == "ae_txn_name":
-                self._excute_upsert_intermax_data(query, table_name)
-
-            else:
-                self._execute_insert_meta(query, table_name, self.im_conn)
-
-    def insert_intermax_detail_data(self):
-        """
-        InterMax 분석 데이터 테이블 query를 날짜 별로 불러와 읽은 후, delete -> insert 또는 upsert 기능 함수
-
-        upsert 실행 테이블: ae_was_sql_text
-        delete -> insert (기본) 실행 테이블: ae_bind_sql_elapse, ae_was_os_stat_osm
-        delete -> insert (ae_was_dev_map 테이블에서 was_id 제외) 실행 테이블: ae_jvm_stat_summary,ae_txn_detail,
-                                                        ae_txn_sql_detail, ae_txn_sql_fetch, ae_was_stat_summary
-        """
-        extractor_file_path = f"{self.sql_file_root_path}/was/"
-        extractor_files = SystemUtils.get_filenames_from_path(extractor_file_path, '', 'txt')
-
-        delete_query = CommonSql.DELETE_TABLE_BY_DATE_QUERY
-
-        date_conditions = InterMaxUtils.set_intermax_date(self.config['args']['s_date'],
-                                                          self.config['args']['interval'])
-
-        for extractor_file in extractor_files:
-
-            with open(f"{extractor_file_path}{extractor_file}", mode='r', encoding='utf-8') as file:
-                query = file.read()
-
-            table_name = SystemUtils.extract_tablename_in_filename(extractor_file)
-
-            for date in date_conditions:
-
-                table_suffix_dict = {'table_suffix': date}
-                detail_query = SqlUtils.sql_replace_to_dict(query, table_suffix_dict)
-                delete_dict = {'table_name': table_name, 'date': date}
-
-                try:
-
-                    if table_name == "ae_was_sql_text":
-                        self._excute_upsert_intermax_data(detail_query, table_name)
-
-                    else:
-                        im_delete_query = SqlUtils.sql_replace_to_dict(delete_query, delete_dict)
-                        self.logger.info(f"delete query execute : {im_delete_query}")
-                        self._default_execute_query(self.sa_conn, im_delete_query)
-
-                        if table_name == "ae_bind_sql_elapse":
-                            self._excute_insert_bind_value_date(detail_query, table_name)
-
-                        elif table_name == "ae_was_os_stat_osm":
-                            self._execute_insert_intermax_detail_data(detail_query, table_name)
-
-                        else:
-                            ae_dev_map_df = self._get_target_data_by_query(self.sa_conn,
-                                                                                 AeWasDevMapSql.SELECT_AE_WAS_DEV_MAP,
-                                                                                 table_name)
-                            self._excute_insert_dev_except_data(detail_query, table_name, ae_dev_map_df)
-
-                except Exception as e:
-                    self.logger.exception(f"{table_name} table, {date} date detail data insert error")
-                    self.logger.exception(e)
-
     def _get_intermax_data_by_chunksize(self, query):
+
         """
         InterMax SQL query문을 chunksize만큼 dataframe 형태로 읽어서 반환
         """
+
         return self._get_df_by_chunk_size(self.im_engine, query)
 
-    def _excute_upsert_intermax_data(self, query, table_name):
+    def upsert_intermax_data(self, query, table_name, analysis_engine):
+        print(analysis_engine)
+
         """
         분석 모듈 DB에 data upsert 기능 함수
         :param query: txt파일에 입력된 query문
@@ -309,11 +238,13 @@ class InterMaxTarget(CommonTarget):
         실행 테이블: (메타 테이블) ae_was_dev_map, ae_txn_name
                    (InterMax 테이블) ae_was_sql_text
         """
+
         for query_df in self._get_intermax_data_by_chunksize(query):
             df = InterMaxUtils.meta_table_value(table_name, query_df)
-            self._psql_insert_copy(table_name, self.analysis_engine, df)
+            self._psql_insert_copy(table_name, analysis_engine, df)
 
-    def _excute_insert_bind_value_date(self,query,table_name):
+
+    def _excute_insert_bind_value_date(self,query,table_name,analysis_engine):
 
         """
         분석 모듈 DB에 data insert 기능 함수
@@ -323,9 +254,12 @@ class InterMaxTarget(CommonTarget):
 
         bind_list 컬럼값을 복호화하여 bind_value 컬럼에 insert
         """
+
         for df in self._get_intermax_data_by_chunksize(query):
+            print(df)
 
             if self.config['extract_bind_value']:
+                print('aaa')
 
                 if self.intermax_decoder is None:
                     self.intermax_decoder = Decoding(self.config)
@@ -336,9 +270,9 @@ class InterMaxTarget(CommonTarget):
                 )
                 df['bind_value'] = df['bind_value'].astype(str)
 
-            self._insert_engine_by_df(self.analysis_engine, table_name, df)
+            self._insert_engine_by_df(analysis_engine, table_name, df)
 
-    def _execute_insert_intermax_detail_data(self, query, table_name):
+    def _execute_insert_intermax_detail_data(self, query, table_name,analysis_engine):
 
         """
         분석 모듈 DB에 data insert 기능 함수
@@ -349,9 +283,12 @@ class InterMaxTarget(CommonTarget):
         """
 
         for df in self._get_intermax_data_by_chunksize(query):
-            self._insert_engine_by_df(self.analysis_engine, table_name, df)
+            self._insert_engine_by_df(analysis_engine, table_name, df)
 
-    def _excute_insert_dev_except_data(self, query, table_name,ae_dev_map_df):
+    def _excute_insert_dev_except_data(self, query, table_name,ae_dev_map_df,analysis_engine):
+        print('ae_dev_map_df',ae_dev_map_df)
+
+
         """
         분석 모듈 DB ae_was_dev_map 테이블에서 was_id에 해당하는 값들을 제외하고 data insert 기능 함수
         :param query: txt파일에 입력된 query문
@@ -360,8 +297,10 @@ class InterMaxTarget(CommonTarget):
         """
 
         for detail_df in self._get_intermax_data_by_chunksize(query):
+            print(detail_df)
             was_id_except_df = detail_df[~detail_df['was_id'].isin(ae_dev_map_df['was_id'])]
-            self._insert_engine_by_df(self.analysis_engine, table_name, was_id_except_df)
+            print('was_id_except_df',was_id_except_df)
+            self._insert_engine_by_df(analysis_engine, table_name, was_id_except_df)
 
     def get_xapm_txn_sql_detail(self, start_param, end_param):
         param_dict = {'start_param': start_param, 'end_param': end_param}
@@ -373,84 +312,29 @@ class InterMaxTarget(CommonTarget):
 class MaxGaugeTarget(CommonTarget):
 
     def init_process(self):
-        self.mg_conn = db.connect(self.mg_conn_str)
-        self.sa_conn = db.connect(self.analysis_conn_str)
-        self.analysis_engine = self._create_engine(self.analysis_engine_template)
         self.mg_engine = self._create_engine(self.mg_engine_template)
+        self.mg_conn = self.mg_engine.raw_connection()
 
     def get_mg_engine(self):
         return self.mg_engine
 
+    def get_mg_conn(self):
+        return self.mg_conn
+
     def get_data_by_meta_query(self, meta_query):
         return self._get_df_by_chunk_size(self.mg_engine, meta_query)
 
-    def insert_maxgauge_meta_data(self):
-        """
-        MaxGauge 메타 데이터 테이블 query문 불러와 insert 기능 함수
-        insert 실행 테이블: ae_db_info
-        """
-        extractor_file_path = f"{self.sql_file_root_path}/db/meta/"
-        extractor_files = SystemUtils.get_filenames_from_path(extractor_file_path)
+    def _execute_insert_maxgauge_detail_data(self, query, table_name,analysis_engine):
 
-        for extractor_file in extractor_files:
-            with open(f"{extractor_file_path}{extractor_file}", mode='r', encoding='utf-8') as file:
-                query = file.read()
-
-            table_name = SystemUtils.extract_tablename_in_filename(extractor_file)
-            self._execute_insert_meta(query, table_name, self.mg_conn)
-
-    def insert_maxgauge_detail_data(self):
-        """
-        MaxGauge 메타 데이터 테이블 query를 날짜 별로 불러와 읽은 후, delete -> insert 기능 함수
-        """
-        date_conditions = MaxGaugeUtils.set_maxgauge_date(self.config['args']['s_date'],
-                                                          self.config['args']['interval'])
-        ae_db_info_query = AeDbInfoSql.SELECT_AE_DB_INFO
-
-        ae_db_info_name = TableConstants.AE_DB_INFO
-        db_info_df = self._get_target_data_by_query(self.sa_conn, ae_db_info_query, ae_db_info_name)
-
-        delete_query = CommonSql.DELETE_TABLE_BY_PARTITION_KEY_QUERY
-        extractor_file_path = f"{self.sql_file_root_path}/db/"
-        extractor_files = SystemUtils.get_filenames_from_path(extractor_file_path, '', 'txt')
-
-        for extractor_file in extractor_files:
-
-            with open(f"{extractor_file_path}{extractor_file}", mode='r', encoding='utf-8') as file:
-                query = file.read()
-
-            table_name = SystemUtils.extract_tablename_in_filename(extractor_file)
-
-            for _, row in db_info_df.iterrows():
-                db_id = str(row["db_id"]).zfill(3)
-                instance_name = str(row["instance_name"])
-
-                for date in date_conditions:
-                    table_suffix_dict = {'instance_name': instance_name, 'partition_key': date + db_id}
-                    delete_suffix_dict = {'table_name': table_name, 'partition_key': date + db_id}
-
-                    try:
-                        mg_delete_query = SqlUtils.sql_replace_to_dict(delete_query, delete_suffix_dict)
-                        self.logger.info(f"delete query execute : {mg_delete_query}")
-                        self._default_execute_query(self.sa_conn, mg_delete_query)
-
-                        detail_query = SqlUtils.sql_replace_to_dict(query, table_suffix_dict)
-                        self._execute_insert_maxgauge_detail_data(detail_query, table_name)
-
-                    except Exception as e:
-                        self.logger.exception(f"{table_name} table, {date} date detail data insert error")
-                        self.logger.exception(e)
-
-    def _execute_insert_maxgauge_detail_data(self, query, table_name):
         """
         분석 모듈 DB에 data insert 기능 함수
         :param query: txt파일에 입력된 query문
         실행 테이블: ae_db_sql_text, ae_session_info, ae_session_stat, ae_sql_stat_10min, ae_sql_wait_10min
         """
-        get_read_sql_query = self._get_df_by_chunk_size(self.mg_engine, query)
 
+        get_read_sql_query = self._get_df_by_chunk_size(self.mg_engine, query)
         for df in get_read_sql_query:
-            self._insert_engine_by_df(self.analysis_engine, table_name, df)
+            self._insert_engine_by_df(analysis_engine, table_name, df)
 
 
 class SaTarget(CommonTarget):
@@ -459,6 +343,12 @@ class SaTarget(CommonTarget):
         self.analysis_engine = self._create_engine(self.analysis_engine_template)
         self.sa_conn = self.analysis_engine.raw_connection()
         self.sa_cursor = self.sa_conn.cursor()
+
+    def get_st_engine(self):
+        return self.analysis_engine
+
+    def get_st_conn(self):
+        return self.sa_conn
 
     def create_table(self, ddl):
         self._default_execute_query(self.sa_conn, ddl)
@@ -472,6 +362,7 @@ class SaTarget(CommonTarget):
         """
         replace_dict = {'table_name': target_table_name}
         delete_table_query = SqlUtils.sql_replace_to_dict(CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY, replace_dict)
+
         self._default_execute_query(self.sa_conn, delete_table_query)
 
         self._insert_engine_by_df(self.analysis_engine, target_table_name, meta_df)
@@ -505,87 +396,6 @@ class SaTarget(CommonTarget):
 
         return results
 
-    def excute_summarizer(self):
-        """
-        분석 모듈 DB에 data summarizer 기능 함수
-        ae_txn_detail_summary_temp, ae_txn_sql_detail_summary_temp 에 1일치씩 데이터 delete -> insert 실행
-        날짜 별로 두 개의 temp table을 join하여 ae_txn_sql_summary에 데이터 insert
-        """
-
-        date_conditions = InterMaxUtils.set_intermax_date(self.config['args']['s_date'], self.config['args']['interval'])
-
-        summarizer_temp_path = f"{self.sql_file_root_path}/temp/"
-        summarizer_temp_files = SystemUtils.get_filenames_from_path(summarizer_temp_path)
-
-        for date in date_conditions:
-            start_date, end_date = SaTarget.summarizer_set_date(date)
-            date_dict = {'StartDate': start_date, 'EndDate': end_date}
-
-            for summarizer_temp_file in summarizer_temp_files:
-
-                table_name = summarizer_temp_file.split('.')[0]
-
-                replace_dict = {'table_name': table_name}
-                delete_table_query = SqlUtils.sql_replace_to_dict(CommonSql.DELETE_TABLE_DEFAULT_QUERY,
-                                                                     replace_dict)
-
-                with open(f"{summarizer_temp_path}{summarizer_temp_file}", mode='r', encoding='utf-8') as file:
-                    query = file.read()
-                    temp_query = SqlUtils.sql_replace_to_dict(query, date_dict)
-
-                    try:
-                        self._default_execute_query(self.sa_conn, delete_table_query)
-                        temp_df = self._get_target_data_by_query(self.sa_conn, temp_query, table_name)
-                        self._insert_engine_by_df(self.analysis_engine, table_name, temp_df)
-
-                    except Exception as e:
-                        self.logger.exception(
-                            f"{summarizer_temp_file.split('.')[0]} table, create_temp_table execute error")
-                        self.logger.exception(e)
-
-            self.summary_join(date_dict)
-
-    @staticmethod
-    def summarizer_set_date(input_date):
-        start_date = datetime.strptime(input_date, '%Y%m%d')
-        end_date = start_date + timedelta(days=1)
-        start_date = start_date.strftime('%Y-%m-%d 00:00:00')
-        end_date = end_date.strftime('%Y-%m-%d 00:00:00')
-        return start_date, end_date
-
-    def summary_join(self, date_dict):
-        """
-        ae_txn_detail_summary_temp, ae_txn_sql_detail_summary_temp 테이블 조인 기능 함수
-        날짜 별로 delete -> join data insert 기능 수행
-        """
-
-        summary_path = f"{self.sql_file_root_path}/summary/"
-        summary_files = SystemUtils.get_filenames_from_path(summary_path)
-
-        delete_query = CommonSql.DELETE_SUMMARY_TABLE_BY_DATE_QUERY
-
-        for summary_file in summary_files:
-
-            with open(f"{summary_path}{summary_file}", mode='r', encoding='utf-8') as file:
-                query = file.read()
-
-                join_query = SqlUtils.sql_replace_to_dict(query, date_dict)
-                table_name = summary_file.split('.')[0]
-                datetime_format = datetime.strptime(date_dict['StartDate'].split()[0], '%Y-%m-%d')
-                formatted_date = datetime_format.strftime('%Y%m%d')
-                delete_dict = {'table_name': table_name, 'date': formatted_date}
-
-                try:
-                    sa_delete_query = SqlUtils.sql_replace_to_dict(delete_query, delete_dict)
-                    self._default_execute_query(self.sa_conn, sa_delete_query)
-                    self.logger.info(f"delete query execute : {sa_delete_query}")
-
-                    for df in self._get_df_by_chunk_size(self.analysis_engine, join_query):
-                        self._insert_engine_by_df(self.analysis_engine, table_name, df)
-
-                except Exception as e:
-                    self.logger.exception(f"{summary_file.split('.')[0]} table, summary insert execute error")
-                    self.logger.exception(e)
 
     def sql_query_convert_df(self, sql_query):
         table_name = TableConstants.AE_TXN_SQL_SUMMARY

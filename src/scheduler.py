@@ -53,45 +53,48 @@ class Scheduler(cm.CommonModule):
             self.logger.exception(e)
 
     def _bg_scheduler_start(self):
-        self.bg_scheduler.add_job(
-            self._is_alive_logging_job,
-            CRON,
-            hour=self.config['scheduler']['is_alive_sched']['hour'],
-            minute=self.config['scheduler']['is_alive_sched']['minute'],
-            id='_is_alive_logging_job'
-        )
-
-        self.bg_scheduler.add_job(
-            self._main_job,
-            CRON,
-            hour=self.config['scheduler']['main_sched']['hour'],
-            minute=self.config['scheduler']['main_sched']['minute'],
-            id='_extract_summary_job'
-        )
-
-        if self.config['intermax_repo']['use']:
-            self.static_config = copy.deepcopy(self.config)
-            custom_values = dict()
-            custom_values['args'] = {
-                's_date': SystemUtils.get_date_by_interval(-1, fmt="%Y%m%d"),
-                'interval': 1,
-                'proc': 'l'
-            }
-            self.static_config.update(custom_values)
-
-            self.sts = SqlTextSimilar(self.scheduler_logger)
-            self.sts.set_config(self.static_config)
-            self.sts.pre_load_tuning_sql_text()
-
+        if self.config['scheduler']['is_alive_sched']['use']:
             self.bg_scheduler.add_job(
-                self._sql_text_similarity_job,
+                self._is_alive_logging_job,
                 CRON,
-                hour=self.config['scheduler']['sql_text_similarity_sched']['hour'],
-                minute=self.config['scheduler']['sql_text_similarity_sched']['minute'],
-                id='_sql_text_similarity_job'
+                hour=self.config['scheduler']['is_alive_sched']['hour'],
+                minute=self.config['scheduler']['is_alive_sched']['minute'],
+                id='_is_alive_logging_job'
             )
-        else:
-            self.scheduler_logger.info("SqlTextSimilar not activate, cause intermax_repo config use false")
+
+        if self.config['scheduler']['main_sched']['use']:
+            self.bg_scheduler.add_job(
+                self._main_job,
+                CRON,
+                hour=self.config['scheduler']['main_sched']['hour'],
+                minute=self.config['scheduler']['main_sched']['minute'],
+                id='_extract_summary_job'
+            )
+
+        if self.config['scheduler']['sql_text_similarity_sched']['use']:
+            if self.config['intermax_repo']['use']:
+                self.static_config = copy.deepcopy(self.config)
+                custom_values = dict()
+                custom_values['args'] = {
+                    's_date': SystemUtils.get_date_by_interval(-1, fmt="%Y%m%d"),
+                    'interval': 1,
+                    'proc': 'l'
+                }
+                self.static_config.update(custom_values)
+
+                self.sts = SqlTextSimilar(self.scheduler_logger)
+                self.sts.set_config(self.static_config)
+                self.sts.pre_load_tuning_sql_text()
+
+                self.bg_scheduler.add_job(
+                    self._sql_text_similarity_job,
+                    CRON,
+                    hour=self.config['scheduler']['sql_text_similarity_sched']['hour'],
+                    minute=self.config['scheduler']['sql_text_similarity_sched']['minute'],
+                    id='_sql_text_similarity_job'
+                )
+            else:
+                self.scheduler_logger.info("SqlTextSimilar not activate, cause intermax_repo config use false")
 
         self.bg_scheduler.start()
 
@@ -108,7 +111,6 @@ class Scheduler(cm.CommonModule):
                                    f"{self.config['scheduler']['main_sched']['minute']} minute")
 
         self.block_scheduler.start()
-        self.logger.info(f"End of Scheduler start")
 
     def _block_scheduler_job(self):
         self.scheduler_logger.info("_block_scheduler_job")
@@ -127,7 +129,6 @@ class Scheduler(cm.CommonModule):
             signal.signal(signal.SIGINT, self._terminate)
 
     def _terminate(self):
-        self.logger.info("terminated")
         self.bg_scheduler.shutdown()
         self.block_scheduler.shutdown()
 
@@ -221,7 +222,6 @@ class Scheduler(cm.CommonModule):
     def _sql_text_similarity_job(self):
         self.scheduler_logger.info(f"_sql_text_similarity_job start")
 
-        self.sts.set_config(self.static_config)
         self.sts.main_process()
 
         self.scheduler_logger.info(f"_sql_text_similarity_job end")

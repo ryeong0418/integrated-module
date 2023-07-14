@@ -28,15 +28,18 @@
 	"scheduler": {
 		"is_alive_sched": {
 			"hour": "*",
-			"minute": "0,30"
+			"minute": "0,30",
+			"use": true
 		},
 		"main_sched": {
 			"hour": "1",
-			"minute": "5"
+			"minute": "5",
+			"use": true
 		},
 		"sql_text_similarity_sched": {
 			"hour": "*",
-			"minute": "3, 13, 23, 33, 43, 53"
+			"minute": "3, 13, 23, 33, 43, 53",
+			"use": true
 		}
 	},
 	"sql_debug_flag": false,

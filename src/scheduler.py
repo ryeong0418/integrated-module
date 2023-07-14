@@ -1,3 +1,4 @@
+import copy
 import signal
 import time
 import os
@@ -10,7 +11,7 @@ from src.sql.model import ExecuteLogModel
 from src.extractor import Extractor
 from src.summarizer import Summarizer
 from src.sql_text_merge import SqlTextMerge
-from src.sql_text_similarity import SqlTextSimilarity
+from src.sql_text_similar import SqlTextSimilar
 from src.common.constants import SystemConstants, ResultConstants
 from src.common.utils import SystemUtils
 from src.common.enum_module import ModuleFactoryEnum, MessageEnum
@@ -27,7 +28,8 @@ class Scheduler(cm.CommonModule):
         self.scheduler_logger = None
         self.block_scheduler: BlockingScheduler = None
         self.bg_scheduler: BackgroundScheduler = None
-        self.sts: SqlTextSimilarity = None
+        self.sts: SqlTextSimilar = None
+        self.static_config = None
 
     def __del__(self):
         if self.block_scheduler:
@@ -68,8 +70,17 @@ class Scheduler(cm.CommonModule):
         )
 
         if self.config['intermax_repo']['use']:
-            self.sts = SqlTextSimilarity(self.scheduler_logger)
-            self.sts.set_config(self.config)
+            self.static_config = copy.deepcopy(self.config)
+            custom_values = dict()
+            custom_values['args'] = {
+                's_date': SystemUtils.get_date_by_interval(-1, fmt="%Y%m%d"),
+                'interval': 1,
+                'proc': 'l'
+            }
+            self.static_config.update(custom_values)
+
+            self.sts = SqlTextSimilar(self.scheduler_logger)
+            self.sts.set_config(self.static_config)
             self.sts.pre_load_tuning_sql_text()
 
             self.bg_scheduler.add_job(
@@ -78,11 +89,11 @@ class Scheduler(cm.CommonModule):
                 hour=self.config['scheduler']['sql_text_similarity_sched']['hour'],
                 minute=self.config['scheduler']['sql_text_similarity_sched']['minute'],
                 id='_sql_text_similarity_job'
-
             )
-            self.bg_scheduler.start()
         else:
-            self.scheduler_logger.info("SqlTextSimilarity not activate, cause intermax_repo config use false")
+            self.scheduler_logger.info("SqlTextSimilar not activate, cause intermax_repo config use false")
+
+        self.bg_scheduler.start()
 
     def _block_scheduler_start(self):
         self.block_scheduler.add_job(
@@ -130,11 +141,14 @@ class Scheduler(cm.CommonModule):
 
         try:
             db = DataBase(self.config)
+            db.create_engine()
             elm = ExecuteLogModel(ModuleFactoryEnum[self.config['args']['proc']].value,
                                   SystemUtils.get_now_timestamp(), str(self.config['args']), 'batch')
 
             with db.session_scope() as session:
                 session.add(elm)
+
+            db.engine_dispose()
 
             self._extractor_job()
 
@@ -161,10 +175,12 @@ class Scheduler(cm.CommonModule):
             result_msg = str(e)
         finally:
             result_dict = SystemUtils.set_update_execute_log(result, start_tm, result_code, result_msg)
-
+            db.create_engine()
             with db.session_scope() as session:
                 session.query(ExecuteLogModel).filter(ExecuteLogModel.seq == f'{elm.seq}').update(result_dict)
                 session.commit()
+
+            db.engine_dispose()
 
         self.scheduler_logger.info("main_job end")
         return
@@ -205,25 +221,21 @@ class Scheduler(cm.CommonModule):
     def _sql_text_similarity_job(self):
         self.scheduler_logger.info(f"_sql_text_similarity_job start")
 
-        self._update_config_custom_values(proc='l')
-        self.sts.set_config(self.config)
+        self.sts.set_config(self.static_config)
         self.sts.main_process()
 
         self.scheduler_logger.info(f"_sql_text_similarity_job end")
 
     def _update_config_custom_values(self, proc):
         custom_values = dict()
-        custom_values['args'] = {'s_date': SystemUtils.get_date_by_interval(-1, fmt="%Y%m%d"), 'interval': 1, 'proc': proc}
+        custom_values['args'] = {
+            's_date': SystemUtils.get_date_by_interval(-1, fmt="%Y%m%d"),
+            'interval': 1,
+            'proc': proc
+        }
         self.config.update(custom_values)
 
     def _is_alive_logging_job(self):
-        # for job in self.block_scheduler.get_jobs():
-        #     self.scheduler_logger.info("name: {}, trigger: {}, next run: {}".format(
-        #         job.id,
-        #         job.trigger,
-        #         job.next_run_time,
-        #     ))
-
         for job in self.bg_scheduler.get_jobs():
             if job.id == '_is_alive_logging_job':
                 continue

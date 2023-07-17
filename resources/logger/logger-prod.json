@@ -13,7 +13,7 @@
             "formatter": "basic"
         },
         "file": {
-            "class": "logging.handlers.TimedRotatingFileHandler",
+            "class": "logging.handlers.ConcurrentTimedRotatingFileHandler",
             "formatter": "basic",
             "filename": "",
             "when":"midnight",

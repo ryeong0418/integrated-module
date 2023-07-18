@@ -1,7 +1,7 @@
 from src import common_module as cm
 from src.common.constants import SystemConstants
 from src.common.utils import SystemUtils
-import os.path
+
 
 class Initialize(cm.CommonModule):
 

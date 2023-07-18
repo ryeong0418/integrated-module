@@ -41,6 +41,7 @@ class Initialize(cm.CommonModule):
             self._teardown_mg_target()
 
     def _insert_init_meta_by_target(self, target, target_instance):
+
         init_meta_path = f"{self.sql_file_root_path}{target}{SystemConstants.META_PATH}"
         init_files = SystemUtils.get_filenames_from_path(init_meta_path)
 

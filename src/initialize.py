@@ -13,7 +13,7 @@ class Initialize(cm.CommonModule):
 
         self._init_sa_target()
 
-        #self._create_table()
+        self._create_table()
 
         self._insert_init_meta()
 

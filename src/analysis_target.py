@@ -133,7 +133,7 @@ class CommonTarget:
 
         return df
 
-    def _insert_engine_by_df(self, engine, table_name, df):
+    def _insert_table_by_df(self, engine, table_name, df):
         """
         분석 모듈 DB에 DataFrame의 데이터 저장 함수
         :param engine: 저장 하려는 타겟 SqlAlchemy engine

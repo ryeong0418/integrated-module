@@ -1,7 +1,7 @@
 from src import common_module as cm
 from src.common.constants import SystemConstants
 from src.common.utils import SystemUtils
-
+import os.path
 
 class Initialize(cm.CommonModule):
 
@@ -13,7 +13,7 @@ class Initialize(cm.CommonModule):
 
         self._init_sa_target()
 
-        self._create_table()
+        #self._create_table()
 
         self._insert_init_meta()
 
@@ -41,6 +41,7 @@ class Initialize(cm.CommonModule):
             self._teardown_mg_target()
 
     def _insert_init_meta_by_target(self, target, target_instance):
+
         init_meta_path = f"{self.sql_file_root_path}{target}{SystemConstants.META_PATH}"
         init_files = SystemUtils.get_filenames_from_path(init_meta_path)
 

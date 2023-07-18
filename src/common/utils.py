@@ -4,7 +4,7 @@ import os
 import pandas as pd
 import time
 import re
-
+import glob
 from pathlib import Path
 from datetime import datetime, timedelta
 
@@ -94,10 +94,17 @@ class SystemUtils:
 
     @staticmethod
     def get_file_in_path(query_folder, sql_name):
-        with open(query_folder + "/" + sql_name, "r", encoding='utf-8') as file:
-            sql_query = file.read()
+        print(query_folder + "/" + sql_name)
+        # with open(query_folder + "/" + sql_name, "r", encoding='utf-8') as file:
+        #     sql_query = file.read()
+        #
+        # return sql_query
+    @staticmethod
+    def get_file_list_in_path(query_folder, sql_name):
+        extractor_detail_file_list = glob.glob(query_folder+sql_name + '/*.txt')
+        return extractor_detail_file_list
 
-        return sql_query
+
 
     @staticmethod
     def data_processing(df):
@@ -241,7 +248,7 @@ class InterMaxUtils:
         return date_conditions
 
     @staticmethod
-    def meta_table_value(table_name, df):
+    def  meta_table_value(table_name, df):
 
         if table_name == 'ae_was_dev_map':
             df['isdev'] = 1

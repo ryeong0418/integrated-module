@@ -58,6 +58,7 @@ class SystemConstants:
     DB_PATH = 'db/'
     TEMP_PATH = 'temp/'
     SUMMARY_PATH = 'summary/'
+    ZULU_PATH = '/zulu8.70.0.23-ca-jdk8.0.372-win_x64'
 
 
 class TableConstants:

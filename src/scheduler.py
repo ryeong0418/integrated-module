@@ -10,7 +10,7 @@ from src.sql.model import ExecuteLogModel
 from src.extractor import Extractor
 from src.summarizer import Summarizer
 from src.sql_text_merge import SqlTextMerge
-from src.sql_text_similarity import SqlTextSimilarity
+from src.sql_text_similar import SqlTextSimilar
 from src.common.constants import SystemConstants, ResultConstants
 from src.common.utils import SystemUtils
 from src.common.enum_module import ModuleFactoryEnum, MessageEnum
@@ -27,7 +27,7 @@ class Scheduler(cm.CommonModule):
         self.scheduler_logger = None
         self.block_scheduler: BlockingScheduler = None
         self.bg_scheduler: BackgroundScheduler = None
-        self.sts: SqlTextSimilarity = None
+        self.sts: SqlTextSimilar = None
 
     def __del__(self):
         if self.block_scheduler:
@@ -68,7 +68,7 @@ class Scheduler(cm.CommonModule):
         )
 
         if self.config['intermax_repo']['use']:
-            self.sts = SqlTextSimilarity(self.scheduler_logger)
+            self.sts = SqlTextSimilar(self.scheduler_logger)
             self.sts.set_config(self.config)
             self.sts.pre_load_tuning_sql_text()
 

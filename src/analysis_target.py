@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 import numpy as np
 import psycopg2 as db
@@ -72,30 +74,17 @@ class CommonTarget:
             self.mg_engine.dispose()
 
 
-    def insert_meta(self, query, table_name, target_conn, st_engine):
-        """
-        InterMax, MaxGauge 메타 데이터를 분석 DB에 truncate후 insert하는 기능
-
-        :param query : 메타 데이터 query문
-        :param target_conn : InterMax, MaxGauge DB connection 정보
-        """
-        replace_dict = {'table_name': table_name}
-        delete_table_query = SqlUtils.sql_replace_to_dict(CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY, replace_dict)
-        self._default_execute_query(st_engine.raw_connection(), delete_table_query)
-        meta_df = self._get_target_data_by_query(target_conn, query, table_name, )
-        self._insert_engine_by_df(st_engine, table_name, meta_df)
-
     def _create_engine(self, engine_template):
         self.logger.info(f"Create engine info : {engine_template}")
         return create_engine(
             engine_template,
-            #echo=self.sql_debug_flag,
+            echo=self.sql_debug_flag,
             pool_size=20,
             max_overflow=20,
             echo_pool=False,
             pool_pre_ping=True,
             connect_args={
-                "keepalives": 1,
+            "keepalives": 1,
                 "keepalives_idle": 30,
                 "keepalives_interval": 10,
                 "keepalives_count": 5,
@@ -103,7 +92,6 @@ class CommonTarget:
         )
 
     def _get_target_data_by_query(self, target_conn, query, table_name="UNKNOWN TABLE"):
-        print('hhhhhhh',table_name)
         """
         각 분석 대상의 DB에서 query 결과를 DataFrame 담아오는 함수
         :param target_conn: 각 타겟 connect object
@@ -136,6 +124,7 @@ class CommonTarget:
         return df
 
     def _insert_engine_by_df(self, engine, table_name, df):
+
         """
         분석 모듈 DB에 DataFrame의 데이터 저장 함수
         :param engine: 저장 하려는 타겟 SqlAlchemy engine
@@ -143,6 +132,7 @@ class CommonTarget:
         :param df: 저장하려는 DataFrame
         :return:
         """
+
         with TimeLogger(f"[{CommonTarget.__name__}] {sys._getframe(0).f_code.co_name}(), {table_name} to import ",
                         self.logger):
             df.to_sql(
@@ -155,6 +145,7 @@ class CommonTarget:
         return df
 
     def _default_execute_query(self, conn, query):
+
         """
         분석 모듈 DB 기본 sql 실행 쿼리
         :param conn: sql 실행하려는 타겟 DB Connection Object
@@ -221,86 +212,7 @@ class InterMaxTarget(CommonTarget):
         return self._get_df_by_chunk_size(self.im_engine, meta_query)
 
     def _get_intermax_data_by_chunksize(self, query):
-
-        """
-        InterMax SQL query문을 chunksize만큼 dataframe 형태로 읽어서 반환
-        """
-
         return self._get_df_by_chunk_size(self.im_engine, query)
-
-    def upsert_intermax_data(self, query, table_name, analysis_engine):
-        print(analysis_engine)
-
-        """
-        분석 모듈 DB에 data upsert 기능 함수
-        :param query: txt파일에 입력된 query문
-
-        실행 테이블: (메타 테이블) ae_was_dev_map, ae_txn_name
-                   (InterMax 테이블) ae_was_sql_text
-        """
-
-        for query_df in self._get_intermax_data_by_chunksize(query):
-            df = InterMaxUtils.meta_table_value(table_name, query_df)
-            self._psql_insert_copy(table_name, analysis_engine, df)
-
-
-    def _excute_insert_bind_value_date(self,query,table_name,analysis_engine):
-
-        """
-        분석 모듈 DB에 data insert 기능 함수
-        :param query: txt파일에 입력된 query문
-
-        실행 테이블: (InterMax 테이블) ae_bind_sql_elapse
-
-        bind_list 컬럼값을 복호화하여 bind_value 컬럼에 insert
-        """
-
-        for df in self._get_intermax_data_by_chunksize(query):
-            print(df)
-
-            if self.config['extract_bind_value']:
-                print('aaa')
-
-                if self.intermax_decoder is None:
-                    self.intermax_decoder = Decoding(self.config)
-                    self.intermax_decoder.set_path()
-
-                df['bind_value'] = df['bind_list'].apply(
-                    self.intermax_decoder.execute_bind_list_decoding
-                )
-                df['bind_value'] = df['bind_value'].astype(str)
-
-            self._insert_engine_by_df(analysis_engine, table_name, df)
-
-    def _execute_insert_intermax_detail_data(self, query, table_name,analysis_engine):
-
-        """
-        분석 모듈 DB에 data insert 기능 함수
-        :param query: txt파일에 입력된 query문
-
-        실행 테이블: (메타 테이블) ae_was_db_info, ae_host_info, ae_was_info,
-                   (InterMax 테이블)  ae_was_os_stat_osm
-        """
-
-        for df in self._get_intermax_data_by_chunksize(query):
-            self._insert_engine_by_df(analysis_engine, table_name, df)
-
-    def _excute_insert_dev_except_data(self, query, table_name,ae_dev_map_df,analysis_engine):
-        print('ae_dev_map_df',ae_dev_map_df)
-
-
-        """
-        분석 모듈 DB ae_was_dev_map 테이블에서 was_id에 해당하는 값들을 제외하고 data insert 기능 함수
-        :param query: txt파일에 입력된 query문
-
-        실행 테이블: (WAS 테이블) ae_jvm_stat_summary,ae_txn_detail, ae_txn_sql_detail, ae_txn_sql_fetch, ae_was_stat_summary
-        """
-
-        for detail_df in self._get_intermax_data_by_chunksize(query):
-            print(detail_df)
-            was_id_except_df = detail_df[~detail_df['was_id'].isin(ae_dev_map_df['was_id'])]
-            print('was_id_except_df',was_id_except_df)
-            self._insert_engine_by_df(analysis_engine, table_name, was_id_except_df)
 
     def get_xapm_txn_sql_detail(self, start_param, end_param):
         param_dict = {'start_param': start_param, 'end_param': end_param}
@@ -344,28 +256,81 @@ class SaTarget(CommonTarget):
         self.sa_conn = self.analysis_engine.raw_connection()
         self.sa_cursor = self.sa_conn.cursor()
 
-    def get_st_engine(self):
-        return self.analysis_engine
-
-    def get_st_conn(self):
-        return self.sa_conn
-
     def create_table(self, ddl):
         self._default_execute_query(self.sa_conn, ddl)
 
     def insert_init_meta(self, meta_df, target_table_name):
+
         """"
         InterMax, MaxGauge 메타 데이터를 분석 DB에 truncate후 insert하는 기능
 
         :param meta_df : 각 타겟의 메타 데이터
         :param target_table_name : 분석 모듈에 저장할 Table 이름
         """
+
         replace_dict = {'table_name': target_table_name}
         delete_table_query = SqlUtils.sql_replace_to_dict(CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY, replace_dict)
 
         self._default_execute_query(self.sa_conn, delete_table_query)
-
         self._insert_engine_by_df(self.analysis_engine, target_table_name, meta_df)
+
+    def delete_data(self, delete_query, delete_dict):
+
+        """
+        : param delete_query:dfjlsjdfs
+        : param delete_dict: dfjslkjf
+        """
+
+        delete_table_query = SqlUtils.sql_replace_to_dict(delete_query, delete_dict)
+        self.logger.info(f"delete query execute : {delete_table_query}")
+        self._default_execute_query(self.sa_conn, delete_table_query)
+
+    def upsert_data(self, df, target_table_name):
+
+        """
+        : param df:
+        : param target_table_name:
+        """
+
+        self._psql_insert_copy(target_table_name, self.analysis_engine, df)
+
+    def insert_bind_value_date(self, df, table_name):
+
+
+        """
+        xapm_bind_sql_elapse의 bind_list 컬럼의 데이터들을 복호화하여
+        bind_value 컬럼에 insert 기능 함수
+
+        :param df : xapm_bind_sql_elapse의 data를 dataframe 형태로 불러옴
+        :param table_name :ae_bind_sql_elapse
+        """
+
+        if self.config['extract_bind_value']:
+
+            if self.intermax_decoder is None:
+                self.intermax_decoder = Decoding(self.config)
+                self.intermax_decoder.set_path()
+
+            df['bind_value'] = df['bind_list'].apply(
+                self.intermax_decoder.execute_bind_list_decoding
+            )
+            df['bind_value'] = df['bind_value'].astype(str)
+
+        self._insert_engine_by_df(self.analysis_engine, table_name, df)
+
+    def insert_detail_data(self, df, table_name):
+        self._insert_engine_by_df(self.analysis_engine, table_name, df)
+
+    def insert_dev_except_data(self, detail_df, table_name, ae_dev_map_df):
+        """
+        분석 모듈 DB ae_was_dev_map 테이블에서 was_id에 해당하는 값들을 제외하고 data insert 기능 함수
+
+        """
+        was_id_except_df = detail_df[~detail_df['was_id'].isin(ae_dev_map_df['was_id'])]
+        self._insert_engine_by_df(self.analysis_engine, table_name, was_id_except_df)
+
+    def get_data_by_query(self, query, table_name="UNKNOWN TABLE"):
+        return self._get_target_data_by_query(self.sa_conn,query, table_name)
 
     def get_ae_was_sql_text(self, extract_cnt=0):
         query = AeWasSqlTextSql.SELECT_AE_WAS_SQL_TEXT
@@ -395,7 +360,6 @@ class SaTarget(CommonTarget):
         results = self.sa_cursor.fetchall()
 
         return results
-
 
     def sql_query_convert_df(self, sql_query):
         table_name = TableConstants.AE_TXN_SQL_SUMMARY

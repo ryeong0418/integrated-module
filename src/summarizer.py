@@ -31,9 +31,6 @@ class Summarizer(cm.CommonModule):
         summarizer_file_path = self.sql_file_root_path+SystemConstants.TEMP_PATH
         summarizer_file_list = SystemUtils.get_filenames_from_path(summarizer_file_path,'','txt')
 
-        print(summarizer_file_path)
-        print(summarizer_file_list)
-
         delete_query = CommonSql.DELETE_TABLE_DEFAULT_QUERY
         date_conditions = InterMaxUtils.set_intermax_date(self.config['args']['s_date'],
                                                           self.config['args']['interval'])
@@ -74,8 +71,6 @@ class Summarizer(cm.CommonModule):
         summarizer_file_path = self.sql_file_root_path+SystemConstants.SUMMARY_PATH
         summarizer_file_list = SystemUtils.get_filenames_from_path(summarizer_file_path,'','txt')
 
-        print(summarizer_file_path)
-        print(summarizer_file_list)
         delete_query = CommonSql.DELETE_SUMMARY_TABLE_BY_DATE_QUERY
 
         for summary_file in summarizer_file_list:

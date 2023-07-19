@@ -5,11 +5,13 @@ import glob
 import os
 from pathlib import Path
 
+
 class Decoding:
 
     def __init__(self, config):
         self.config = config
         self.decryption_class = None
+
     def set_path(self):
 
         parent_path = Path(self.config['home']).parent

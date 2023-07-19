@@ -1,29 +1,29 @@
 {
 	"intermax_repo": {
-		"db_type": "",
-		"host": "",
-		"port": 0,
-		"sid": "",
-		"user": "",
-		"password": "",
+		"db_type": "postgres",
+		"host": "10.10.48.173",
+		"port": 5432,
+		"sid": "intermax",
+		"user": "intermax",
+		"password": "intermax",
 		"use": true
 	},
 	"maxgauge_repo": {
-		"db_type": "",
-		"host": "",
-		"port": 0,
-		"sid": "",
-		"user": "",
-		"password": "",
+		"db_type": "postgres",
+		"host": "10.20.132.206",
+		"port": 5430,
+		"sid": "MFO",
+		"user": "postgres",
+		"password": "intermax",
 		"use": true
 	},
 	"analysis_repo": {
 		"db_type": "postgres",
-		"host": "127.0.0.1",
+		"host": "10.10.47.241",
 		"port": 5432,
-		"sid": "aeproject",
-		"user": "aeproject",
-		"password": "7WRPw6hnKS5KJpUcZF8F"
+		"sid": "sr_dev",
+		"user": "sr_dev",
+		"password": "dmddyd2307!"
 	},
 	"scheduler": {
 		"is_alive_sched": {
@@ -42,10 +42,10 @@
 			"use": false
 		}
 	},
-	"sql_debug_flag": false,
+	"sql_debug_flag": true,
 	"data_handling_chunksize": 10000,
-	"sql_match_time": 0,
-	"extract_bind_value": true,
-	"sql_template_select_only": false,
-	"valid_sql_text_similarity": 0.7
+	"sql_merge_text_chunksize": 10000,
+	"sql_match_sensitive": 5,
+	"sql_match_time": 1000,
+	"extract_bind_value": true
 }

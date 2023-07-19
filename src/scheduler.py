@@ -36,7 +36,6 @@ class Scheduler(cm.CommonModule):
         self.sts: SqlTextSimilar = None
         self.static_config = None
 
-
     def __del__(self):
         if self.block_scheduler:
             self.block_scheduler.shutdown()

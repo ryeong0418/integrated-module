@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 from datetime import datetime
 
 from src import common_module as cm
@@ -8,6 +7,11 @@ from src.common.utils import SystemUtils
 
 
 class Visualization(cm.CommonModule):
+
+    """
+    export > sql_excel > sql에 있는 query에 따른 데이터들을 엑셀파일로 출력하여
+    export > sql_excel > excel에 데이터 저장
+    """
 
     def __init__(self, logger):
         super().__init__(logger)
@@ -20,8 +24,8 @@ class Visualization(cm.CommonModule):
         query_folder = self.config['home'] + '/' + SystemConstants.SQL_PATH
         excel_path = self.config['home'] + '/' + SystemConstants.EXCEL_PATH
 
-        Path(query_folder).mkdir(exist_ok=True, parents=True)
-        Path(excel_path).mkdir(exist_ok=True, parents=True)
+        SystemUtils.get_filenames_from_path(query_folder)
+        SystemUtils.get_filenames_from_path(excel_path)
 
         sql_name_list = os.listdir(query_folder)
         sql_split = [i.split(" ") for i in sql_name_list]
@@ -34,11 +38,11 @@ class Visualization(cm.CommonModule):
             result_df = SystemUtils.data_processing(df)
             sheet_name_txt = sql_name.split('.')[0]
             now_day = datetime.now()
-            prtitionDate = now_day.strftime('%y%m%d')
+            now_date = now_day.strftime('%y%m%d')
             sql_number = sheet_name_txt.split(' ')[0].split('-')[1]
 
             if sql_number == '1' and len(sql_number) == 1:
-                excel_file = excel_path + "/" + sheet_name_txt + "_" + prtitionDate + '.xlsx'
+                excel_file = excel_path + "/" + sheet_name_txt + "_" + now_date + '.xlsx'
                 SystemUtils.excel_export(excel_file, sheet_name_txt, result_df)
 
             else:

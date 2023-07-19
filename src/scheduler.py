@@ -78,7 +78,7 @@ class Scheduler(cm.CommonModule):
                 custom_values['args'] = {
                     's_date': SystemUtils.get_date_by_interval(-1, fmt="%Y%m%d"),
                     'interval': 1,
-                    'proc': 'l'
+                    'proc': 'r'
                 }
                 self.static_config.update(custom_values)
 

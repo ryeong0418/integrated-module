@@ -120,8 +120,7 @@ class CommonTarget:
 
         return df
 
-    def _insert_engine_by_df(self, engine, table_name, df):
-
+    def _insert_table_by_df(self, engine, table_name, df):
         """
         분석 모듈 DB에 DataFrame의 데이터 저장 함수
         :param engine: 저장 하려는 타겟 SqlAlchemy engine
@@ -267,7 +266,6 @@ class SaTarget(CommonTarget):
         self._psql_insert_copy(target_table_name, self.analysis_engine, df)
 
     def insert_bind_value_date(self, df, table_name):
-
         """
         xapm_bind_sql_elapse의 bind_list 컬럼의 데이터들을 복호화하여
         bind_value 컬럼에 insert 기능 함수
@@ -297,9 +295,8 @@ class SaTarget(CommonTarget):
         """
         분석 모듈 DB ae_was_dev_map 테이블에서 was_id에 해당하는 값들을 제외하고 data insert 기능 함수
         """
-
         was_id_except_df = detail_df[~detail_df['was_id'].isin(ae_dev_map_df['was_id'])]
-        self._insert_engine_by_df(self.analysis_engine, table_name, was_id_except_df)
+        self._insert_table_by_df(self.analysis_engine, table_name, was_id_except_df)
 
     def get_data_by_query(self, query, table_name="UNKNOWN TABLE"):
         return self._get_target_data_by_query(self.sa_conn,query, table_name)
@@ -318,10 +315,17 @@ class SaTarget(CommonTarget):
         return result_df
 
     def get_ae_db_sql_text_by_1seq(self, partition_key, chunksize):
+        """
+        ae_db_sql_text 테이블에 seq가 1인 데이터 조회 함수
+        :param partition_key: 조회하려는 partition_key
+        :param chunksize: 조회하려는 chunksize
+        :return:
+        """
         replace_dict = {'partition_key': partition_key}
         query = SqlUtils.sql_replace_to_dict(AeDbSqlTextSql.SELECT_AE_DB_SQL_TEXT_1SEQ, replace_dict)
 
-        return pd.read_sql_query(query, self.sa_conn, chunksize=chunksize)
+        return self._get_df_by_chunk_size(self.analysis_engine, query, chunk_size=chunksize)
+        # return pd.read_sql_query(query, self.sa_conn, chunksize=chunksize)
 
     def get_all_ae_db_sql_text_by_1seq(self, df, chunksize):
         query_with_data = AeDbSqlTextSql.SELECT_AE_DB_SQL_TEXT_WITH_DATA
@@ -337,17 +341,24 @@ class SaTarget(CommonTarget):
 
         return df
 
-    def get_maxgauge_date_conditions(self, ):
-        return MaxGaugeUtils.set_maxgauge_date(self.config['args']['s_date'], self.config['args']['interval'])
-
-    def insert_merged_result(self, merged_df):
+    def insert_ae_sql_text_by_merged_df(self, merged_df):
+        """
+        ae_sql_text 테이블에 sql_text_merge 기능 수행 결과 저장 함수
+        :param merged_df: sql text merge 된 sql text 데이터 프레임
+        :return:
+        """
         table_name = TableConstants.AE_SQL_TEXT
         total_len = 0
 
         for i in range(len(merged_df)):
             try:
-                merged_df.iloc[i:i + 1].to_sql(table_name, if_exists='append', con=self.analysis_engine,
-                                               schema='public', index=False)
+                merged_df.iloc[i:i + 1].to_sql(
+                    table_name,
+                    if_exists='append',
+                    con=self.analysis_engine,
+                    schema='public',
+                    index=False
+                )
                 total_len += 1
             except IntegrityError:
                 pass
@@ -357,6 +368,10 @@ class SaTarget(CommonTarget):
         self.logger.info(f"Matching Data except duplicate, Insert rows : {total_len}")
 
     def get_ae_db_info(self):
+        """
+        ae_db_info table 조회 함수
+        :return:
+        """
         query = AeDbInfoSql.SELECT_AE_DB_INFO
         table_name = TableConstants.AE_DB_INFO
 
@@ -395,88 +410,112 @@ class SaTarget(CommonTarget):
         return f"SELECT {sel} FROM {table}"
 
     def get_table_data_by_chunksize(self, query, chunksize=0, coerce=True):
+        """
+        etc 기능 중 분석 모듈 db table 데이터 dump 시 사용하는 함수
+        :param query: 데이터 조회 쿼리
+        :param chunksize: 한 트랜잭션에 조회하려는 chunksize
+        :param coerce: sql 조회 시 float으로 변환 flag
+        :return:
+        """
         return self._get_df_by_chunk_size(self.analysis_engine, query, chunksize, bool(coerce))
 
     def insert_target_table_by_dump(self, table, df):
-        self._insert_engine_by_df(self.analysis_engine, table, df)
-
-    def term_extract_sql_text(self, chunksize):
-
         """
-        ae_was_sql_text 테이블에서 sql_id와 ae_txn_sql_detail 테이블에서 sql_id가 동일한 것들의
-        sql_id, sql_text, sql_text_100을 추출하는 함수
+        etc 기능 중 분석 모듈 db 데이터 import 시 사용하는 함수
+        :param table: target table
+        :param df: import 하려는 데이터 데이터프레임
+        :return:
         """
+        self._insert_table_by_df(self.analysis_engine, table, df)
 
-        s_date = datetime.strptime(str(self.config['args']['s_date']), '%Y%m%d')
-        e_date = s_date + timedelta(days=int(self.config['args']['interval']))
-
+    def get_ae_was_sql_text_by_term(self, s_date, e_date, chunksize):
+        """
+        ae_was_sql_text 테이블의 특정 기간 만큼 조회하려는 쿼리
+        :param s_date: 조회 시작일
+        :param e_date: 조회 마지막일
+        :param chunksize: 한 트랜잭션에 조회하려는 chunksize
+        :return: 조회한 결과
+        """
         date_dict = {'StartDate': str(s_date), 'EndDate': str(e_date), 'seconds': str(self.sql_match_time)}
         query = AeWasSqlTextSql.SELECT_SQL_ID_AND_SQL_TEXT
-        sql_id_and_sql_text = SqlUtils.sql_replace_to_dict(query, date_dict)
+        replaced_query = SqlUtils.sql_replace_to_dict(query, date_dict)
 
-        return self._get_df_by_chunk_size(self.analysis_engine, sql_id_and_sql_text, chunksize,)
+        return self._get_df_by_chunk_size(self.analysis_engine, replaced_query, chunksize,)
 
-    def update_cluster_id_by_sql_id(self, df):
+    def update_cluster_id_by_sql_id(self, df, target):
+        """
+        sql_text_template 수행 후 sql_id별 cluster_id를 업데이트 하는 함수
+        was sql text의 경우 ae_was_sql_text에 update
+        db sql text의 경우 ae_db_sql_template_map에 upsert
+        :param df: sql_text_template 결과 데이터 프레임
+        :param target: 대상 타겟 (was / db)
+        :return:
+        """
         self.logger.info(f"Execute update_cluster_id_by_sql_id query total : {len(df)}")
         self.update_cluster_cnt = 0
 
-        [self._update_cluster_id_by_sql_id(row) for _, row in df.iterrows()]
+        [self._update_cluster_id_by_sql_id(row, target) for _, row in df.iterrows()]
         self.logger.info(f"Execute update_cluster_id_by_sql_id query end : {self.update_cluster_cnt}")
 
-    def _update_cluster_id_by_sql_id(self, row):
-        query = AeWasSqlTextSql.UPDATE_CLUSTER_ID_BY_SQL_ID
+    def _update_cluster_id_by_sql_id(self, row, target):
+        """
+        sql_text_template 수행 후 sql_id별 cluster_id를 업데이트 하는 실제 함수
+        :param row: sql_text_template 결과 데이터 프레임 row
+        :param target: 대상 타겟 (was / db)
+        :return:
+        """
+        sql_id = ''
+        target_table = ''
 
+        if target == 'was':
+            exec_query = SqlUtils.sql_replace_to_dict(
+                AeWasSqlTextSql.UPDATE_CLUSTER_ID_BY_SQL_ID,
+                {'cluster_id': row['cluster_id'], 'sql_id': row['sql_id']}
+            )
+            sql_id = row['sql_id']
+            target_table = 'ae_was_sql_text'
+        elif target == 'db':
+            exec_query = SqlUtils.sql_replace_to_dict(
+                AeDbSqlTemplateMapSql.UPSERT_CLUSTER_ID_BY_SQL_UID,
+                {'cluster_id': row['cluster_id'], 'sql_uid': row['sql_uid']}
+            )
+            sql_id = row['sql_uid']
+            target_table = 'ae_db_sql_template_map'
         try:
-            exec_query = SqlUtils.sql_replace_to_dict(query,
-                                                         {'cluster_id': row['cluster_id'], 'sql_id': row['sql_id']}
-                                                         )
             self._default_execute_query(self.sa_conn, exec_query)
-
-            self.update_cluster_cnt += 1
-        except IntegrityError as ie:
-            self.logger.exception(f"_update_cluster_id_by_sql_id(), update execute error. check sql_id {row['sql_id']}")
-            self.logger.exception(ie)
-            pass
-        except Exception as e:
-            self.logger.exception(f"_update_cluster_id_by_sql_id(), update execute error. check sql_id {row['sql_id']}")
-            self.logger.exception(e)
-
-    def upsert_cluster_id_by_sql_uid(self, df):
-        self.logger.info(f"Execute upsert_cluster_id_by_sql_uid query total : {len(df)}")
-        self.update_cluster_cnt = 0
-
-        [self._upsert_cluster_id_by_sql_uid(row) for _, row in df.iterrows()]
-        self.logger.info(f"Execute upsert_cluster_id_by_sql_uid query end : {self.update_cluster_cnt}")
-
-    def _upsert_cluster_id_by_sql_uid(self, row):
-        query = AeDbSqlTemplateMapSql.UPSERT_CLUSTER_ID_BY_SQL_UID
-
-        try:
-            exec_query = SqlUtils.sql_replace_to_dict(query,
-                                                         {'cluster_id': row['cluster_id'], 'sql_uid': row['sql_uid']}
-                                                         )
-            self._default_execute_query(self.sa_conn, exec_query)
-
             self.update_cluster_cnt += 1
         except IntegrityError as ie:
             self.logger.exception(
-                f"_update_cluster_id_by_sql_id(), update execute error. check sql_id {row['sql_uid']}")
+                f"_update_cluster_id_by_sql_id(), update execute error. check {target_table} table, sql_id {sql_id}"
+            )
             self.logger.exception(ie)
             pass
         except Exception as e:
             self.logger.exception(
-                f"_update_cluster_id_by_sql_id(), update execute error. check sql_id {row['sql_uid']}")
+                f"_update_cluster_id_by_sql_id(), update execute error. check {target_table} table, sql_id {sql_id}"
+            )
             self.logger.exception(e)
 
     def insert_ae_sql_template(self, df):
+        """
+        ae_sql_template 테이블 저장 함수
+        :param df: 저장 하려는 데이터 프레임
+        :return:
+        """
         table_name = TableConstants.AE_SQL_TEMPLATE
-        truncate_query = CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY
-        truncate_query = SqlUtils.sql_replace_to_dict(truncate_query, {'table_name': table_name})
-
+        truncate_query = SqlUtils.sql_replace_to_dict(
+            CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY,
+            {'table_name': table_name}
+        )
         self._default_execute_query(self.sa_conn, truncate_query)
-        self._insert_engine_by_df(self.analysis_engine, table_name, df)
+        self._insert_table_by_df(self.analysis_engine, table_name, df)
 
     def get_cluster_cnt_by_grouping(self, extract_cnt):
+        """
+        cluster_id로 그룹핑된 총 갯수 조회 함수
+        :param extract_cnt: 추출 건수
+        :return: 조회한 결과
+        """
         if self.config['intermax_repo']['use']:
             query = AeWasSqlTextSql.SELECT_CLUSTER_CNT_BY_GROUPING
             table_name = TableConstants.AE_WAS_SQL_TEXT
@@ -495,20 +534,37 @@ class SaTarget(CommonTarget):
         return result_df if result_df is not None else pd.DataFrame()
 
     def get_ae_was_sql_text_by_no_cluster(self, chunk_size):
+        """
+        ae_was_sql_text에 cluster_id가 null인 데이터 조회 함수
+        :param chunk_size: 한 트랜잭션에 조회하려는 chunksize
+        :return: 조회한 결과
+        """
         query = AeWasSqlTextSql.SELECT_BY_NO_CLUSTER_ID
-
         return self._get_df_by_chunk_size(self.analysis_engine, query, chunk_size,)
 
     def update_unanalyzed_was_sql_text(self):
+        """
+        미분석 ae_was_sql_text 데이터 0으로 업데이트 처리 함수
+        :return:
+        """
         update_query = AeWasSqlTextSql.UPDATE_BY_NO_ANALYZED_TARGET
-
         self._default_execute_query(self.sa_conn, update_query)
 
     def insert_ae_txn_sql_similarity(self, result_valid_df):
+        """
+        ae_txn_sql_similarity 에 결과 upsert 함수
+        :param result_valid_df: 유사도 유효한 데이터 프레임
+        :return:
+        """
         table_name = TableConstants.AE_TXN_SQL_SIMILARITY
         self._psql_insert_copy(table_name, self.analysis_engine, result_valid_df)
 
     def get_ae_was_sql_text_by_sql_id(self, sql_id):
+        """
+        ae_was_sql_text 테이블에 sql_id 별 cluster_id 조회 함수
+        :param sql_id: 조회하려는 sql_id
+        :return: 조회한 결과
+        """
         table_name = TableConstants.AE_WAS_SQL_TEXT
         query = SqlUtils.sql_replace_to_dict(AeWasSqlTextSql.SELECT_CLUSTER_ID_BY_SQL_ID, {'sql_id': sql_id})
         df = self._get_target_data_by_query(self.sa_conn, query, table_name)

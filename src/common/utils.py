@@ -141,7 +141,6 @@ class SystemUtils:
         :param suffix: 끝이 suffix를 포함하는 파일 (optional)
         :return: 파일 이름 list
         """
-
         if not os.path.exists(path):
             os.makedirs(path)
 
@@ -191,6 +190,12 @@ class SystemUtils:
     @staticmethod
     def extract_tablename_in_filename(filename):
         return filename.split(".")[0].split('-')[1]
+
+    @staticmethod
+    def get_each_date_by_interval(s_date, interval):
+        s_date = datetime.strptime(str(s_date), '%Y%m%d')
+        e_date = s_date + timedelta(days=int(interval))
+        return s_date, e_date
 
 
 class TargetUtils:

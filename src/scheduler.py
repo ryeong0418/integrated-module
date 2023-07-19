@@ -1,3 +1,4 @@
+import copy
 import signal
 import time
 import os
@@ -21,6 +22,11 @@ CRON = 'cron'
 
 
 class Scheduler(cm.CommonModule):
+    """
+    Scheduler Class
+
+    python 스케쥴러 기능을 활용하기 위한 Class
+    """
 
     def __init__(self, logger):
         super().__init__(logger)
@@ -28,6 +34,7 @@ class Scheduler(cm.CommonModule):
         self.block_scheduler: BlockingScheduler = None
         self.bg_scheduler: BackgroundScheduler = None
         self.sts: SqlTextSimilar = None
+        self.static_config = None
 
     def __del__(self):
         if self.block_scheduler:
@@ -51,40 +58,60 @@ class Scheduler(cm.CommonModule):
             self.logger.exception(e)
 
     def _bg_scheduler_start(self):
-        self.bg_scheduler.add_job(
-            self._is_alive_logging_job,
-            CRON,
-            hour=self.config['scheduler']['is_alive_sched']['hour'],
-            minute=self.config['scheduler']['is_alive_sched']['minute'],
-            id='_is_alive_logging_job'
-        )
-
-        self.bg_scheduler.add_job(
-            self._main_job,
-            CRON,
-            hour=self.config['scheduler']['main_sched']['hour'],
-            minute=self.config['scheduler']['main_sched']['minute'],
-            id='_extract_summary_job'
-        )
-
-        if self.config['intermax_repo']['use']:
-            self.sts = SqlTextSimilar(self.scheduler_logger)
-            self.sts.set_config(self.config)
-            self.sts.pre_load_tuning_sql_text()
-
+        """
+        백그라운드 스케쥴러 등록 및 시작 하기 위한 함수
+        :return:
+        """ 
+        if self.config['scheduler']['is_alive_sched']['use']:
             self.bg_scheduler.add_job(
-                self._sql_text_similarity_job,
+                self._is_alive_logging_job,
                 CRON,
-                hour=self.config['scheduler']['sql_text_similarity_sched']['hour'],
-                minute=self.config['scheduler']['sql_text_similarity_sched']['minute'],
-                id='_sql_text_similarity_job'
-
+                hour=self.config['scheduler']['is_alive_sched']['hour'],
+                minute=self.config['scheduler']['is_alive_sched']['minute'],
+                id='_is_alive_logging_job'
             )
-            self.bg_scheduler.start()
-        else:
-            self.scheduler_logger.info("SqlTextSimilarity not activate, cause intermax_repo config use false")
+
+        if self.config['scheduler']['main_sched']['use']:
+            self.bg_scheduler.add_job(
+                self._main_job,
+                CRON,
+                hour=self.config['scheduler']['main_sched']['hour'],
+                minute=self.config['scheduler']['main_sched']['minute'],
+                id='_extract_summary_job'
+            )
+
+        if self.config['scheduler']['sql_text_similarity_sched']['use']:
+            if self.config['intermax_repo']['use']:
+                self.static_config = copy.deepcopy(self.config)
+                custom_values = dict()
+                custom_values['args'] = {
+                    's_date': SystemUtils.get_date_by_interval(-1, fmt="%Y%m%d"),
+                    'interval': 1,
+                    'proc': 'r'
+                }
+                self.static_config.update(custom_values)
+
+                self.sts = SqlTextSimilar(self.scheduler_logger)
+                self.sts.set_config(self.static_config)
+                self.sts.pre_load_tuning_sql_text()
+
+                self.bg_scheduler.add_job(
+                    self._sql_text_similarity_job,
+                    CRON,
+                    hour=self.config['scheduler']['sql_text_similarity_sched']['hour'],
+                    minute=self.config['scheduler']['sql_text_similarity_sched']['minute'],
+                    id='_sql_text_similarity_job'
+                )
+            else:
+                self.scheduler_logger.info("SqlTextSimilar not activate, cause intermax_repo config use false")
+
+        self.bg_scheduler.start()
 
     def _block_scheduler_start(self):
+        """
+        블로킹 스케쥴러 등록 및 시작 하기 위한 함수
+        :return:
+        """
         self.block_scheduler.add_job(
             self._block_scheduler_job,
             CRON,
@@ -97,30 +124,53 @@ class Scheduler(cm.CommonModule):
                                    f"{self.config['scheduler']['main_sched']['minute']} minute")
 
         self.block_scheduler.start()
-        self.logger.info(f"End of Scheduler start")
 
     def _block_scheduler_job(self):
+        """
+        블로킹 스케쥴러 job 함수 (Windows Service 등록 후 정상 동작 1회후 동작하지 않아서 백그라운드 스케쥴러로 job 이관)
+        :return:
+        """
         self.scheduler_logger.info("_block_scheduler_job")
 
     def _add_scheduler_logger(self):
+        """
+        스케쥴러 전용 logger 생성 함수
+        :return:
+        """
         self.scheduler_logger = Logger(self.config['env']).\
             get_default_logger(self.config['log_dir'], SystemConstants.SCHEDULER_LOG_FILE_NAME)
 
     def _init_scheduler(self):
+        """
+        스케쥴러 객체 생성 함수
+        :return:
+        """
         self.block_scheduler = BlockingScheduler(timezone='Asia/Seoul')
         self.bg_scheduler = BackgroundScheduler(timezone='Asia/Seoul')
 
     def _set_signal(self):
+        """
+        signal 등록 함수
+        :return:
+        """
         if platform.system().lower() in 'windows':
             signal.signal(signal.SIGBREAK, self._terminate)
             signal.signal(signal.SIGINT, self._terminate)
 
     def _terminate(self):
-        self.logger.info("terminated")
+        """
+        스케쥴러 종료 함수
+        :return:
+        """
+
         self.bg_scheduler.shutdown()
         self.block_scheduler.shutdown()
 
     def _main_job(self):
+        """
+        분석 모듈 Main 스케쥴러 job 함수
+        :return:
+        """
         self.scheduler_logger.info("main_job start")
         start_tm = time.time()
 
@@ -130,11 +180,14 @@ class Scheduler(cm.CommonModule):
 
         try:
             db = DataBase(self.config)
+            db.create_engine()
             elm = ExecuteLogModel(ModuleFactoryEnum[self.config['args']['proc']].value,
                                   SystemUtils.get_now_timestamp(), str(self.config['args']), 'batch')
 
             with db.session_scope() as session:
                 session.add(elm)
+
+            db.engine_dispose()
 
             self._extractor_job()
 
@@ -161,15 +214,21 @@ class Scheduler(cm.CommonModule):
             result_msg = str(e)
         finally:
             result_dict = SystemUtils.set_update_execute_log(result, start_tm, result_code, result_msg)
-
+            db.create_engine()
             with db.session_scope() as session:
                 session.query(ExecuteLogModel).filter(ExecuteLogModel.seq == f'{elm.seq}').update(result_dict)
                 session.commit()
+
+            db.engine_dispose()
 
         self.scheduler_logger.info("main_job end")
         return
 
     def _extractor_job(self):
+        """
+        extractor job 함수
+        :return:
+        """
         self.scheduler_logger.info(f"_extractor_job start")
 
         self._update_config_custom_values(proc='e')
@@ -181,6 +240,10 @@ class Scheduler(cm.CommonModule):
         self.scheduler_logger.info(f"_extractor_job end")
 
     def _summarizer_job(self):
+        """
+        summarizer job 함수
+        :return:
+        """
         self.scheduler_logger.info(f"_summarizer_job start")
 
         self._update_config_custom_values(proc='s')
@@ -192,6 +255,10 @@ class Scheduler(cm.CommonModule):
         self.scheduler_logger.info(f"_summarizer_job end")
 
     def _sql_text_merge_job(self):
+        """
+        sql_text_merge job 함수
+        :return:
+        """
         self.scheduler_logger.info(f"_sql_text_merge_job start")
 
         self._update_config_custom_values(proc='m')
@@ -202,28 +269,36 @@ class Scheduler(cm.CommonModule):
 
         self.scheduler_logger.info(f"_sql_text_merge_job end")
 
-    def _sql_text_similarity_job(self):
-        self.scheduler_logger.info(f"_sql_text_similarity_job start")
+    def _sql_text_similar_job(self):
+        """
+        sql_text_similar job 함수
+        :return:
+        """
+        self.scheduler_logger.info(f"_sql_text_similar_job start")
 
-        self._update_config_custom_values(proc='l')
-        self.sts.set_config(self.config)
         self.sts.main_process()
 
-        self.scheduler_logger.info(f"_sql_text_similarity_job end")
+        self.scheduler_logger.info(f"_sql_text_similar_job end")
 
     def _update_config_custom_values(self, proc):
+        """
+        스케쥴러 기능 별 config값 update 함수
+        :param proc: 
+        :return: 
+        """
         custom_values = dict()
-        custom_values['args'] = {'s_date': SystemUtils.get_date_by_interval(-1, fmt="%Y%m%d"), 'interval': 1, 'proc': proc}
+        custom_values['args'] = {
+            's_date': SystemUtils.get_date_by_interval(-1, fmt="%Y%m%d"),
+            'interval': 1,
+            'proc': proc
+        }
         self.config.update(custom_values)
 
     def _is_alive_logging_job(self):
-        # for job in self.block_scheduler.get_jobs():
-        #     self.scheduler_logger.info("name: {}, trigger: {}, next run: {}".format(
-        #         job.id,
-        #         job.trigger,
-        #         job.next_run_time,
-        #     ))
-
+        """
+        is_alive_logging job 함수
+        :return: 
+        """
         for job in self.bg_scheduler.get_jobs():
             if job.id == '_is_alive_logging_job':
                 continue

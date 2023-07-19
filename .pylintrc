@@ -149,7 +149,10 @@ disable=abstract-method,
 		expression-not-assigned,
 		inconsistent-quotes,
 		missing-module-docstring,
-		protected-access
+		protected-access,
+		cell-var-from-loop,
+		redefined-outer-name,
+		logging-fstring-interpolation
 
 
 [REPORTS]

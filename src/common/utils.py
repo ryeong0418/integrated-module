@@ -188,6 +188,12 @@ class SystemUtils:
     def extract_tablename_in_filename(filename):
         return filename.split(".")[0].split('-')[1]
 
+    @staticmethod
+    def get_each_date_by_interval(s_date, interval):
+        s_date = datetime.strptime(str(s_date), '%Y%m%d')
+        e_date = s_date + timedelta(days=int(interval))
+        return s_date, e_date
+
 
 class TargetUtils:
 

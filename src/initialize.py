@@ -4,9 +4,14 @@ from src.common.utils import SystemUtils
 
 
 class Initialize(cm.CommonModule):
+    """
+    Initialize Class
+
+    통합 분석 모듈 기능 동작 전 Table 생성 및 Meta Data를 저장 하는 Class
+    """
 
     def __init__(self, logger):
-        super().__init__(logger)
+        super().__init__(logger=logger)
 
     def main_process(self):
         self.logger.debug("SaTarget init")
@@ -18,6 +23,11 @@ class Initialize(cm.CommonModule):
         self._insert_init_meta()
 
     def _create_table(self):
+        """
+        통합 분석 모듈에서 사용하는 Table를 생성 하는 함수.
+        /sql/initialize/ddl 하위 모든 파일 (.txt)를 로드하여 DDL 구문을 호출 한다.
+        :return:
+        """
         init_ddl_path = f"{self.sql_file_root_path}{SystemConstants.DDL_PATH}"
         init_files = SystemUtils.get_filenames_from_path(init_ddl_path)
 
@@ -28,6 +38,10 @@ class Initialize(cm.CommonModule):
             self.st.create_table(ddl)
 
     def _insert_init_meta(self):
+        """
+        각 분석 타겟에서 사용할 Meta Data를 저장 하는 함수.
+        :return:
+        """
         if self.config['intermax_repo']['use']:
             self._init_im_target()
 
@@ -41,7 +55,12 @@ class Initialize(cm.CommonModule):
             self._teardown_mg_target()
 
     def _insert_init_meta_by_target(self, target, target_instance):
-
+        """
+        각 분석 타겟에 해당되는 Meta Data 조회 text를 로드하여 통합 분석 DB에 저장 하는 함수.
+        :param target: 분석 타겟 path 구분을 위한 값.
+        :param target_instance: 분석 타겟 instance
+        :return:
+        """
         init_meta_path = f"{self.sql_file_root_path}{target}{SystemConstants.META_PATH}"
         init_files = SystemUtils.get_filenames_from_path(init_meta_path)
 

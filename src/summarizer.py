@@ -68,6 +68,7 @@ class Summarizer(cm.CommonModule):
         ae_txn_detail_summary_temp, ae_txn_sql_detail_summary_temp 테이블 조인 기능 함수
         날짜 별로 delete -> join data insert 기능 수행
         """
+
         summarizer_file_path = self.sql_file_root_path+SystemConstants.SUMMARY_PATH
         summarizer_file_list = SystemUtils.get_filenames_from_path(summarizer_file_path,'','txt')
 

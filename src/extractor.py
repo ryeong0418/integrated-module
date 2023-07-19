@@ -37,8 +37,8 @@ class Extractor(cm.CommonModule):
     def _insert_meta_data(self, target, target_instance):
 
         """
-        :param target
-        :param target_instance
+        :param target : WAS, DB
+        :param target_instance : WAS instance, DB instance
         """
 
         extractor_file_path = self.sql_file_root_path+target+SystemConstants.META_PATH

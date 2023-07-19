@@ -5,6 +5,7 @@ import glob
 import os
 from pathlib import Path
 
+
 class Decoding:
 
     def __init__(self, config):

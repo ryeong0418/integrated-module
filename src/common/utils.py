@@ -94,15 +94,10 @@ class SystemUtils:
 
     @staticmethod
     def get_file_in_path(query_folder, sql_name):
-        print(query_folder + "/" + sql_name)
-        # with open(query_folder + "/" + sql_name, "r", encoding='utf-8') as file:
-        #     sql_query = file.read()
-        #
-        # return sql_query
-    @staticmethod
-    def get_file_list_in_path(query_folder, sql_name):
-        extractor_detail_file_list = glob.glob(query_folder+sql_name + '/*.txt')
-        return extractor_detail_file_list
+        with open(query_folder + "/" + sql_name, "r", encoding='utf-8') as file:
+            sql_query = file.read()
+
+        return sql_query
 
 
 
@@ -147,8 +142,8 @@ class SystemUtils:
         :return: 파일 이름 list
         """
 
-        if not os.path.isdir(path):
-            os.mkdir(path)
+        if not os.path.exists(path):
+            os.makedirs(path)
 
         return [x for x in os.listdir(path) if str(x).startswith(prefix) and str(x).endswith(suffix)]
 

@@ -73,8 +73,8 @@ class CommonTarget:
         if self.mg_engine:
             self.mg_engine.dispose()
 
-
     def _create_engine(self, engine_template):
+
         self.logger.info(f"Create engine info : {engine_template}")
         return create_engine(
             engine_template,
@@ -211,9 +211,6 @@ class InterMaxTarget(CommonTarget):
     def get_data_by_meta_query(self, meta_query):
         return self._get_df_by_chunk_size(self.im_engine, meta_query)
 
-    def _get_intermax_data_by_chunksize(self, query):
-        return self._get_df_by_chunk_size(self.im_engine, query)
-
     def get_xapm_txn_sql_detail(self, start_param, end_param):
         param_dict = {'start_param': start_param, 'end_param': end_param}
         query = SqlUtils.sql_replace_to_dict(XapmTxnSqlDetail.SELECT_XAPM_TXN_SQL_DETAIL, param_dict)
@@ -235,18 +232,6 @@ class MaxGaugeTarget(CommonTarget):
 
     def get_data_by_meta_query(self, meta_query):
         return self._get_df_by_chunk_size(self.mg_engine, meta_query)
-
-    def _execute_insert_maxgauge_detail_data(self, query, table_name,analysis_engine):
-
-        """
-        분석 모듈 DB에 data insert 기능 함수
-        :param query: txt파일에 입력된 query문
-        실행 테이블: ae_db_sql_text, ae_session_info, ae_session_stat, ae_sql_stat_10min, ae_sql_wait_10min
-        """
-
-        get_read_sql_query = self._get_df_by_chunk_size(self.mg_engine, query)
-        for df in get_read_sql_query:
-            self._insert_engine_by_df(analysis_engine, table_name, df)
 
 
 class SaTarget(CommonTarget):
@@ -276,26 +261,15 @@ class SaTarget(CommonTarget):
 
     def delete_data(self, delete_query, delete_dict):
 
-        """
-        : param delete_query:dfjlsjdfs
-        : param delete_dict: dfjslkjf
-        """
-
         delete_table_query = SqlUtils.sql_replace_to_dict(delete_query, delete_dict)
         self.logger.info(f"delete query execute : {delete_table_query}")
         self._default_execute_query(self.sa_conn, delete_table_query)
 
     def upsert_data(self, df, target_table_name):
 
-        """
-        : param df:
-        : param target_table_name:
-        """
-
         self._psql_insert_copy(target_table_name, self.analysis_engine, df)
 
     def insert_bind_value_date(self, df, table_name):
-
 
         """
         xapm_bind_sql_elapse의 bind_list 컬럼의 데이터들을 복호화하여
@@ -353,9 +327,7 @@ class SaTarget(CommonTarget):
 
     def get_all_ae_db_sql_text_by_1seq(self, df, chunksize):
         query_with_data = AeDbSqlTextSql.SELECT_AE_DB_SQL_TEXT_WITH_DATA
-
         params = tuple(df.itertuples(index=False, name=None))
-
         psycopg2.extras.execute_values(self.sa_cursor, query_with_data, params, page_size=chunksize)
         results = self.sa_cursor.fetchall()
 

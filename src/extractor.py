@@ -26,15 +26,15 @@ class Extractor(cm.CommonModule):
             self.logger.debug("Intermax extractor")
             self._init_im_target()
 
-            # self._insert_meta_data(SystemConstants.WAS_PATH,self.imt)
+            self._insert_meta_data(SystemConstants.WAS_PATH, self.imt)
             self._insert_intermax_detail_data()
 
-        # if self.config['maxgauge_repo']['use']:
-        #     self.logger.debug("maxgauge extractor")
-        #     self._init_mg_target()
-        #
-        #     self._insert_meta_data(SystemConstants.DB_PATH, self.mgt)
-        #     self._insert_maxgauge_detail_data()
+        if self.config['maxgauge_repo']['use']:
+            self.logger.debug("maxgauge extractor")
+            self._init_mg_target()
+
+            self._insert_meta_data(SystemConstants.DB_PATH, self.mgt)
+            self._insert_maxgauge_detail_data()
 
     def _insert_meta_data(self, target, target_instance):
 
@@ -43,14 +43,15 @@ class Extractor(cm.CommonModule):
         :param target_instance
         """
 
-        extractor_meta_path = f'{self.sql_file_root_path}{target}{SystemConstants.META_PATH}'
-        extractor_meta_file_list = glob.glob(extractor_meta_path + '/*.txt')
+        extractor_file_path = self.sql_file_root_path+target+SystemConstants.META_PATH
+        extractor_meta_file_list = SystemUtils.get_filenames_from_path(extractor_file_path)
 
-        for meta_file_path in extractor_meta_file_list:
-            with open(meta_file_path, mode='r', encoding='utf-8') as file:
+        for meta_file in extractor_meta_file_list:
+            with open(extractor_file_path + meta_file, mode='r', encoding='utf-8') as file:
                 meta_query = file.read()
 
-            target_table_name = SystemUtils.extract_tablename_in_filename(meta_file_path)
+            target_table_name = SystemUtils.extract_tablename_in_filename(meta_file)
+
             for meta_df in target_instance.get_data_by_meta_query(meta_query):
                 if target_table_name in ("ae_was_dev_map", "ae_txn_name"):
                     df = InterMaxUtils.meta_table_value(target_table_name, meta_df)
@@ -70,8 +71,8 @@ class Extractor(cm.CommonModule):
                                                         ae_txn_sql_detail, ae_txn_sql_fetch, ae_was_stat_summary
         """
 
-        extractor_detail_file_list = SystemUtils.get_file_list_in_path(self.sql_file_root_path,
-                                                                       SystemConstants.WAS_PATH)
+        extractor_file_path = self.sql_file_root_path+SystemConstants.WAS_PATH
+        extractor_detail_file_list = SystemUtils.get_filenames_from_path(extractor_file_path,'','txt')
 
         date_conditions = InterMaxUtils.set_intermax_date(self.config['args']['s_date'],
                                                           self.config['args']['interval'])
@@ -79,12 +80,12 @@ class Extractor(cm.CommonModule):
         ae_dev_map_df = self.st.get_data_by_query(AeWasDevMapSql.SELECT_AE_WAS_DEV_MAP)
         delete_query = CommonSql.DELETE_TABLE_BY_DATE_QUERY
 
-        for detail_file_path in extractor_detail_file_list:
+        for detail_file in extractor_detail_file_list:
 
-            with open(detail_file_path, mode='r', encoding='utf-8') as file:
+            with open(extractor_file_path + detail_file, mode='r', encoding='utf-8') as file:
                 query = file.read()
 
-            target_table_name = SystemUtils.extract_tablename_in_filename(detail_file_path)
+            target_table_name = SystemUtils.extract_tablename_in_filename(detail_file)
 
             for date in date_conditions:
                 table_suffix_dict = {'table_suffix': date}
@@ -94,15 +95,16 @@ class Extractor(cm.CommonModule):
                 try:
 
                     if target_table_name == "ae_was_sql_text":
-                        print(target_table_name)
-                        # for df in self.imt.get_data_by_meta_query(detail_query):
-                        #     self.st.upsert_data(df, target_table_name)
+
+                        for df in self.imt.get_data_by_meta_query(detail_query):
+                            self.st.upsert_data(df, target_table_name)
+
                     elif target_table_name == "ae_bind_sql_elapse":
                         self.insert_intermax_common_detail_data(detail_query, target_table_name, ae_dev_map_df)
+
                     else:
-                        pass
-                        #self.st.delete_data(delete_query, delete_dict)
-                        #self.insert_intermax_common_detail_data(detail_query, target_table_name, ae_dev_map_df)
+                        self.st.delete_data(delete_query, delete_dict)
+                        self.insert_intermax_common_detail_data(detail_query, target_table_name, ae_dev_map_df)
 
                 except Exception as e:
                     self.logger.exception(f"{target_table_name} table, {date} date detail data insert error")
@@ -113,16 +115,17 @@ class Extractor(cm.CommonModule):
         """
         InterMax detail data Insert
         """
-        for df in self.imt.get_data_by_meta_query(detail_query):
-            self.st.insert_bind_value_date(df, ae_table_name)
 
-            # if ae_table_name == "ae_bind_sql_elapse":
-            #     self.st.insert_bind_value_date(df, ae_table_name)
-            # elif ae_table_name == "ae_was_os_stat_osm":
-            #     self.st.insert_detail_data(df, ae_table_name)
-            #
-            # else:
-            #     self.st.insert_dev_except_data(df, ae_table_name, ae_dev_map_df)
+        for df in self.imt.get_data_by_meta_query(detail_query):
+
+            if ae_table_name == "ae_bind_sql_elapse":
+                self.st.insert_bind_value_date(df, ae_table_name)
+
+            elif ae_table_name == "ae_was_os_stat_osm":
+                self.st.insert_detail_data(df, ae_table_name)
+
+            else:
+                self.st.insert_dev_except_data(df, ae_table_name, ae_dev_map_df)
 
     def _insert_maxgauge_detail_data(self):
 
@@ -139,14 +142,15 @@ class Extractor(cm.CommonModule):
         db_info_df = self.st.get_data_by_query(ae_db_info_query, ae_db_info_name)
 
         delete_query = CommonSql.DELETE_TABLE_BY_PARTITION_KEY_QUERY
-        extractor_detail_file_list = SystemUtils.get_file_list_in_path(self.sql_file_root_path,
-                                                                       SystemConstants.DB_PATH)
 
-        for file_path in extractor_detail_file_list:
-            with open(file_path, mode='r', encoding='utf-8') as file:
+        extractor_file_path = self.sql_file_root_path+SystemConstants.DB_PATH
+        extractor_detail_file_list = SystemUtils.get_filenames_from_path(extractor_file_path,'','txt')
+
+        for detail_file in extractor_detail_file_list:
+            with open(extractor_file_path+detail_file, mode='r', encoding='utf-8') as file:
                 query = file.read()
 
-            table_name = SystemUtils.extract_tablename_in_filename(file_path)
+            table_name = SystemUtils.extract_tablename_in_filename(detail_file)
 
             for _, row in db_info_df.iterrows():
                 db_id = str(row["db_id"]).zfill(3)

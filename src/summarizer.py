@@ -2,7 +2,6 @@ from src import common_module as cm
 from src.common.utils import InterMaxUtils, SummarizerUtils, SqlUtils, SystemUtils
 from src.common.constants import SystemConstants
 from sql.common_sql import CommonSql
-import glob
 from datetime import datetime
 
 
@@ -29,7 +28,12 @@ class Summarizer(cm.CommonModule):
         ae_txn_sql_summary table은 중복 데이터를 제외하고 날짜별로 데이터 insert 실행해 누적되도록 한다.
         """
 
-        summarizer_file_list = SystemUtils.get_file_list_in_path(self.sql_file_root_path,SystemConstants.TEMP_PATH)
+        summarizer_file_path = self.sql_file_root_path+SystemConstants.TEMP_PATH
+        summarizer_file_list = SystemUtils.get_filenames_from_path(summarizer_file_path,'','txt')
+
+        print(summarizer_file_path)
+        print(summarizer_file_list)
+
         delete_query = CommonSql.DELETE_TABLE_DEFAULT_QUERY
         date_conditions = InterMaxUtils.set_intermax_date(self.config['args']['s_date'],
                                                           self.config['args']['interval'])
@@ -41,7 +45,7 @@ class Summarizer(cm.CommonModule):
 
             for summarizer_temp_file in summarizer_file_list:
                 temp_table_name = summarizer_temp_file.split('.')[0].split('\\')[-1]
-                with open(summarizer_temp_file, mode='r', encoding='utf-8') as file:
+                with open(summarizer_file_path+summarizer_temp_file, mode='r', encoding='utf-8') as file:
                     query = file.read()
                     temp_query = SqlUtils.sql_replace_to_dict(query, date_dict)
 
@@ -67,13 +71,16 @@ class Summarizer(cm.CommonModule):
         ae_txn_detail_summary_temp, ae_txn_sql_detail_summary_temp 테이블 조인 기능 함수
         날짜 별로 delete -> join data insert 기능 수행
         """
+        summarizer_file_path = self.sql_file_root_path+SystemConstants.SUMMARY_PATH
+        summarizer_file_list = SystemUtils.get_filenames_from_path(summarizer_file_path,'','txt')
 
-        summarizer_file_list = SystemUtils.get_file_list_in_path(self.sql_file_root_path, SystemConstants.SUMMARY_PATH)
+        print(summarizer_file_path)
+        print(summarizer_file_list)
         delete_query = CommonSql.DELETE_SUMMARY_TABLE_BY_DATE_QUERY
 
         for summary_file in summarizer_file_list:
 
-            with open(summary_file, mode='r', encoding='utf-8') as file:
+            with open(summarizer_file_path+summary_file, mode='r', encoding='utf-8') as file:
                 query = file.read()
                 join_query = SqlUtils.sql_replace_to_dict(query, date_dict)
                 table_name = summary_file.split('.')[0].split('\\')[-1]

@@ -82,7 +82,7 @@ class CommonTarget:
         delete_table_query = SqlUtils.sql_replace_to_dict(CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY, replace_dict)
         self._default_execute_query(self.sa_conn, delete_table_query)
         meta_df = self._get_target_data_by_query(target_conn, query, table_name, )
-        self._insert_engine_by_df(self.analysis_engine, table_name, meta_df)
+        self._insert_table_by_df(self.analysis_engine, table_name, meta_df)
 
     def _create_engine(self, engine_template):
         self.logger.info(f"Create engine info : {engine_template}")
@@ -336,7 +336,7 @@ class InterMaxTarget(CommonTarget):
                 )
                 df['bind_value'] = df['bind_value'].astype(str)
 
-            self._insert_engine_by_df(self.analysis_engine, table_name, df)
+            self._insert_table_by_df(self.analysis_engine, table_name, df)
 
     def _execute_insert_intermax_detail_data(self, query, table_name):
 
@@ -349,7 +349,7 @@ class InterMaxTarget(CommonTarget):
         """
 
         for df in self._get_intermax_data_by_chunksize(query):
-            self._insert_engine_by_df(self.analysis_engine, table_name, df)
+            self._insert_table_by_df(self.analysis_engine, table_name, df)
 
     def _excute_insert_dev_except_data(self, query, table_name,ae_dev_map_df):
         """
@@ -361,7 +361,7 @@ class InterMaxTarget(CommonTarget):
 
         for detail_df in self._get_intermax_data_by_chunksize(query):
             was_id_except_df = detail_df[~detail_df['was_id'].isin(ae_dev_map_df['was_id'])]
-            self._insert_engine_by_df(self.analysis_engine, table_name, was_id_except_df)
+            self._insert_table_by_df(self.analysis_engine, table_name, was_id_except_df)
 
     def get_xapm_txn_sql_detail(self, start_param, end_param):
         param_dict = {'start_param': start_param, 'end_param': end_param}
@@ -450,7 +450,7 @@ class MaxGaugeTarget(CommonTarget):
         get_read_sql_query = self._get_df_by_chunk_size(self.mg_engine, query)
 
         for df in get_read_sql_query:
-            self._insert_engine_by_df(self.analysis_engine, table_name, df)
+            self._insert_table_by_df(self.analysis_engine, table_name, df)
 
 
 class SaTarget(CommonTarget):
@@ -474,7 +474,7 @@ class SaTarget(CommonTarget):
         delete_table_query = SqlUtils.sql_replace_to_dict(CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY, replace_dict)
         self._default_execute_query(self.sa_conn, delete_table_query)
 
-        self._insert_engine_by_df(self.analysis_engine, target_table_name, meta_df)
+        self._insert_table_by_df(self.analysis_engine, target_table_name, meta_df)
 
     def get_ae_was_sql_text(self, extract_cnt=0):
         query = AeWasSqlTextSql.SELECT_AE_WAS_SQL_TEXT
@@ -536,7 +536,7 @@ class SaTarget(CommonTarget):
                     try:
                         self._default_execute_query(self.sa_conn, delete_table_query)
                         temp_df = self._get_target_data_by_query(self.sa_conn, temp_query, table_name)
-                        self._insert_engine_by_df(self.analysis_engine, table_name, temp_df)
+                        self._insert_table_by_df(self.analysis_engine, table_name, temp_df)
 
                     except Exception as e:
                         self.logger.exception(
@@ -581,7 +581,7 @@ class SaTarget(CommonTarget):
                     self.logger.info(f"delete query execute : {sa_delete_query}")
 
                     for df in self._get_df_by_chunk_size(self.analysis_engine, join_query):
-                        self._insert_engine_by_df(self.analysis_engine, table_name, df)
+                        self._insert_table_by_df(self.analysis_engine, table_name, df)
 
                 except Exception as e:
                     self.logger.exception(f"{summary_file.split('.')[0]} table, summary insert execute error")
@@ -654,7 +654,7 @@ class SaTarget(CommonTarget):
         return self._get_df_by_chunk_size(self.analysis_engine, query, chunksize, bool(coerce))
 
     def insert_target_table_by_dump(self, table, df):
-        self._insert_engine_by_df(self.analysis_engine, table, df)
+        self._insert_table_by_df(self.analysis_engine, table, df)
 
     def term_extract_sql_text(self, chunksize):
 
@@ -725,7 +725,7 @@ class SaTarget(CommonTarget):
         truncate_query = SqlUtils.sql_replace_to_dict(truncate_query, {'table_name': table_name})
 
         self._default_execute_query(self.sa_conn, truncate_query)
-        self._insert_engine_by_df(self.analysis_engine, table_name, df)
+        self._insert_table_by_df(self.analysis_engine, table_name, df)
 
     def get_cluster_cnt_by_grouping(self, extract_cnt):
         if self.config['intermax_repo']['use']:

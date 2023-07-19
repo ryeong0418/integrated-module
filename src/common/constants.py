@@ -56,6 +56,8 @@ class SystemConstants:
 
     WAS_PATH = 'was/'
     DB_PATH = 'db/'
+    ZULU_PATH = '/zulu8.70.0.23-ca-jdk8.0.372-win_x64'
+
 
 
 class TableConstants:

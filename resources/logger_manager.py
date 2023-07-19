@@ -4,9 +4,10 @@ import json
 from pathlib import Path
 
 from src.common.constants import SystemConstants as sc
+from concurrent_log_handler import ConcurrentTimedRotatingFileHandler
 
 
-class Logger:
+class Logger(ConcurrentTimedRotatingFileHandler):
 
     def __init__(self, env='prod'):
         self.resources_path = os.path.dirname(os.path.abspath(__file__))

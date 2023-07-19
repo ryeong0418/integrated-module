@@ -20,7 +20,7 @@
 	"analysis_repo": {
 		"db_type": "postgres",
 		"host": "10.10.47.241",
-		"port": 5432,
+		"port": 15432,
 		"sid": "postgres",
 		"user": "postgres",
 		"password": "dmddyd2307!"
@@ -28,15 +28,18 @@
 	"scheduler": {
 		"is_alive_sched": {
 			"hour": "*",
-			"minute": "0,30"
+			"minute": "0,30",
+			"use": true
 		},
 		"main_sched": {
 			"hour": "1",
-			"minute": "5"
+			"minute": "5",
+			"use": true
 		},
 		"sql_text_similarity_sched": {
 			"hour": "*",
-			"minute": "3, 13, 23, 33, 43, 53"
+			"minute": "3, 13, 23, 33, 43, 53",
+			"use": true
 		}
 	},
 	"sql_debug_flag": false,

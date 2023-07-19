@@ -44,21 +44,21 @@ class Summarizer(cm.CommonModule):
                 temp_table_name = summarizer_temp_file.split('.')[0].split('\\')[-1]
                 with open(summarizer_file_path+summarizer_temp_file, mode='r', encoding='utf-8') as file:
                     query = file.read()
-                    temp_query = SqlUtils.sql_replace_to_dict(query, date_dict)
+                temp_query = SqlUtils.sql_replace_to_dict(query, date_dict)
 
-                    try:
-                        delete_dict = {'table_name': temp_table_name}
-                        self.st.delete_data(delete_query, delete_dict)
+                try:
+                    delete_dict = {'table_name': temp_table_name}
+                    self.st.delete_data(delete_query, delete_dict)
 
-                        for temp_df in self.st.get_table_data_by_chunksize(temp_query,
-                                                                           self.config['data_handling_chunksize']*5):
+                    for temp_df in self.st.get_table_data_by_chunksize(temp_query,
+                                                                       self.config['data_handling_chunksize']*5):
 
-                            self.st.insert_detail_data(temp_df, temp_table_name)
+                        self.st.insert_detail_data(temp_df, temp_table_name)
 
-                    except Exception as e:
-                        self.logger.exception(
-                            f"{summarizer_temp_file.split('.')[0]} table, create_temp_table execute error")
-                        self.logger.exception(e)
+                except Exception as e:
+                    self.logger.exception(
+                        f"{summarizer_temp_file.split('.')[0]} table, create_temp_table execute error")
+                    self.logger.exception(e)
 
             self.summary_join(date_dict)
 

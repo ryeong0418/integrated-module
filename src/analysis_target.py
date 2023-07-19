@@ -1,8 +1,5 @@
-import os
-
 import pandas as pd
 import numpy as np
-import psycopg2 as db
 import psycopg2.extras
 import sys
 
@@ -16,12 +13,12 @@ from psycopg2.errorcodes import DUPLICATE_TABLE
 from datetime import datetime, timedelta
 
 from src.decoder.intermax_decryption import Decoding
-from src.common.utils import TargetUtils, SystemUtils, InterMaxUtils, MaxGaugeUtils, SqlUtils
+from src.common.utils import TargetUtils, MaxGaugeUtils, SqlUtils
 from src.common.constants import TableConstants, SystemConstants
 from src.common.enum_module import ModuleFactoryEnum
 from src.common.timelogger import TimeLogger
 from sql.common_sql import CommonSql, AeWasSqlTextSql, AeDbSqlTemplateMapSql, AeDbInfoSql, AeDbSqlTextSql
-from sql.common_sql import AeWasDevMapSql, XapmTxnSqlDetail
+from sql.common_sql import XapmTxnSqlDetail
 
 
 class CommonTarget:
@@ -167,6 +164,8 @@ class CommonTarget:
 
     def _psql_insert_copy(self, table, engine, df):
 
+        """sqlalchemy를 이용하여 데이터 upsert하는 함수"""
+
         if not df.empty:
             self.logger.info(f"{table}  upsert data")
 
@@ -260,13 +259,11 @@ class SaTarget(CommonTarget):
         self._insert_engine_by_df(self.analysis_engine, target_table_name, meta_df)
 
     def delete_data(self, delete_query, delete_dict):
-
         delete_table_query = SqlUtils.sql_replace_to_dict(delete_query, delete_dict)
         self.logger.info(f"delete query execute : {delete_table_query}")
         self._default_execute_query(self.sa_conn, delete_table_query)
 
     def upsert_data(self, df, target_table_name):
-
         self._psql_insert_copy(target_table_name, self.analysis_engine, df)
 
     def insert_bind_value_date(self, df, table_name):
@@ -296,10 +293,11 @@ class SaTarget(CommonTarget):
         self._insert_engine_by_df(self.analysis_engine, table_name, df)
 
     def insert_dev_except_data(self, detail_df, table_name, ae_dev_map_df):
-        """
-        분석 모듈 DB ae_was_dev_map 테이블에서 was_id에 해당하는 값들을 제외하고 data insert 기능 함수
 
         """
+        분석 모듈 DB ae_was_dev_map 테이블에서 was_id에 해당하는 값들을 제외하고 data insert 기능 함수
+        """
+
         was_id_except_df = detail_df[~detail_df['was_id'].isin(ae_dev_map_df['was_id'])]
         self._insert_engine_by_df(self.analysis_engine, table_name, was_id_except_df)
 
@@ -396,13 +394,18 @@ class SaTarget(CommonTarget):
 
         return f"SELECT {sel} FROM {table}"
 
-    def get_table_data_by_chunksize(self, query, chunksize, coerce=True):
+    def get_table_data_by_chunksize(self, query, chunksize=0, coerce=True):
         return self._get_df_by_chunk_size(self.analysis_engine, query, chunksize, bool(coerce))
 
     def insert_target_table_by_dump(self, table, df):
         self._insert_engine_by_df(self.analysis_engine, table, df)
 
     def term_extract_sql_text(self, chunksize):
+
+        """
+        ae_was_sql_text 테이블에서 sql_id와 ae_txn_sql_detail 테이블에서 sql_id가 동일한 것들의
+        sql_id, sql_text, sql_text_100을 추출하는 함수
+        """
 
         s_date = datetime.strptime(str(self.config['args']['s_date']), '%Y%m%d')
         e_date = s_date + timedelta(days=int(self.config['args']['interval']))

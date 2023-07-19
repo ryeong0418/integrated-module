@@ -1,8 +1,6 @@
-import os
 from src import common_module as cm
 from src.common.constants import TableConstants, SystemConstants
 
-import glob
 from src.common.utils import SystemUtils, InterMaxUtils, MaxGaugeUtils, SqlUtils
 from sql.common_sql import CommonSql, AeWasDevMapSql, AeDbInfoSql
 
@@ -95,12 +93,8 @@ class Extractor(cm.CommonModule):
                 try:
 
                     if target_table_name == "ae_was_sql_text":
-
                         for df in self.imt.get_data_by_meta_query(detail_query):
                             self.st.upsert_data(df, target_table_name)
-
-                    elif target_table_name == "ae_bind_sql_elapse":
-                        self.insert_intermax_common_detail_data(detail_query, target_table_name, ae_dev_map_df)
 
                     else:
                         self.st.delete_data(delete_query, delete_dict)

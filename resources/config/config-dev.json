@@ -20,10 +20,10 @@
 	"analysis_repo": {
 		"db_type": "postgres",
 		"host": "10.10.47.241",
-		"port": 5432,
+		"port": 15432,
 		"sid": "postgres",
 		"user": "postgres",
-		"password": "postgres"
+		"password": "dmddyd2307!"
 	},
 	"scheduler": {
 		"is_alive_sched": {

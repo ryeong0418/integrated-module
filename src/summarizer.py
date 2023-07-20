@@ -45,6 +45,7 @@ class Summarizer(cm.CommonModule):
                 temp_table_name = summarizer_temp_file.split('.')[0].split('\\')[-1]
                 with open(summarizer_file_path+summarizer_temp_file, mode='r', encoding='utf-8') as file:
                     query = file.read()
+
                 temp_query = SqlUtils.sql_replace_to_dict(query, date_dict)
 
                 try:
@@ -77,20 +78,21 @@ class Summarizer(cm.CommonModule):
 
             with open(summarizer_file_path+summary_file, mode='r', encoding='utf-8') as file:
                 query = file.read()
-                join_query = SqlUtils.sql_replace_to_dict(query, date_dict)
-                table_name = summary_file.split('.')[0].split('\\')[-1]
-                datetime_format = datetime.strptime(date_dict['StartDate'].split()[0], '%Y-%m-%d')
-                formatted_date = datetime_format.strftime('%Y%m%d')
-                delete_dict = {'table_name': table_name, 'date': formatted_date}
 
-                try:
-                    self.st.delete_data(delete_query, delete_dict)
-                    for df in self.st.get_data_by_query(join_query):
-                        self.st.insert_detail_data(df, table_name)
+            join_query = SqlUtils.sql_replace_to_dict(query, date_dict)
+            table_name = summary_file.split('.')[0].split('\\')[-1]
+            datetime_format = datetime.strptime(date_dict['StartDate'].split()[0], '%Y-%m-%d')
+            formatted_date = datetime_format.strftime('%Y%m%d')
+            delete_dict = {'table_name': table_name, 'date': formatted_date}
 
-                except Exception as e:
-                    self.logger.exception(f"{summary_file.split('.')[0]} table, summary insert execute error")
-                    self.logger.exception(e)
+            try:
+                self.st.delete_data(delete_query, delete_dict)
+                for df in self.st.get_data_by_query(join_query):
+                    self.st.insert_detail_data(df, table_name)
+
+            except Exception as e:
+                self.logger.exception(f"{summary_file.split('.')[0]} table, summary insert execute error")
+                self.logger.exception(e)
 
     @staticmethod
     def summarizer_set_date(input_date):

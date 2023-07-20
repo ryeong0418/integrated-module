@@ -10,12 +10,9 @@ from sqlalchemy.dialects.postgresql import insert
 from psycopg2 import errors
 from psycopg2.errorcodes import DUPLICATE_TABLE
 
-from datetime import datetime, timedelta
-
 from src.decoder.intermax_decryption import Decoding
-from src.common.utils import TargetUtils, MaxGaugeUtils, SqlUtils
-from src.common.constants import TableConstants, SystemConstants
-from src.common.enum_module import ModuleFactoryEnum
+from src.common.utils import TargetUtils, SqlUtils
+from src.common.constants import TableConstants
 from src.common.timelogger import TimeLogger
 from sql.common_sql import CommonSql, AeWasSqlTextSql, AeDbSqlTemplateMapSql, AeDbInfoSql, AeDbSqlTextSql
 from sql.common_sql import XapmTxnSqlDetail
@@ -48,10 +45,6 @@ class CommonTarget:
         self.data_handling_chunksize = self.config.get('data_handling_chunksize', 10_000)
         self.extract_chunksize = self.data_handling_chunksize * 5
         self.sql_match_time = self.config.get('sql_match_time', 0)
-        self.sql_file_root_path = f"{self.config['home']}/" \
-                                  f"{SystemConstants.SQL_ROOT_PATH}/" \
-                                  f"{ModuleFactoryEnum[self.config['args']['proc']].value}"
-
         self.update_cluster_cnt = 0
         self.intermax_decoder = None
         self.sql_debug_flag = self.config.get('sql_debug_flag', False)
@@ -81,7 +74,7 @@ class CommonTarget:
             echo_pool=False,
             pool_pre_ping=True,
             connect_args={
-            "keepalives": 1,
+                "keepalives": 1,
                 "keepalives_idle": 30,
                 "keepalives_interval": 10,
                 "keepalives_count": 5,
@@ -96,27 +89,9 @@ class CommonTarget:
         :param table_name: 분석 모듈 DB에 저장될 테이블 명 (for logging)
         :return: 각 타겟의 query 결과 정보 (DataFrame)
         """
-
         with TimeLogger(f"[{CommonTarget.__name__}] {sys._getframe(0).f_code.co_name}(), {table_name} to extract ",
                         self.logger):
             df = pd.read_sql(query, target_conn)
-
-        return df
-
-    def _get_target_data_by_query_ver2(self, engine, query, table_name="UNKNOWN TABLE"):
-        """
-        각 분석 대상의 DB에서 query 결과를 DataFrame 담아오는 함수
-        :param target_conn: 각 타겟 connect object
-        :param query: 각 타겟 호출 SQL
-        :param table_name: 분석 모듈 DB에 저장될 테이블 명 (for logging)
-        :return: 각 타겟의 query 결과 정보 (DataFrame)
-        """
-
-        with TimeLogger(f"[{CommonTarget.__name__}] {sys._getframe(0).f_code.co_name}(), {table_name} to extract ",
-                        self.logger):
-
-            with engine.connect() as conn:
-                df = pd.read_sql_query(text(query), conn)
 
         return df
 
@@ -128,7 +103,6 @@ class CommonTarget:
         :param df: 저장하려는 DataFrame
         :return:
         """
-
         with TimeLogger(f"[{CommonTarget.__name__}] {sys._getframe(0).f_code.co_name}(), {table_name} to import ",
                         self.logger):
             df.to_sql(
@@ -185,12 +159,20 @@ class CommonTarget:
                 connection.commit()
 
     def _get_df_by_chunk_size(self, engine: create_engine, query: str, chunk_size: int = 0, coerce=True):
+        """
+        chunk size 만큼 테이블 데이터를 읽어 오는 함수
+        :param engine: 각 target engine object
+        :param query: 조회하려는 쿼리
+        :param chunk_size: 로드하려는 chunk size
+        :param coerce: float 데이터 처리
+        :return: 조회한 데이터 데이터프레임
+        """
         if chunk_size == 0:
             chunk_size = self.extract_chunksize
         conn = engine.connect().execution_options(stream_results=True)
         return pd.read_sql_query(text(query), conn, chunksize=chunk_size, coerce_float=coerce)
 
-    def get_data_by_meta_query(self, meta_query):
+    def get_data_by_query(self, query):
         pass
 
 
@@ -200,14 +182,8 @@ class InterMaxTarget(CommonTarget):
         self.im_engine = self._create_engine(self.im_engine_template)
         self.im_conn = self.im_engine.raw_connection()
 
-    def get_im_engine(self):
-        return self.im_engine
-
-    def get_im_conn(self):
-        return self.im_conn
-
-    def get_data_by_meta_query(self, meta_query):
-        return self._get_df_by_chunk_size(self.im_engine, meta_query)
+    def get_data_by_query(self, query):
+        return self._get_df_by_chunk_size(self.im_engine, query)
 
     def get_xapm_txn_sql_detail(self, start_param, end_param):
         param_dict = {'start_param': start_param, 'end_param': end_param}
@@ -222,14 +198,8 @@ class MaxGaugeTarget(CommonTarget):
         self.mg_engine = self._create_engine(self.mg_engine_template)
         self.mg_conn = self.mg_engine.raw_connection()
 
-    def get_mg_engine(self):
-        return self.mg_engine
-
-    def get_mg_conn(self):
-        return self.mg_conn
-
-    def get_data_by_meta_query(self, meta_query):
-        return self._get_df_by_chunk_size(self.mg_engine, meta_query)
+    def get_data_by_query(self, query):
+        return self._get_df_by_chunk_size(self.mg_engine, query)
 
 
 class SaTarget(CommonTarget):
@@ -255,7 +225,7 @@ class SaTarget(CommonTarget):
         delete_table_query = SqlUtils.sql_replace_to_dict(CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY, replace_dict)
 
         self._default_execute_query(self.sa_conn, delete_table_query)
-        self._insert_engine_by_df(self.analysis_engine, target_table_name, meta_df)
+        self._insert_table_by_df(self.analysis_engine, target_table_name, meta_df)
 
     def delete_data(self, delete_query, delete_dict):
         delete_table_query = SqlUtils.sql_replace_to_dict(delete_query, delete_dict)
@@ -285,10 +255,10 @@ class SaTarget(CommonTarget):
             )
             df['bind_value'] = df['bind_value'].astype(str)
 
-        self._insert_engine_by_df(self.analysis_engine, table_name, df)
+        self._insert_table_by_df(self.analysis_engine, table_name, df)
 
     def insert_detail_data(self, df, table_name):
-        self._insert_engine_by_df(self.analysis_engine, table_name, df)
+        self._insert_table_by_df(self.analysis_engine, table_name, df)
 
     def insert_dev_except_data(self, detail_df, table_name, ae_dev_map_df):
 
@@ -298,8 +268,11 @@ class SaTarget(CommonTarget):
         was_id_except_df = detail_df[~detail_df['was_id'].isin(ae_dev_map_df['was_id'])]
         self._insert_table_by_df(self.analysis_engine, table_name, was_id_except_df)
 
-    def get_data_by_query(self, query, table_name="UNKNOWN TABLE"):
-        return self._get_target_data_by_query(self.sa_conn,query, table_name)
+    def get_data_by_query(self, query):
+        return self._get_df_by_chunk_size(self.analysis_engine, query)
+
+    def get_data_by_query_and_once(self, query, table_name="UNKNOWN TABLE"):
+        return self._get_target_data_by_query(self.sa_conn, query, table_name)
 
     def get_ae_was_sql_text(self, extract_cnt=0):
         query = AeWasSqlTextSql.SELECT_AE_WAS_SQL_TEXT

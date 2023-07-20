@@ -15,7 +15,6 @@ class BackgroundTask(threading.Thread):
     def run(self) -> None:
         """
         class 생성 시 받은 인자의 함수와 함수인자로 해당 func를 실행하는 함수
-        :return: 
         """
         self.logger.info(f"{self.func.__name__} func execute by thread. kwargs keys : {self.kwargs.keys()}")
 

@@ -48,11 +48,11 @@ class Scheduler(cm.CommonModule):
         self._init_scheduler()
 
         try:
-            self.logger.info(f"Background Scheduler job start")
+            self.logger.info("Background Scheduler job start")
             self._bg_scheduler_start()
             time.sleep(1)
 
-            self.logger.info(f"Blocking Scheduler job start")
+            self.logger.info("Blocking Scheduler job start")
             self._block_scheduler_start()
         except Exception as e:
             self.logger.exception(e)
@@ -61,7 +61,7 @@ class Scheduler(cm.CommonModule):
         """
         백그라운드 스케쥴러 등록 및 시작 하기 위한 함수
         :return:
-        """ 
+        """
         if self.config['scheduler']['is_alive_sched']['use']:
             self.bg_scheduler.add_job(
                 self._is_alive_logging_job,
@@ -83,13 +83,10 @@ class Scheduler(cm.CommonModule):
         if self.config['scheduler']['sql_text_similarity_sched']['use']:
             if self.config['intermax_repo']['use']:
                 self.static_config = copy.deepcopy(self.config)
-                custom_values = dict()
-                custom_values['args'] = {
-                    's_date': SystemUtils.get_date_by_interval(-1, fmt="%Y%m%d"),
-                    'interval': 1,
-                    'proc': 'r'
-                }
-                self.static_config.update(custom_values)
+
+                custom_config_dict = self._set_custom_dict('r')
+
+                self.static_config.update(custom_config_dict)
 
                 self.sts = SqlTextSimilar(self.scheduler_logger)
                 self.sts.set_config(self.static_config)
@@ -222,14 +219,13 @@ class Scheduler(cm.CommonModule):
             db.engine_dispose()
 
         self.scheduler_logger.info("main_job end")
-        return
 
     def _extractor_job(self):
         """
         extractor job 함수
         :return:
         """
-        self.scheduler_logger.info(f"_extractor_job start")
+        self.scheduler_logger.info("_extractor_job start")
 
         self._update_config_custom_values(proc='e')
 
@@ -237,14 +233,14 @@ class Scheduler(cm.CommonModule):
         extractor.set_config(self.config)
         extractor.main_process()
 
-        self.scheduler_logger.info(f"_extractor_job end")
+        self.scheduler_logger.info("_extractor_job end")
 
     def _summarizer_job(self):
         """
         summarizer job 함수
         :return:
         """
-        self.scheduler_logger.info(f"_summarizer_job start")
+        self.scheduler_logger.info("_summarizer_job start")
 
         self._update_config_custom_values(proc='s')
 
@@ -252,14 +248,14 @@ class Scheduler(cm.CommonModule):
         summarizer.set_config(self.config)
         summarizer.main_process()
 
-        self.scheduler_logger.info(f"_summarizer_job end")
+        self.scheduler_logger.info("_summarizer_job end")
 
     def _sql_text_merge_job(self):
         """
         sql_text_merge job 함수
         :return:
         """
-        self.scheduler_logger.info(f"_sql_text_merge_job start")
+        self.scheduler_logger.info("_sql_text_merge_job start")
 
         self._update_config_custom_values(proc='m')
 
@@ -267,46 +263,50 @@ class Scheduler(cm.CommonModule):
         stm.set_config(self.config)
         stm.main_process()
 
-        self.scheduler_logger.info(f"_sql_text_merge_job end")
+        self.scheduler_logger.info("_sql_text_merge_job end")
 
     def _sql_text_similar_job(self):
         """
         sql_text_similar job 함수
         :return:
         """
-        self.scheduler_logger.info(f"_sql_text_similar_job start")
+        self.scheduler_logger.info("_sql_text_similar_job start")
 
         self.sts.main_process()
 
-        self.scheduler_logger.info(f"_sql_text_similar_job end")
+        self.scheduler_logger.info("_sql_text_similar_job end")
 
     def _update_config_custom_values(self, proc):
         """
         스케쥴러 기능 별 config값 update 함수
-        :param proc: 
-        :return: 
+        :param proc: 기능별 심볼 값
         """
-        custom_values = dict()
-        custom_values['args'] = {
+        custom_config_dict = self._set_custom_dict(proc)
+
+        self.config.update(custom_config_dict)
+
+    @staticmethod
+    def _set_custom_dict(proc):
+        """
+        proc 별 custom config 생성 함수
+        :param proc: 각 proc 심볼
+        :return: custom config
+        """
+        custom_value = {
             's_date': SystemUtils.get_date_by_interval(-1, fmt="%Y%m%d"),
             'interval': 1,
             'proc': proc
         }
-        self.config.update(custom_values)
+        return {'args': custom_value}
 
     def _is_alive_logging_job(self):
         """
         is_alive_logging job 함수
-        :return: 
         """
         for job in self.bg_scheduler.get_jobs():
             if job.id == '_is_alive_logging_job':
                 continue
 
-            self.scheduler_logger.info("name: {}, trigger: {}, next run: {} ".format(
-                job.id,
-                job.trigger,
-                job.next_run_time,
-            ))
+            self.scheduler_logger.info(f"name: {job.id}, trigger: {job.trigger}, next run: {job.next_run_time}")
 
         self.scheduler_logger.info(f"This analysis module scheduler is alive.. PID : {os.getpid()} \n")

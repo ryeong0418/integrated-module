@@ -1,4 +1,6 @@
 import os
+import pandas as pd
+
 from datetime import datetime
 
 from src import common_module as cm
@@ -14,7 +16,7 @@ class Visualization(cm.CommonModule):
     """
 
     def __init__(self, logger):
-        super().__init__(logger)
+        super().__init__(logger=logger)
 
     def main_process(self):
 
@@ -35,7 +37,7 @@ class Visualization(cm.CommonModule):
         for sql_name in sql_name_list_sort:
             sql_query = SystemUtils.get_file_in_path(query_folder, sql_name)
             df = self.st.sql_query_convert_df(sql_query)
-            result_df = SystemUtils.data_processing(df)
+            result_df = self.data_processing(df)
             sheet_name_txt = sql_name.split('.')[0]
             now_day = datetime.now()
             now_date = now_day.strftime('%y%m%d')
@@ -47,3 +49,13 @@ class Visualization(cm.CommonModule):
 
             else:
                 SystemUtils.excel_export(excel_file, sheet_name_txt, result_df)
+
+    @staticmethod
+    def data_processing(df):
+        df.columns = map(lambda x: str(x).upper(), df.columns)
+        df = df.apply(pd.to_numeric, errors='ignore')
+
+        if 'TIME' in df.columns:
+            df['TIME'] = pd.to_datetime(df['TIME'])
+
+        return df

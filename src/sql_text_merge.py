@@ -172,7 +172,6 @@ class SqlTextMerge(cm.CommonModule):
         """
         Was sql text와 DB sql text가 일치한 데이터를 저장하기 위한 함수
         :param result_df: 일치한 데이터 데이터 프레임
-        :return: 
         """
         result_df.rename(columns={'sql_id': 'was_sql_id'}, inplace=True)
         result_df.rename(columns={'sql_uid': 'db_sql_uid'}, inplace=True)
@@ -196,7 +195,7 @@ class SqlTextMerge(cm.CommonModule):
         match_mode별 sql text match를 위한 전처리
         :param xapm_sql_df: 대상 데이터 프레임
         :param target_c: 타겟 컬럼
-        :param match_mode: match_mode (str : sql_text 공백 split str, 
+        :param match_mode: match_mode (str : sql_text 공백 split str,
                                     token : sql_text split 첫번째 토큰/마지막 토큰/전체길이/-sql_match_sensitive 길이 토큰 추출)
         :param sql_match_sensitive: sql_match의 merge에 사용할 컬럼의 갯수
         :return: 전처리된 데이터 프레임

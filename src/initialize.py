@@ -28,6 +28,7 @@ class Initialize(cm.CommonModule):
         /sql/initialize/ddl 하위 모든 파일 (.txt)를 로드하여 DDL 구문을 호출 한다.
         :return:
         """
+        self.logger.debug("_create_table() start")
         init_ddl_path = f"{self.sql_file_root_path}{SystemConstants.DDL_PATH}"
         init_files = SystemUtils.get_filenames_from_path(init_ddl_path)
 
@@ -42,6 +43,7 @@ class Initialize(cm.CommonModule):
         각 분석 타겟에서 사용할 Meta Data를 저장 하는 함수.
         :return:
         """
+        self.logger.debug("_insert_init_meta() start")
         if self.config['intermax_repo']['use']:
             self._init_im_target()
 
@@ -51,7 +53,7 @@ class Initialize(cm.CommonModule):
         if self.config['maxgauge_repo']['use']:
             self._init_mg_target()
 
-            #self._insert_init_meta_by_target(SystemConstants.DB_PATH, self.mgt)
+            self._insert_init_meta_by_target(SystemConstants.DB_PATH, self.mgt)
             self._teardown_mg_target()
 
     def _insert_init_meta_by_target(self, target, target_instance):
@@ -70,5 +72,5 @@ class Initialize(cm.CommonModule):
 
             target_table_name = SystemUtils.extract_tablename_in_filename(init_file)
 
-            for meta_df in target_instance.get_data_by_meta_query(meta_query):
+            for meta_df in target_instance.get_data_by_query(meta_query):
                 self.st.insert_init_meta(meta_df, target_table_name)

@@ -1,4 +1,4 @@
-from src.analysis_target import CommonTarget,SaTarget, InterMaxTarget, MaxGaugeTarget
+from src.analysis_target import SaTarget, InterMaxTarget, MaxGaugeTarget
 from src.common.constants import SystemConstants
 from src.common.enum_module import ModuleFactoryEnum
 
@@ -23,10 +23,6 @@ class CommonModule:
     def main_process(self):
         pass
 
-    def common_target(self):
-        return CommonTarget(self.logger, self.config)
-
-
     def _init_sa_target(self):
         self.st = SaTarget(self.logger, self.config)
         self.st.init_process()
@@ -47,21 +43,3 @@ class CommonModule:
 
     def _teardown_mg_target(self):
         del self.mgt
-
-    def _get_im_engine(self):
-        return self.imt.get_im_engine()
-
-    def _get_mg_engine(self):
-        return self.mgt.get_mg_engine()
-
-    def _get_st_engine(self):
-        return self.st.get_st_engine()
-
-    def _get_im_conn(self):
-        return self.imt.get_im_conn()
-
-    def _get_mg_conn(self):
-        return self.mgt.get_mg_conn()
-
-    def _get_st_conn(self):
-        return self.st.get_st_conn()

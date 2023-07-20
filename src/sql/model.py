@@ -48,9 +48,10 @@ class ExecuteLogModel(Base):
         return "<ExecuteLogModel(seq='{}', execute_name='{}', execute_start_dt='{}', execute_end_dt='{}', " \
                "execute_elapsed_time='{}', execute_args='{}', " \
                "result='{}', result_code='{}', result_msg='{}', create_id='{}')>"\
-                .format(self.seq, self.execute_name, self.execute_start_dt, self.execute_end_dt,
-                        self.execute_elapsed_time, self.execute_args,
-                        self.result, self.result_code, self.result_msg, self.create_id)
+            .format(self.seq, self.execute_name, self.execute_start_dt, self.execute_end_dt,
+                    self.execute_elapsed_time, self.execute_args,
+                    self.result, self.result_code, self.result_msg, self.create_id
+                    )
 
 
 if __name__ == '__main__':

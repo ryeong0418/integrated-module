@@ -13,7 +13,7 @@ class Extractor(cm.CommonModule):
     """
 
     def __init__(self, logger):
-        super().__init__(logger)
+        super().__init__(logger=logger)
 
     def main_process(self):
 
@@ -50,7 +50,7 @@ class Extractor(cm.CommonModule):
 
             target_table_name = SystemUtils.extract_tablename_in_filename(meta_file)
 
-            for meta_df in target_instance.get_data_by_meta_query(meta_query):
+            for meta_df in target_instance.get_data_by_query(meta_query):
                 if target_table_name in ("ae_was_dev_map", "ae_txn_name"):
                     df = InterMaxUtils.meta_table_value(target_table_name, meta_df)
                     self.st.upsert_data(df, target_table_name)
@@ -70,12 +70,15 @@ class Extractor(cm.CommonModule):
         """
 
         extractor_file_path = self.sql_file_root_path+SystemConstants.WAS_PATH
-        extractor_detail_file_list = SystemUtils.get_filenames_from_path(extractor_file_path,'','txt')
+        extractor_detail_file_list = SystemUtils.get_filenames_from_path(extractor_file_path, '', 'txt')
 
         date_conditions = InterMaxUtils.set_intermax_date(self.config['args']['s_date'],
                                                           self.config['args']['interval'])
 
-        ae_dev_map_df = self.st.get_data_by_query(AeWasDevMapSql.SELECT_AE_WAS_DEV_MAP)
+        ae_dev_map_df = self.st.get_data_by_query_and_once(
+            AeWasDevMapSql.SELECT_AE_WAS_DEV_MAP,
+            TableConstants.AE_WAS_DEV_MAP
+        )
         delete_query = CommonSql.DELETE_TABLE_BY_DATE_QUERY
 
         for detail_file in extractor_detail_file_list:
@@ -93,7 +96,7 @@ class Extractor(cm.CommonModule):
                 try:
 
                     if target_table_name == "ae_was_sql_text":
-                        for df in self.imt.get_data_by_meta_query(detail_query):
+                        for df in self.imt.get_data_by_query(detail_query):
                             self.st.upsert_data(df, target_table_name)
 
                     else:
@@ -110,7 +113,7 @@ class Extractor(cm.CommonModule):
         InterMax detail data Insert
         """
 
-        for df in self.imt.get_data_by_meta_query(detail_query):
+        for df in self.imt.get_data_by_query(detail_query):
 
             if ae_table_name == "ae_bind_sql_elapse":
                 self.st.insert_bind_value_date(df, ae_table_name)
@@ -130,10 +133,10 @@ class Extractor(cm.CommonModule):
         date_conditions = MaxGaugeUtils.set_maxgauge_date(self.config['args']['s_date'],
                                                           self.config['args']['interval'])
 
-        ae_db_info_query = AeDbInfoSql.SELECT_AE_DB_INFO
-
-        ae_db_info_name = TableConstants.AE_DB_INFO
-        db_info_df = self.st.get_data_by_query(ae_db_info_query, ae_db_info_name)
+        db_info_df = self.st.get_data_by_query_and_once(
+            AeDbInfoSql.SELECT_AE_DB_INFO,
+            TableConstants.AE_DB_INFO
+        )
 
         delete_query = CommonSql.DELETE_TABLE_BY_PARTITION_KEY_QUERY
 
@@ -157,11 +160,9 @@ class Extractor(cm.CommonModule):
 
                     try:
                         self.st.delete_data(delete_query, delete_suffix_dict)
-                        for df in self.mgt.get_data_by_meta_query(detail_query):
+                        for df in self.mgt.get_data_by_query(detail_query):
                             self.st.insert_detail_data(df, table_name)
 
                     except Exception as e:
                         self.logger.exception(f"{table_name} table, {date} date detail data insert error")
                         self.logger.exception(e)
-
-

@@ -131,7 +131,7 @@ if __name__ == "__main__":
 
             query = st.get_table_data_query(table)
 
-            for df in st.get_table_data_by_chunksize(query, chunksize=chunksize, coerce=False):
+            for df in st.get_data_by_query(query, chunksize=chunksize, coerce=False):
                 if len(df) == 0:
                     break
 
@@ -163,6 +163,6 @@ if __name__ == "__main__":
 
                 df = batch.to_pandas()
                 insert_data += len(df)
-                st.insert_target_table_by_dump(table, df)
+                st.insert_table_by_df(df, table)
 
             logger.info(f"{table} table parquet data insert completed, row count {insert_data}")

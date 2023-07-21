@@ -1,6 +1,7 @@
 from src import common_module as cm
 from src.common.constants import SystemConstants
 from src.common.utils import SystemUtils
+from sql.common_sql import CommonSql
 
 
 class Initialize(cm.CommonModule):
@@ -66,11 +67,16 @@ class Initialize(cm.CommonModule):
         init_meta_path = f"{self.sql_file_root_path}{target}{SystemConstants.META_PATH}"
         init_files = SystemUtils.get_filenames_from_path(init_meta_path)
 
+        delete_query = CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY
+
         for init_file in init_files:
             with open(f"{init_meta_path}{init_file}", mode='r', encoding='utf-8') as file:
                 meta_query = file.read()
 
             target_table_name = SystemUtils.extract_tablename_in_filename(init_file)
+            delete_dict = {'table_name': target_table_name}
+
+            self.st.delete_data(delete_query, delete_dict)
 
             for meta_df in target_instance.get_data_by_query(meta_query):
-                self.st.insert_init_meta(meta_df, target_table_name)
+                self.st.insert_table_by_df(meta_df, target_table_name)

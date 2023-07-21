@@ -56,7 +56,7 @@ class Extractor(cm.CommonModule):
                     self.st.upsert_data(df, target_table_name)
 
                 else:
-                    self.st.insert_init_meta(meta_df, target_table_name)
+                    self.st.insert_table_by_df(meta_df, target_table_name)
 
     def _insert_intermax_detail_data(self):
 
@@ -119,7 +119,7 @@ class Extractor(cm.CommonModule):
                 self.st.insert_bind_value_date(df, ae_table_name)
 
             elif ae_table_name == "ae_was_os_stat_osm":
-                self.st.insert_detail_data(df, ae_table_name)
+                self.st.insert_table_by_df(df, ae_table_name)
 
             else:
                 self.st.insert_dev_except_data(df, ae_table_name, ae_dev_map_df)
@@ -161,7 +161,7 @@ class Extractor(cm.CommonModule):
                     try:
                         self.st.delete_data(delete_query, delete_suffix_dict)
                         for df in self.mgt.get_data_by_query(detail_query):
-                            self.st.insert_detail_data(df, table_name)
+                            self.st.insert_table_by_df(df, table_name)
 
                     except Exception as e:
                         self.logger.exception(f"{table_name} table, {date} date detail data insert error")

@@ -212,20 +212,13 @@ class SaTarget(CommonTarget):
     def create_table(self, ddl):
         self._default_execute_query(self.sa_conn, ddl)
 
-    def insert_init_meta(self, meta_df, target_table_name):
-
-        """"
-        InterMax, MaxGauge 메타 데이터를 분석 DB에 truncate후 insert하는 기능
-
-        :param meta_df : 각 타겟의 메타 데이터
-        :param target_table_name : 분석 모듈에 저장할 Table 이름
+    def insert_table_by_df(self, df, table_name):
         """
-
-        replace_dict = {'table_name': target_table_name}
-        delete_table_query = SqlUtils.sql_replace_to_dict(CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY, replace_dict)
-
-        self._default_execute_query(self.sa_conn, delete_table_query)
-        self._insert_table_by_df(self.analysis_engine, target_table_name, meta_df)
+        분석 DB table에 데이터 프레임을 insert 하는 함수
+        :param df: insert 하려는 데이터 프레임
+        :param table_name: 저장하려는 table name
+        """
+        self._insert_table_by_df(self.analysis_engine, table_name, df)
 
     def delete_data(self, delete_query, delete_dict):
         delete_table_query = SqlUtils.sql_replace_to_dict(delete_query, delete_dict)
@@ -257,9 +250,6 @@ class SaTarget(CommonTarget):
 
         self._insert_table_by_df(self.analysis_engine, table_name, df)
 
-    def insert_detail_data(self, df, table_name):
-        self._insert_table_by_df(self.analysis_engine, table_name, df)
-
     def insert_dev_except_data(self, detail_df, table_name, ae_dev_map_df):
 
         """
@@ -268,8 +258,8 @@ class SaTarget(CommonTarget):
         was_id_except_df = detail_df[~detail_df['was_id'].isin(ae_dev_map_df['was_id'])]
         self._insert_table_by_df(self.analysis_engine, table_name, was_id_except_df)
 
-    def get_data_by_query(self, query):
-        return self._get_df_by_chunk_size(self.analysis_engine, query)
+    def get_data_by_query(self, query, chunksize=0, coerce=True):
+        return self._get_df_by_chunk_size(self.analysis_engine, query, chunk_size=chunksize, coerce=coerce)
 
     def get_data_by_query_and_once(self, query, table_name="UNKNOWN TABLE"):
         return self._get_target_data_by_query(self.sa_conn, query, table_name)
@@ -381,25 +371,6 @@ class SaTarget(CommonTarget):
         sel = ",".join(sel_list)
 
         return f"SELECT {sel} FROM {table}"
-
-    def get_table_data_by_chunksize(self, query, chunksize=0, coerce=True):
-        """
-        etc 기능 중 분석 모듈 db table 데이터 dump 시 사용하는 함수
-        :param query: 데이터 조회 쿼리
-        :param chunksize: 한 트랜잭션에 조회하려는 chunksize
-        :param coerce: sql 조회 시 float으로 변환 flag
-        :return:
-        """
-        return self._get_df_by_chunk_size(self.analysis_engine, query, chunksize, bool(coerce))
-
-    def insert_target_table_by_dump(self, table, df):
-        """
-        etc 기능 중 분석 모듈 db 데이터 import 시 사용하는 함수
-        :param table: target table
-        :param df: import 하려는 데이터 데이터프레임
-        :return:
-        """
-        self._insert_table_by_df(self.analysis_engine, table, df)
 
     def get_ae_was_sql_text_by_term(self, s_date, e_date, chunksize):
         """

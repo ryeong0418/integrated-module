@@ -53,7 +53,7 @@ class Summarizer(cm.CommonModule):
                     self.st.delete_data(delete_query, delete_dict)
 
                     for temp_df in self.st.get_data_by_query(temp_query):
-                        self.st.insert_detail_data(temp_df, temp_table_name)
+                        self.st.insert_table_by_df(temp_df, temp_table_name)
 
                 except Exception as e:
                     self.logger.exception(
@@ -88,7 +88,7 @@ class Summarizer(cm.CommonModule):
             try:
                 self.st.delete_data(delete_query, delete_dict)
                 for df in self.st.get_data_by_query(join_query):
-                    self.st.insert_detail_data(df, table_name)
+                    self.st.insert_table_by_df(df, table_name)
 
             except Exception as e:
                 self.logger.exception(f"{summary_file.split('.')[0]} table, summary insert execute error")

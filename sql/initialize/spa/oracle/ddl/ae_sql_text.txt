@@ -1,4 +1,4 @@
-CREATE TABLE public.ae_sql_text (
+CREATE TABLE ae_sql_text (
     was_sql_id varchar(40) NULL,
     db_sql_uid varchar(40) null,
     sql_text_100 varchar(100) null,

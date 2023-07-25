@@ -7,6 +7,8 @@ import re
 
 from pathlib import Path
 from datetime import datetime, timedelta
+from sqlalchemy import URL
+from src.common.constants import DbTypeConstants
 
 
 class SystemUtils:
@@ -189,36 +191,34 @@ class SystemUtils:
 class TargetUtils:
 
     @staticmethod
-    def get_engine_template(repo_info):
+    def set_engine_param(target_config):
+        """
+        분석 모듈 DB connection을 위한 SqlAlchemy engine 생성 설정 세팅 함수
+        :param target_config: 각 타겟 config
+        :return: sqlalchemy url object, conn_args
+        """
+        collector_db_type = target_config['collector_db_type']
 
-        """
-        분석 모듈 DB 저장을 위한 SqlAlchemy engine 생성을 위한 string 생성 함수
-        :param repo_info: 분석 모듈 DB repository 정보
-        :return: engine 생성을 위한 str
-        """
+        if collector_db_type == DbTypeConstants.POSTGRES:
+            driver_name = "postgresql+psycopg2"
+            conn_args = {
+                "keepalives": 1,
+                "keepalives_idle": 30,
+                "keepalives_interval": 10,
+                "keepalives_count": 5,
+            }
+        elif collector_db_type == DbTypeConstants.MSSQL:
+            driver_name = "mssql+pymssql"
+            conn_args = {}
 
-        return "postgresql+psycopg2://{}:{}@{}:{}/{}".format(
-            repo_info['user'],
-            repo_info['password'],
-            repo_info['host'],
-            repo_info['port'],
-            repo_info['sid']
-        )
-
-    @staticmethod
-    def get_db_conn_str(repo_info):
-        """
-        DB connection string를 만들기위한 함수
-        :param repo_info: 대상 repository의 정보 (dict)
-        :return: 접속 정보 str
-        """
-        return "dbname={} host={} port={} user={} password={}".format(
-            repo_info['sid'],
-            repo_info['host'],
-            repo_info['port'],
-            repo_info['user'],
-            repo_info['password']
-        )
+        return URL.create(
+            driver_name,
+            username=target_config['user'],
+            password=target_config['password'],
+            host=target_config['host'],
+            port=target_config['port'],
+            database=target_config['sid']
+        ), conn_args
 
 
 class InterMaxUtils:

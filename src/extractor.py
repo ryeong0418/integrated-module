@@ -40,8 +40,15 @@ class Extractor(cm.CommonModule):
         :param target : WAS, DB
         :param target_instance : WAS instance, DB instance
         """
+        analysis_target_type = ''
 
-        extractor_file_path = self.sql_file_root_path+target+SystemConstants.META_PATH
+        if target == 'db':
+            analysis_target_type = f"{self.config['maxgauge_repo']['analysis_target_type']}/"
+
+        extractor_file_path = f"{self.sql_file_root_path}" \
+                              f"{target}" \
+                              f"{analysis_target_type}" \
+                              f"{SystemConstants.META_PATH}"
         extractor_meta_file_list = SystemUtils.get_filenames_from_path(extractor_file_path)
 
         for meta_file in extractor_meta_file_list:
@@ -140,7 +147,10 @@ class Extractor(cm.CommonModule):
 
         delete_query = CommonSql.DELETE_TABLE_BY_PARTITION_KEY_QUERY
 
-        extractor_file_path = self.sql_file_root_path+SystemConstants.DB_PATH
+        analysis_target_type = f"{self.config['maxgauge_repo']['analysis_target_type']}/"
+        extractor_file_path = f"{self.sql_file_root_path}" \
+                              f"{analysis_target_type}" \
+                              f"{SystemConstants.DB_PATH}"
         extractor_detail_file_list = SystemUtils.get_filenames_from_path(extractor_file_path,'','txt')
 
         for detail_file in extractor_detail_file_list:

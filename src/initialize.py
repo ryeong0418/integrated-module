@@ -28,8 +28,13 @@ class Initialize(cm.CommonModule):
         /sql/initialize/ddl 하위 모든 파일 (.txt)를 로드하여 DDL 구문을 호출 한다.
         :return:
         """
+        analysis_target_type = f"{self.config['analysis_repo']['analysis_target_type']}/"
+
         self.logger.debug("_create_table() start")
-        init_ddl_path = f"{self.sql_file_root_path}{SystemConstants.DDL_PATH}"
+        init_ddl_path = f"{self.sql_file_root_path}" \
+                        f"{SystemConstants.SPA_PATH}" \
+                        f"{analysis_target_type}" \
+                        f"{SystemConstants.DDL_PATH}"
         init_files = SystemUtils.get_filenames_from_path(init_ddl_path)
 
         for init_file in init_files:
@@ -63,7 +68,15 @@ class Initialize(cm.CommonModule):
         :param target_instance: 분석 타겟 instance
         :return:
         """
-        init_meta_path = f"{self.sql_file_root_path}{target}{SystemConstants.META_PATH}"
+        analysis_target_type = ''
+
+        if target == 'db':
+            analysis_target_type = f"{self.config['maxgauge_repo']['analysis_target_type']}/"
+
+        init_meta_path = f"{self.sql_file_root_path}" \
+                         f"{target}" \
+                         f"{analysis_target_type}" \
+                         f"{SystemConstants.META_PATH}"
         init_files = SystemUtils.get_filenames_from_path(init_meta_path)
 
         for init_file in init_files:

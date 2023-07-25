@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>sql package &mdash; ESPA 1.2.0 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="src package" href="src.html" />
+    <link rel="prev" title="smart_analyzer module" href="smart_analyzer.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ESPA
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">project</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="conf.html">conf module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="resources.html">resources package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="setup.html">setup module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="smart_analyzer.html">smart_analyzer module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">sql package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-sql.common_sql">sql.common_sql module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#sql.common_sql.AeDbInfoSql"><code class="docutils literal notranslate"><span class="pre">AeDbInfoSql</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sql.common_sql.AeDbSqlTemplateMapSql"><code class="docutils literal notranslate"><span class="pre">AeDbSqlTemplateMapSql</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sql.common_sql.AeDbSqlTextSql"><code class="docutils literal notranslate"><span class="pre">AeDbSqlTextSql</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sql.common_sql.AeWasDevMapSql"><code class="docutils literal notranslate"><span class="pre">AeWasDevMapSql</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sql.common_sql.AeWasSqlTextSql"><code class="docutils literal notranslate"><span class="pre">AeWasSqlTextSql</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sql.common_sql.CommonSql"><code class="docutils literal notranslate"><span class="pre">CommonSql</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sql.common_sql.XapmTxnSqlDetail"><code class="docutils literal notranslate"><span class="pre">XapmTxnSqlDetail</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#module-sql">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="src.html">src package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tests.html">tests package</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ESPA</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">project</a></li>
+      <li class="breadcrumb-item active">sql package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/sql.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="sql-package">
+<h1>sql package<a class="headerlink" href="#sql-package" title="Permalink to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this heading"></a></h2>
+</section>
+<section id="module-sql.common_sql">
+<span id="sql-common-sql-module"></span><h2>sql.common_sql module<a class="headerlink" href="#module-sql.common_sql" title="Permalink to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="sql.common_sql.AeDbInfoSql">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">sql.common_sql.</span></span><span class="sig-name descname"><span class="pre">AeDbInfoSql</span></span><a class="headerlink" href="#sql.common_sql.AeDbInfoSql" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sql.common_sql.AeDbInfoSql.SELECT_AE_DB_INFO">
+<span class="sig-name descname"><span class="pre">SELECT_AE_DB_INFO</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">SELECT</span> <span class="pre">db_id,</span> <span class="pre">instance_name</span> <span class="pre">FROM</span> <span class="pre">ae_db_info\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">ORDER</span> <span class="pre">BY</span> <span class="pre">db_id</span> <span class="pre">asc\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">'</span></em><a class="headerlink" href="#sql.common_sql.AeDbInfoSql.SELECT_AE_DB_INFO" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sql.common_sql.AeDbSqlTemplateMapSql">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">sql.common_sql.</span></span><span class="sig-name descname"><span class="pre">AeDbSqlTemplateMapSql</span></span><a class="headerlink" href="#sql.common_sql.AeDbSqlTemplateMapSql" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sql.common_sql.AeDbSqlTemplateMapSql.SELECT_CLUSTER_CNT_BY_GROUPING">
+<span class="sig-name descname"><span class="pre">SELECT_CLUSTER_CNT_BY_GROUPING</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&quot;select</span> <span class="pre">cluster_id,</span> <span class="pre">count(*)</span> <span class="pre">as</span> <span class="pre">cluster_cnt</span> <span class="pre">from</span> <span class="pre">ae_db_sql_template_map</span> <span class="pre">where</span> <span class="pre">1=1</span> <span class="pre">and</span> <span class="pre">cluster_id</span> <span class="pre">!=</span> <span class="pre">'0'</span> <span class="pre">and</span> <span class="pre">cluster_id</span> <span class="pre">is</span> <span class="pre">not</span> <span class="pre">null</span> <span class="pre">group</span> <span class="pre">by</span> <span class="pre">cluster_id</span> <span class="pre">order</span> <span class="pre">by</span> <span class="pre">count(*)</span> <span class="pre">desc</span> <span class="pre">&quot;</span></em><a class="headerlink" href="#sql.common_sql.AeDbSqlTemplateMapSql.SELECT_CLUSTER_CNT_BY_GROUPING" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sql.common_sql.AeDbSqlTemplateMapSql.UPSERT_CLUSTER_ID_BY_SQL_UID">
+<span class="sig-name descname"><span class="pre">UPSERT_CLUSTER_ID_BY_SQL_UID</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&quot;INSERT</span> <span class="pre">INTO</span> <span class="pre">ae_db_sql_template_map</span> <span class="pre">(sql_uid,</span> <span class="pre">cluster_id)</span> <span class="pre">VALUES</span> <span class="pre">('#(sql_uid)',</span> <span class="pre">'#(cluster_id)')</span> <span class="pre">ON</span> <span class="pre">CONFLICT</span> <span class="pre">(sql_uid)</span> <span class="pre">DO</span> <span class="pre">UPDATE</span> <span class="pre">SET</span> <span class="pre">cluster_id</span> <span class="pre">=</span> <span class="pre">EXCLUDED.cluster_id&quot;</span></em><a class="headerlink" href="#sql.common_sql.AeDbSqlTemplateMapSql.UPSERT_CLUSTER_ID_BY_SQL_UID" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sql.common_sql.AeDbSqlTextSql">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">sql.common_sql.</span></span><span class="sig-name descname"><span class="pre">AeDbSqlTextSql</span></span><a class="headerlink" href="#sql.common_sql.AeDbSqlTextSql" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sql.common_sql.AeDbSqlTextSql.SELECT_AE_DB_SQL_TEXT_1SEQ">
+<span class="sig-name descname"><span class="pre">SELECT_AE_DB_SQL_TEXT_1SEQ</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">select</span> <span class="pre">sql_uid,</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">partition_key</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">\t\t</span>&#160;&#160; <span class="pre">\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">from</span> <span class="pre">ae_db_sql_text\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">where</span> <span class="pre">1=1</span> <span class="pre">\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">and</span> <span class="pre">partition_key</span> <span class="pre">=</span> <span class="pre">#(partition_key)\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">and</span> <span class="pre">seq</span> <span class="pre">=</span> <span class="pre">1\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">'</span></em><a class="headerlink" href="#sql.common_sql.AeDbSqlTextSql.SELECT_AE_DB_SQL_TEXT_1SEQ" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sql.common_sql.AeDbSqlTextSql.SELECT_AE_DB_SQL_TEXT_WITH_DATA">
+<span class="sig-name descname"><span class="pre">SELECT_AE_DB_SQL_TEXT_WITH_DATA</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">with</span> <span class="pre">data(sql_uid,</span> <span class="pre">partition_key)</span> <span class="pre">as</span> <span class="pre">(\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">values</span> <span class="pre">%s\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">)\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">select</span> <span class="pre">ae.sql_text\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">,</span> <span class="pre">ae.partition_key\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">,</span> <span class="pre">ae.sql_uid\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">,</span> <span class="pre">ae.seq</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">from</span> <span class="pre">ae_db_sql_text</span> <span class="pre">ae\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">JOIN</span> <span class="pre">data</span> <span class="pre">d\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">ON</span> <span class="pre">ae.sql_uid</span> <span class="pre">=</span> <span class="pre">d.sql_uid\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">AND</span> <span class="pre">ae.partition_key</span> <span class="pre">=</span> <span class="pre">d.partition_key\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">order</span> <span class="pre">by</span> <span class="pre">ae.partition_key</span> <span class="pre">asc,</span> <span class="pre">ae.sql_uid</span> <span class="pre">asc,</span> <span class="pre">ae.seq</span> <span class="pre">asc\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">'</span></em><a class="headerlink" href="#sql.common_sql.AeDbSqlTextSql.SELECT_AE_DB_SQL_TEXT_WITH_DATA" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sql.common_sql.AeWasDevMapSql">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">sql.common_sql.</span></span><span class="sig-name descname"><span class="pre">AeWasDevMapSql</span></span><a class="headerlink" href="#sql.common_sql.AeWasDevMapSql" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sql.common_sql.AeWasDevMapSql.SELECT_AE_WAS_DEV_MAP">
+<span class="sig-name descname"><span class="pre">SELECT_AE_WAS_DEV_MAP</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'select</span> <span class="pre">was_id</span> <span class="pre">from</span> <span class="pre">ae_was_dev_map'</span></em><a class="headerlink" href="#sql.common_sql.AeWasDevMapSql.SELECT_AE_WAS_DEV_MAP" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sql.common_sql.AeWasSqlTextSql">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">sql.common_sql.</span></span><span class="sig-name descname"><span class="pre">AeWasSqlTextSql</span></span><a class="headerlink" href="#sql.common_sql.AeWasSqlTextSql" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sql.common_sql.AeWasSqlTextSql.SELECT_AE_WAS_SQL_TEXT">
+<span class="sig-name descname"><span class="pre">SELECT_AE_WAS_SQL_TEXT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'select</span> <span class="pre">sql_id,</span> <span class="pre">sql_text</span> <span class="pre">from</span> <span class="pre">ae_was_sql_text'</span></em><a class="headerlink" href="#sql.common_sql.AeWasSqlTextSql.SELECT_AE_WAS_SQL_TEXT" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sql.common_sql.AeWasSqlTextSql.SELECT_BY_NO_CLUSTER_ID">
+<span class="sig-name descname"><span class="pre">SELECT_BY_NO_CLUSTER_ID</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'select</span> <span class="pre">sql_id,</span> <span class="pre">sql_text</span> <span class="pre">from</span> <span class="pre">ae_was_sql_text</span> <span class="pre">where</span> <span class="pre">cluster_id</span> <span class="pre">is</span> <span class="pre">null'</span></em><a class="headerlink" href="#sql.common_sql.AeWasSqlTextSql.SELECT_BY_NO_CLUSTER_ID" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sql.common_sql.AeWasSqlTextSql.SELECT_CLUSTER_CNT_BY_GROUPING">
+<span class="sig-name descname"><span class="pre">SELECT_CLUSTER_CNT_BY_GROUPING</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&quot;select</span> <span class="pre">cluster_id,</span> <span class="pre">count(*)</span> <span class="pre">as</span> <span class="pre">cluster_cnt</span> <span class="pre">from</span> <span class="pre">ae_was_sql_text</span> <span class="pre">where</span> <span class="pre">1=1</span> <span class="pre">and</span> <span class="pre">cluster_id</span> <span class="pre">!=</span> <span class="pre">'0'</span> <span class="pre">and</span> <span class="pre">cluster_id</span> <span class="pre">is</span> <span class="pre">not</span> <span class="pre">null</span> <span class="pre">group</span> <span class="pre">by</span> <span class="pre">cluster_id</span> <span class="pre">order</span> <span class="pre">by</span> <span class="pre">count(*)</span> <span class="pre">desc</span> <span class="pre">&quot;</span></em><a class="headerlink" href="#sql.common_sql.AeWasSqlTextSql.SELECT_CLUSTER_CNT_BY_GROUPING" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sql.common_sql.AeWasSqlTextSql.SELECT_CLUSTER_ID_BY_SQL_ID">
+<span class="sig-name descname"><span class="pre">SELECT_CLUSTER_ID_BY_SQL_ID</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&quot;select</span> <span class="pre">cluster_id</span> <span class="pre">from</span> <span class="pre">ae_was_sql_text</span> <span class="pre">where</span> <span class="pre">sql_id</span> <span class="pre">=</span> <span class="pre">'#(sql_id)'&quot;</span></em><a class="headerlink" href="#sql.common_sql.AeWasSqlTextSql.SELECT_CLUSTER_ID_BY_SQL_ID" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sql.common_sql.AeWasSqlTextSql.SELECT_SQL_ID_AND_SQL_TEXT">
+<span class="sig-name descname"><span class="pre">SELECT_SQL_ID_AND_SQL_TEXT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&quot;\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">select</span> <span class="pre">AWST.sql_id,</span> <span class="pre">AWST.sql_text,</span> <span class="pre">AWST.sql_text_100\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">from</span> <span class="pre">ae_was_sql_text</span> <span class="pre">AWST\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">where</span> <span class="pre">exists</span> <span class="pre">(select</span> <span class="pre">'X'\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">from</span> <span class="pre">ae_txn_sql_detail</span> <span class="pre">ATSD\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">where</span> <span class="pre">AWST.sql_id</span> <span class="pre">=</span> <span class="pre">ATSD.sql_id\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">and</span> <span class="pre">ATSD.TIME</span> <span class="pre">&gt;=</span> <span class="pre">'#(StartDate)'::timestamp\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">and</span> <span class="pre">ATSD.TIME</span> <span class="pre">&lt;</span> <span class="pre">'#(EndDate)'::timestamp\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">and</span> <span class="pre">ATSD.elapsed_time</span> <span class="pre">&gt;=</span> <span class="pre">#(seconds)\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">)\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">&quot;</span></em><a class="headerlink" href="#sql.common_sql.AeWasSqlTextSql.SELECT_SQL_ID_AND_SQL_TEXT" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sql.common_sql.AeWasSqlTextSql.UPDATE_BY_NO_ANALYZED_TARGET">
+<span class="sig-name descname"><span class="pre">UPDATE_BY_NO_ANALYZED_TARGET</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&quot;update</span> <span class="pre">ae_was_sql_text</span> <span class="pre">set</span> <span class="pre">cluster_id</span> <span class="pre">=</span> <span class="pre">'0'</span> <span class="pre">where</span> <span class="pre">cluster_id</span> <span class="pre">is</span> <span class="pre">null&quot;</span></em><a class="headerlink" href="#sql.common_sql.AeWasSqlTextSql.UPDATE_BY_NO_ANALYZED_TARGET" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sql.common_sql.AeWasSqlTextSql.UPDATE_CLUSTER_ID_BY_SQL_ID">
+<span class="sig-name descname"><span class="pre">UPDATE_CLUSTER_ID_BY_SQL_ID</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&quot;UPDATE</span> <span class="pre">ae_was_sql_text</span> <span class="pre">set</span> <span class="pre">cluster_id</span> <span class="pre">=</span> <span class="pre">'#(cluster_id)'</span> <span class="pre">where</span> <span class="pre">sql_id</span> <span class="pre">=</span> <span class="pre">'#(sql_id)'&quot;</span></em><a class="headerlink" href="#sql.common_sql.AeWasSqlTextSql.UPDATE_CLUSTER_ID_BY_SQL_ID" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sql.common_sql.CommonSql">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">sql.common_sql.</span></span><span class="sig-name descname"><span class="pre">CommonSql</span></span><a class="headerlink" href="#sql.common_sql.CommonSql" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sql.common_sql.CommonSql.DELETE_SUMMARY_TABLE_BY_DATE_QUERY">
+<span class="sig-name descname"><span class="pre">DELETE_SUMMARY_TABLE_BY_DATE_QUERY</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&quot;delete</span> <span class="pre">from</span> <span class="pre">#(table_name)</span> <span class="pre">where</span> <span class="pre">to_char(ten_min_time,'yyyymmdd')='#(date)'&quot;</span></em><a class="headerlink" href="#sql.common_sql.CommonSql.DELETE_SUMMARY_TABLE_BY_DATE_QUERY" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sql.common_sql.CommonSql.DELETE_TABLE_BY_DATE_QUERY">
+<span class="sig-name descname"><span class="pre">DELETE_TABLE_BY_DATE_QUERY</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&quot;delete</span> <span class="pre">from</span> <span class="pre">#(table_name)</span> <span class="pre">where</span> <span class="pre">to_char(time,'yyyymmdd')='#(date)'&quot;</span></em><a class="headerlink" href="#sql.common_sql.CommonSql.DELETE_TABLE_BY_DATE_QUERY" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sql.common_sql.CommonSql.DELETE_TABLE_BY_PARTITION_KEY_QUERY">
+<span class="sig-name descname"><span class="pre">DELETE_TABLE_BY_PARTITION_KEY_QUERY</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'delete</span> <span class="pre">from</span> <span class="pre">#(table_name)</span> <span class="pre">where</span> <span class="pre">partition_key</span> <span class="pre">=</span> <span class="pre">#(partition_key)'</span></em><a class="headerlink" href="#sql.common_sql.CommonSql.DELETE_TABLE_BY_PARTITION_KEY_QUERY" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sql.common_sql.CommonSql.DELETE_TABLE_DEFAULT_QUERY">
+<span class="sig-name descname"><span class="pre">DELETE_TABLE_DEFAULT_QUERY</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'delete</span> <span class="pre">from</span> <span class="pre">#(table_name)'</span></em><a class="headerlink" href="#sql.common_sql.CommonSql.DELETE_TABLE_DEFAULT_QUERY" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sql.common_sql.CommonSql.SELECT_TABLE_COLUMN_TYPE">
+<span class="sig-name descname"><span class="pre">SELECT_TABLE_COLUMN_TYPE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&quot;\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">SELECT</span> <span class="pre">column_name,</span> <span class="pre">data_type</span> <span class="pre">\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">FROM</span> <span class="pre">information_schema.columns\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">WHERE</span> <span class="pre">table_schema</span> <span class="pre">=</span> <span class="pre">'public'\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">AND</span> <span class="pre">table_name</span> <span class="pre">=</span> <span class="pre">'#(table)'</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">&quot;</span></em><a class="headerlink" href="#sql.common_sql.CommonSql.SELECT_TABLE_COLUMN_TYPE" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sql.common_sql.CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY">
+<span class="sig-name descname"><span class="pre">TRUNCATE_TABLE_DEFAULT_QUERY</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'truncate</span> <span class="pre">table</span> <span class="pre">#(table_name)'</span></em><a class="headerlink" href="#sql.common_sql.CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="sql.common_sql.XapmTxnSqlDetail">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">sql.common_sql.</span></span><span class="sig-name descname"><span class="pre">XapmTxnSqlDetail</span></span><a class="headerlink" href="#sql.common_sql.XapmTxnSqlDetail" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sql.common_sql.XapmTxnSqlDetail.SELECT_XAPM_TXN_SQL_DETAIL">
+<span class="sig-name descname"><span class="pre">SELECT_XAPM_TXN_SQL_DETAIL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&quot;\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">select</span> <span class="pre">xts.txn_id,</span> <span class="pre">xts.sql_id,</span> <span class="pre">xst.sql_text</span> <span class="pre">\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">from</span> <span class="pre">(\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">select</span> <span class="pre">xtsd.txn_id,</span> <span class="pre">xtsd.sql_id</span> <span class="pre">\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">from</span> <span class="pre">xapm_txn_sql_detail</span> <span class="pre">xtsd</span> <span class="pre">\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">where</span> <span class="pre">xtsd.time</span> <span class="pre">&gt;=</span> <span class="pre">'#(start_param)'\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">and</span> <span class="pre">xtsd.time</span> <span class="pre">&lt;</span> <span class="pre">'#(end_param)'\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">group</span> <span class="pre">by</span> <span class="pre">xtsd.txn_id,</span> <span class="pre">xtsd.sql_id</span> <span class="pre">\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">)</span> <span class="pre">as</span> <span class="pre">xts\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">join</span> <span class="pre">xapm_sql_text</span> <span class="pre">xst</span> <span class="pre">\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">on</span> <span class="pre">xts.sql_id</span> <span class="pre">=</span> <span class="pre">xst.sql_id</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">\n</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">&quot;</span></em><a class="headerlink" href="#sql.common_sql.XapmTxnSqlDetail.SELECT_XAPM_TXN_SQL_DETAIL" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-sql">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-sql" title="Permalink to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="smart_analyzer.html" class="btn btn-neutral float-left" title="smart_analyzer module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="src.html" class="btn btn-neutral float-right" title="src package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, AE_GROUP.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

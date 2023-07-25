@@ -9,6 +9,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from sqlalchemy import URL
 from src.common.constants import DbTypeConstants
+from src.common.module_exception import ModuleException
 
 
 class SystemUtils:
@@ -210,15 +211,19 @@ class TargetUtils:
         elif collector_db_type == DbTypeConstants.MSSQL:
             driver_name = "mssql+pymssql"
             conn_args = {}
+        else:
+            raise ModuleException("E008")
 
-        return URL.create(
+        url_object = URL.create(
             driver_name,
             username=target_config['user'],
             password=target_config['password'],
             host=target_config['host'],
             port=target_config['port'],
             database=target_config['sid']
-        ), conn_args
+        )
+
+        return url_object, conn_args
 
 
 class InterMaxUtils:

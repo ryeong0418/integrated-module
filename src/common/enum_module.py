@@ -29,3 +29,4 @@ class MessageEnum(Enum):
     E005 = 'Sql text drain matching invalid target value (choose select or etc)'
     E006 = '실행 parameter를 확인해 주세요. (x_xxxxxxx.bat (start_date) (interval))'
     E007 = 'SqlTextMerge 기능은 was, db 모두 데이터가 필요 합니다. resources/config/config.json에 정확히 정보를 입력해주세요.'
+    E008 = '지원하지 않는 DB type 입니다. invalid collector_db_type (check config.json collector_db_type key)'

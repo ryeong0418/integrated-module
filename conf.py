@@ -6,37 +6,23 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-from os import path
-import sys
-import os
-
-home_path = path.dirname(path.dirname(path.abspath(__file__)))
-sys.path.insert(0, os.path.abspath(home_path))
-sys.path.append(os.path.abspath(home_path+'/src/meta'))
-
-from src.meta import pypackage_meta
-
-project = pypackage_meta.__project_name__
-copyright = pypackage_meta.__copyright__
-author = pypackage_meta.__author__
-release = pypackage_meta.__version__
+project = 'ESPA'
+copyright = '2023, ESPA'
+author = 'ESPA'
+release = '1.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['sphinx.ext.autodoc']
-source_suffix = {
-    '.rst': 'restructuredtext',
-    '.txt': 'restructuredtext'
-}
+extensions = []
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
-
+language = 'EN'
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'alabaster'
 html_static_path = ['_static']

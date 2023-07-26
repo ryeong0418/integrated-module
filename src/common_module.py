@@ -26,7 +26,6 @@ class CommonModule:
     def common_target(self):
         return CommonTarget(self.logger, self.config)
 
-
     def _init_sa_target(self):
         self.st = SaTarget(self.logger, self.config)
         self.st.init_process()

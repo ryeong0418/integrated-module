@@ -23,6 +23,11 @@ from sql.common_sql import XapmTxnSqlDetail
 
 class CommonTarget:
 
+    """
+    InterMaxTarge, MaxGaugeTarge, SaTarget에 해당하는
+    로직 수행하는데 공통으로 사용되는 메소드
+    """
+
     def __init__(self, logger, config):
         self.logger = logger
         self.config = config
@@ -164,7 +169,9 @@ class CommonTarget:
 
     def _psql_insert_copy(self, table, engine, df):
 
-        """sqlalchemy를 이용하여 데이터 upsert하는 함수"""
+        """
+        SQLalchemy를 이용하여 데이터 upsert하는 함수
+        """
 
         if not df.empty:
             self.logger.info(f"{table}  upsert data")
@@ -197,6 +204,10 @@ class CommonTarget:
 
 class InterMaxTarget(CommonTarget):
 
+    """
+    InterMax DB에 해당하는 기능 수행하는 클래스
+    """
+
     def init_process(self):
         self.im_engine = self._create_engine(self.im_engine_template)
         self.im_conn = self.im_engine.raw_connection()
@@ -219,6 +230,10 @@ class InterMaxTarget(CommonTarget):
 
 class MaxGaugeTarget(CommonTarget):
 
+    """
+    MaxGauge DB에 해당하는 기능 수행하는 클래스
+    """
+
     def init_process(self):
         self.mg_engine = self._create_engine(self.mg_engine_template)
         self.mg_conn = self.mg_engine.raw_connection()
@@ -234,6 +249,10 @@ class MaxGaugeTarget(CommonTarget):
 
 
 class SaTarget(CommonTarget):
+
+    """
+    분석 DB (AE DB)에 해당하는 기능 수행하는 클래스
+    """
 
     def init_process(self):
         self.analysis_engine = self._create_engine(self.analysis_engine_template)

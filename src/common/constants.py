@@ -60,6 +60,7 @@ class SystemConstants:
     TEMP_PATH = 'temp/'
     SUMMARY_PATH = 'summary/'
     ZULU_PATH = '/zulu8.70.0.23-ca-jdk8.0.372-win_x64'
+    SPA_PATH = 'spa/'
 
 
 class TableConstants:
@@ -124,3 +125,8 @@ class DateFmtConstants:
 
     DATE_YMD = "%Y%m%d"
     DATE_YMDHMS = "%Y%m%d%H%M%S"
+
+
+class DbTypeConstants:
+    POSTGRES = "postgres"
+    MSSQL = "mssql"

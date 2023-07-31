@@ -29,13 +29,9 @@ class CommonTarget:
         self.logger = logger
         self.config = config
 
-        self.analysis_conn_str = TargetUtils.get_db_conn_str(config['analysis_repo'])
-        self.im_conn_str = TargetUtils.get_db_conn_str(config['intermax_repo'])
-        self.mg_conn_str = TargetUtils.get_db_conn_str(config['maxgauge_repo'])
-
-        self.analysis_engine_template = TargetUtils.get_engine_template(config['analysis_repo'])
-        self.im_engine_template = TargetUtils.get_engine_template(config['intermax_repo'])
-        self.mg_engine_template = TargetUtils.get_engine_template(config['maxgauge_repo'])
+        self.analysis_url_object, self.analysis_conn_args = TargetUtils.set_engine_param(config['analysis_repo'])
+        self.im_url_object, self.im_conn_args = TargetUtils.set_engine_param(config['intermax_repo'])
+        self.mg_url_object, self.mg_conn_args = TargetUtils.set_engine_param(config['maxgauge_repo'])
 
         self.analysis_engine = None
         self.im_engine = None
@@ -68,22 +64,17 @@ class CommonTarget:
         if self.mg_engine:
             self.mg_engine.dispose()
 
-    def _create_engine(self, engine_template):
+    def _create_engine(self, url_object, conn_args):
+        self.logger.info(f"Create engine info : {url_object}")
 
-        self.logger.info(f"Create engine info : {engine_template}")
         return create_engine(
-            engine_template,
+            url_object,
             echo=self.sql_debug_flag,
             pool_size=20,
             max_overflow=20,
             echo_pool=False,
             pool_pre_ping=True,
-            connect_args={
-                "keepalives": 1,
-                "keepalives_idle": 30,
-                "keepalives_interval": 10,
-                "keepalives_count": 5,
-            },
+            connect_args=conn_args,
         )
 
     def _get_target_data_by_query(self, target_conn, query, table_name="UNKNOWN TABLE"):
@@ -190,7 +181,7 @@ class InterMaxTarget(CommonTarget):
     """
 
     def init_process(self):
-        self.im_engine = self._create_engine(self.im_engine_template)
+        self.im_engine = self._create_engine(self.im_url_object, self.im_conn_args)
         self.im_conn = self.im_engine.raw_connection()
 
     def get_data_by_query(self, query):
@@ -210,7 +201,7 @@ class MaxGaugeTarget(CommonTarget):
     """
 
     def init_process(self):
-        self.mg_engine = self._create_engine(self.mg_engine_template)
+        self.mg_engine = self._create_engine(self.mg_url_object, self.mg_conn_args)
         self.mg_conn = self.mg_engine.raw_connection()
 
     def get_data_by_query(self, query):
@@ -224,7 +215,7 @@ class SaTarget(CommonTarget):
     """
 
     def init_process(self):
-        self.analysis_engine = self._create_engine(self.analysis_engine_template)
+        self.analysis_engine = self._create_engine(self.analysis_url_object, self.analysis_conn_args)
         self.sa_conn = self.analysis_engine.raw_connection()
         self.sa_cursor = self.sa_conn.cursor()
 

@@ -12,20 +12,17 @@ class DataBase:
         self.engine = None
         self.sql_debug_flag = config['sql_debug_flag'] if config['sql_debug_flag'] is not None else True
 
+        self.analysis_url_object, self.analysis_conn_args = TargetUtils.set_engine_param(config['analysis_repo'])
+
     def create_engine(self):
         self.engine = create_engine(
-            TargetUtils.get_engine_template(self.config['analysis_repo']),
+            self.analysis_url_object,
             echo=self.sql_debug_flag,
             pool_size=20,
             max_overflow=20,
             echo_pool=self.sql_debug_flag,
             pool_pre_ping=True,
-            connect_args={
-                "keepalives": 1,
-                "keepalives_idle": 30,
-                "keepalives_interval": 10,
-                "keepalives_count": 5,
-            },
+            connect_args=self.analysis_conn_args,
         )
 
     def engine_dispose(self):

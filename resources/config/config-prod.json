@@ -1,6 +1,7 @@
 {
 	"intermax_repo": {
-		"db_type": "",
+		"analysis_target_type": "",
+		"collector_db_type": "postgres",
 		"host": "",
 		"port": 0,
 		"sid": "",
@@ -9,7 +10,8 @@
 		"use": true
 	},
 	"maxgauge_repo": {
-		"db_type": "",
+		"analysis_target_type": "oracle",
+		"collector_db_type": "postgres",
 		"host": "",
 		"port": 0,
 		"sid": "",
@@ -18,7 +20,8 @@
 		"use": true
 	},
 	"analysis_repo": {
-		"db_type": "postgres",
+		"analysis_target_type": "oracle",
+		"collector_db_type": "postgres",
 		"host": "127.0.0.1",
 		"port": 5432,
 		"sid": "aeproject",

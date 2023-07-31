@@ -43,7 +43,8 @@ setup(
         ],
         "sql": [
             '*/*/*.txt',
-            '*/*/*/*.txt'
+            '*/*/*/*.txt',
+            '*/*/*/*/*.txt'
         ],
         "": [
             '../export/sql_excel/sql/*.txt',

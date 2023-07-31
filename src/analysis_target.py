@@ -131,30 +131,31 @@ class CommonTarget:
             conn.commit()
             cursor.close()
 
-    def _psql_insert_copy(self, table, engine, df):
+    def _psql_upsert_by_df(self, table, engine, df):
 
         """
         SQLalchemy를 이용하여 데이터 upsert하는 함수
         """
 
         if not df.empty:
-            self.logger.info(f"{table}  upsert data")
+            with TimeLogger(f"[{CommonTarget.__name__}] {sys._getframe(0).f_code.co_name}(), {table} to import ",
+                            self.logger):
 
-            metadata = MetaData()
-            t = Table(table, metadata, autoload_with=engine)
+                metadata = MetaData()
+                t = Table(table, metadata, autoload_with=engine)
 
-            insert_values = df.replace({np.nan: None}).to_dict(orient='records')
-            insert_stmt = insert(t).values(insert_values)
-            update_stmt = {exc_k.key: exc_k for exc_k in insert_stmt.excluded}
+                insert_values = df.replace({np.nan: None}).to_dict(orient='records')
+                insert_stmt = insert(t).values(insert_values)
+                update_stmt = {exc_k.key: exc_k for exc_k in insert_stmt.excluded}
 
-            upsert_values = insert_stmt.on_conflict_do_update(
-                index_elements=t.primary_key,
-                set_=update_stmt
-            ).returning(t)
+                upsert_values = insert_stmt.on_conflict_do_update(
+                    index_elements=t.primary_key,
+                    set_=update_stmt
+                ).returning(t)
 
-            with engine.connect() as connection:
-                connection.execute(upsert_values)
-                connection.commit()
+                with engine.connect() as connection:
+                    connection.execute(upsert_values)
+                    connection.commit()
 
     def _get_df_by_chunk_size(self, engine: create_engine, query: str, chunk_size: int = 0, coerce=True):
         """
@@ -236,7 +237,7 @@ class SaTarget(CommonTarget):
         self._default_execute_query(self.sa_conn, delete_table_query)
 
     def upsert_data(self, df, target_table_name):
-        self._psql_insert_copy(target_table_name, self.analysis_engine, df)
+        self._psql_upsert_by_df(target_table_name, self.analysis_engine, df)
 
     def insert_bind_value_date(self, df, table_name):
         """
@@ -511,7 +512,7 @@ class SaTarget(CommonTarget):
         :return:
         """
         table_name = TableConstants.AE_TXN_SQL_SIMILARITY
-        self._psql_insert_copy(table_name, self.analysis_engine, result_valid_df)
+        self._psql_upsert_by_df(table_name, self.analysis_engine, result_valid_df)
 
     def get_ae_was_sql_text_by_sql_id(self, sql_id):
         """

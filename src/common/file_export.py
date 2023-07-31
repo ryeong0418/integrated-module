@@ -14,7 +14,7 @@ class ParquetFile:
     def __init__(self, logger, config):
         self.logger = logger
         self.config = config
-        self.DOT = "."
+        self.dot = "."
         self.index = 1
         self.target_file_name = None
 
@@ -32,7 +32,7 @@ class ParquetFile:
 
         pqwriter.write_table(pa.Table.from_pandas(df))
 
-        self.logger.info(f"{self.target_file_name} file export ({df_volume}) {self.DOT * self.index}")
+        self.logger.info(f"{self.target_file_name} file export ({df_volume}) {self.dot * self.index}")
         self.index += 1
 
     def remove_parquet(self, file_path, file_name):
@@ -48,7 +48,7 @@ class ParquetFile:
             self.logger.debug(f"{file_name} Deleting..")
             os.remove(file_name)
             self.logger.info(f"{file_name} Deleted OK")
-            
+
     def get_pqwriter(self, file_path, file_name, df):
         """
         parquet writer 객체 생성 함수
@@ -65,9 +65,10 @@ class ParquetFile:
 
 if __name__ == "__main__":
     from src.common.constants import SystemConstants, TableConstants
+    from src.analysis_target import SaTarget
+
     from resources.logger_manager import Logger
     from resources.config_manager import Config
-    from src.analysis_target import SaTarget
 
     chunksize = 100000
 
@@ -130,7 +131,7 @@ if __name__ == "__main__":
 
             query = st.get_table_data_query(table)
 
-            for df in st.get_table_data_by_chunksize(query, chunksize=chunksize, coerce=False):
+            for df in st.get_data_by_query(query, chunksize=chunksize, coerce=False):
                 if len(df) == 0:
                     break
 
@@ -151,7 +152,7 @@ if __name__ == "__main__":
 
         file_list = os.listdir(export_parquet_root_path)
 
-        table_list = [str(file).split('.')[0] for file in file_list]
+        table_list = [str(file).split('.', maxsplit=1)[0] for file in file_list]
         logger.info(f"Insert Target Table List : {table_list}")
 
         for table in table_list:
@@ -162,6 +163,6 @@ if __name__ == "__main__":
 
                 df = batch.to_pandas()
                 insert_data += len(df)
-                st.insert_target_table_by_dump(table, df)
+                st.insert_table_by_df(df, table)
 
             logger.info(f"{table} table parquet data insert completed, row count {insert_data}")

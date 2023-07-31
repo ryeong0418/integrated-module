@@ -15,7 +15,7 @@ class Decoding:
     def set_path(self):
 
         parent_path = Path(self.config['home']).parent
-        java_home = str(parent_path)+SystemConstants.ZULU_PATH
+        java_home = str(parent_path) + SystemConstants.ZULU_PATH
         os.environ['JAVA_HOME'] = java_home
         os.environ['Path'] = os.environ['Path'] + os.environ['JAVA_HOME']
 

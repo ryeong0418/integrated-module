@@ -4,7 +4,7 @@ import os
 import pandas as pd
 import time
 import re
-import glob
+
 from pathlib import Path
 from datetime import datetime, timedelta
 
@@ -99,18 +99,6 @@ class SystemUtils:
 
         return sql_query
 
-
-
-    @staticmethod
-    def data_processing(df):
-        df.columns = map(lambda x: str(x).upper(), df.columns)
-        df = df.apply(pd.to_numeric, errors='ignore')
-
-        if 'TIME' in df.columns:
-            df['TIME'] = pd.to_datetime(df['TIME'])
-
-        return df
-
     @staticmethod
     def excel_export(excel_file, sheet_name_txt, df):
         if not os.path.exists(excel_file):
@@ -123,7 +111,7 @@ class SystemUtils:
     @staticmethod
     def get_date_by_interval(interval, fmt="%Y%m%d"):
         """
-        interval에 따른 날짜를 구하기 위한 함수 
+        interval에 따른 날짜를 구하기 위한 함수
         :param interval: 필요한 날짜 interval (ex, 어제 -1, 내일 1)
         :param fmt: return 포맷 (기본 : yyyymmdd)
         :return: interval 날짜
@@ -141,7 +129,6 @@ class SystemUtils:
         :param suffix: 끝이 suffix를 포함하는 파일 (optional)
         :return: 파일 이름 list
         """
-
         if not os.path.exists(path):
             os.makedirs(path)
 
@@ -191,6 +178,12 @@ class SystemUtils:
     @staticmethod
     def extract_tablename_in_filename(filename):
         return filename.split(".")[0].split('-')[1]
+
+    @staticmethod
+    def get_each_date_by_interval(s_date, interval):
+        s_date = datetime.strptime(str(s_date), '%Y%m%d')
+        e_date = s_date + timedelta(days=int(interval))
+        return s_date, e_date
 
 
 class TargetUtils:
@@ -243,7 +236,7 @@ class InterMaxUtils:
         return date_conditions
 
     @staticmethod
-    def  meta_table_value(table_name, df):
+    def meta_table_value(table_name, df):
 
         if table_name == 'ae_was_dev_map':
             df['isdev'] = 1
@@ -276,17 +269,6 @@ class MaxGaugeUtils:
             date_conditions.append(date_condition)
 
         return date_conditions
-
-
-class SummarizerUtils:
-
-    @staticmethod
-    def summarizer_set_date(input_date):
-        start_date = datetime.strptime(input_date, '%Y%m%d')
-        end_date = start_date + timedelta(days=1)
-        start_date = start_date.strftime('%Y-%m-%d 00:00:00')
-        end_date = end_date.strftime('%Y-%m-%d 00:00:00')
-        return start_date, end_date
 
 
 class SqlUtils:

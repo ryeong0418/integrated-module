@@ -25,7 +25,7 @@ class SystemConstants:
     DB_SQL_TEXT_FILE_NAME = 'ae_db_sql_text'
 
     # parquet 파일 확장자
-    PARQUET_FILE_EXT = '.parquet'   
+    PARQUET_FILE_EXT = '.parquet'
 
     # export 폴더명
     EXPORT_PARQUET_PATH = 'export/parquet'
@@ -56,6 +56,7 @@ class SystemConstants:
 
     WAS_PATH = 'was/'
     DB_PATH = 'db/'
+
     TEMP_PATH = 'temp/'
     SUMMARY_PATH = 'summary/'
     ZULU_PATH = '/zulu8.70.0.23-ca-jdk8.0.372-win_x64'
@@ -88,6 +89,9 @@ class TableConstants:
     AE_SQL_TEMPLATE = "ae_sql_template"
     AE_DB_SQL_TEMPLATE_MAP = "ae_db_sql_template_map"
     AE_TXN_SQL_SIMILARITY = "ae_txn_sql_similarity"
+    AE_WAS_DEV_MAP = "ae_was_dev_map"
+    AE_BIND_SQL_ELAPSE = "ae_bind_sql_elapse"
+    AE_HOST_INFO = "ae_host_info"
 
 
 class ResultConstants:

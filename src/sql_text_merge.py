@@ -9,26 +9,30 @@ from src.common.timelogger import TimeLogger
 from src.common.constants import SystemConstants
 from src.common.file_export import ParquetFile
 from src.common.utils import SystemUtils, MaxGaugeUtils, SqlUtils
+from src.common.module_exception import ModuleException
+from src.common.enum_module import MessageEnum
 
 
 class SqlTextMerge(cm.CommonModule):
+    """
+    SqlTextMerge Class
+
+    Was sql text와 DB sql text를 전체 비교 하기 위한 Class.
+    """
 
     def __init__(self, logger):
         super().__init__(logger)
         self.chunk_size = 0
         self.export_parquet_root_path = None
         # Sql Text 전처리 및 매치 모드 분리 (str, token)
-        self.MATCH_MODE = 'token'
+        self.match_mode = 'token'
         self.sql_match_sensitive = 5
 
     def main_process(self):
         if not self.config['intermax_repo']['use'] and not self.config['maxgauge_repo']['use']:
-            self.logger.error(f"intermax_repo or maxgauge_repo use false.. please check config")
-            return
-
-        if self.MATCH_MODE != 'str' and self.MATCH_MODE != 'token':
-            self.logger.error(f"MATCH_MODE invalid value.. please check sql_text_merge.py near Line 28 ")
-            return
+            error_code = 'E007'
+            self.logger.error(MessageEnum[error_code].value)
+            raise ModuleException(error_code)
 
         self._init_sa_target()
 
@@ -40,6 +44,10 @@ class SqlTextMerge(cm.CommonModule):
         self._sql_text_merge()
 
     def _calc_sql_match_sensitive(self):
+        """
+        sql text match시 사용되는 token 갯수를 조정하기 위한 값을 구하는 함수
+        :return: sql_match_sensitive 값
+        """
         sample_df = self.st.get_ae_was_sql_text(extract_cnt=200_000)
 
         sample_df = SqlUtils.remove_unnecess_char(sample_df, 'sql_text', contains_comma=True)
@@ -52,7 +60,7 @@ class SqlTextMerge(cm.CommonModule):
 
     def _sql_text_merge(self):
         """
-        was sql text - db sql text match
+        was sql text - db sql text match 함수
         """
         self._init_im_target()
 
@@ -69,10 +77,14 @@ class SqlTextMerge(cm.CommonModule):
 
         total_match_len = 0
 
-        if self.MATCH_MODE == 'token':
+        if self.match_mode == 'token':
             default_merge_column = default_merge_column + first_token_merge_column + last_token_merge_column
 
-        for ae_was_df in self.st.term_extract_sql_text(chunksize=self.chunk_size):
+        s_date, e_date = SystemUtils.get_each_date_by_interval(
+            self.config['args']['s_date'], self.config['args']['interval']
+        )
+
+        for ae_was_df in self.st.get_ae_was_sql_text_by_term(s_date, e_date, chunksize=self.chunk_size):
             result_df_list = []
 
             ae_was_df = self._preprocessing(ae_was_df)
@@ -85,11 +97,13 @@ class SqlTextMerge(cm.CommonModule):
                 if len(merge_df) == 0:
                     continue
 
-                if self.MATCH_MODE == 'str':
+                if self.match_mode == 'str':
                     merge_df['compare'] = np.where(merge_df['sql_text_x'] == merge_df['sql_text_y'], True, False)
-                elif self.MATCH_MODE == 'token':
-                    merge_df['compare'] = [True if np.array_equal(was_sql, db_sql) else False
-                                           for was_sql, db_sql in zip(merge_df['sql_text_x'], merge_df['sql_text_y'])]
+                elif self.match_mode == 'token':
+                    merge_df['compare'] = [
+                        np.array_equal(was_sql, db_sql)
+                        for was_sql, db_sql in zip(merge_df['sql_text_x'], merge_df['sql_text_y'])
+                    ]
 
                 merge_df = merge_df[merge_df['compare']]
                 result_df_list.append(merge_df[insert_result_columns])
@@ -118,7 +132,9 @@ class SqlTextMerge(cm.CommonModule):
         ae_db_info_df = self.st.get_ae_db_info()
         ae_db_infos = ae_db_info_df['lpad_db_id'].to_list()
 
-        date_conditions = self.st.get_maxgauge_date_conditions()
+        date_conditions = MaxGaugeUtils.set_maxgauge_date(
+            self.config['args']['s_date'], self.config['args']['interval']
+        )
 
         for date in date_conditions:
             for db_id in ae_db_infos:
@@ -129,7 +145,7 @@ class SqlTextMerge(cm.CommonModule):
                                     f"_{partition_key}{SystemConstants.PARQUET_FILE_EXT}"
 
                 pf.remove_parquet(self.export_parquet_root_path, parquet_file_name)
-                pqwriter = None
+                pq_writer = None
 
                 with TimeLogger(f"Make_parquet_file_ae_db_sql_text (date:{date}, db_id:{db_id}),elapsed ", self.logger):
                     for df in self.st.get_ae_db_sql_text_by_1seq(partition_key, chunksize=self.chunk_size):
@@ -141,27 +157,36 @@ class SqlTextMerge(cm.CommonModule):
                         grouping_df = MaxGaugeUtils.reconstruct_by_grouping(results)
                         grouping_df = self._preprocessing(grouping_df)
 
-                        if pqwriter is None:
-                            pqwriter = pf.get_pqwriter(self.export_parquet_root_path, parquet_file_name, grouping_df)
+                        if pq_writer is None:
+                            pq_writer = pf.get_pqwriter(self.export_parquet_root_path, parquet_file_name, grouping_df)
 
-                        pf.make_parquet_by_df(grouping_df, pqwriter)
+                        pf.make_parquet_by_df(grouping_df, pq_writer)
                         total_row_cnt += len(grouping_df)
 
                     self.logger.info(f"Total export data count (date:{date}, db_id:{db_id}): {total_row_cnt} rows")
 
-                if pqwriter:
-                    pqwriter.close()
+                if pq_writer:
+                    pq_writer.close()
 
     def _insert_merged_result(self, result_df):
+        """
+        Was sql text와 DB sql text가 일치한 데이터를 저장하기 위한 함수
+        :param result_df: 일치한 데이터 데이터 프레임
+        """
         result_df.rename(columns={'sql_id': 'was_sql_id'}, inplace=True)
         result_df.rename(columns={'sql_uid': 'db_sql_uid'}, inplace=True)
         result_df['state_code'] = 0
 
-        self.st.insert_merged_result(result_df)
+        self.st.insert_ae_sql_text_by_merged_df(result_df)
 
-    def _preprocessing(self, xapm_sql_df):        
+    def _preprocessing(self, xapm_sql_df):
+        """
+        sql text 데이터 프레임 전처리 함수
+        :param xapm_sql_df: sql text를 포함한 데이터 프레임
+        :return: 전처리 된 sql text 데이터 프레임
+        """
         xapm_sql_df = SqlUtils.remove_unnecess_char(xapm_sql_df, 'sql_text', contains_comma=True)
-        xapm_sql_df = self._split_parse_sql_text(xapm_sql_df, 'sql_text', self.MATCH_MODE, self.sql_match_sensitive)
+        xapm_sql_df = self._split_parse_sql_text(xapm_sql_df, 'sql_text', self.match_mode, self.sql_match_sensitive)
         return xapm_sql_df
 
     @staticmethod
@@ -170,7 +195,7 @@ class SqlTextMerge(cm.CommonModule):
         match_mode별 sql text match를 위한 전처리
         :param xapm_sql_df: 대상 데이터 프레임
         :param target_c: 타겟 컬럼
-        :param match_mode: match_mode (str : sql_text 공백 split str, 
+        :param match_mode: match_mode (str : sql_text 공백 split str,
                                     token : sql_text split 첫번째 토큰/마지막 토큰/전체길이/-sql_match_sensitive 길이 토큰 추출)
         :param sql_match_sensitive: sql_match의 merge에 사용할 컬럼의 갯수
         :return: 전처리된 데이터 프레임

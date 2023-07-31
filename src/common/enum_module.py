@@ -9,7 +9,7 @@ class ModuleFactoryEnum(Enum):
     b = "scheduler"
     m = "sql_text_merge"
     t = "sql_text_template"
-    l = "sql_text_similar"
+    r = "sql_text_similar"
 
 
 class MessageEnum(Enum):
@@ -28,3 +28,4 @@ class MessageEnum(Enum):
     E004 = 'intermax_repo or maxgauge_repo use false.. please check config'
     E005 = 'Sql text drain matching invalid target value (choose select or etc)'
     E006 = '실행 parameter를 확인해 주세요. (x_xxxxxxx.bat (start_date) (interval))'
+    E007 = 'SqlTextMerge 기능은 was, db 모두 데이터가 필요 합니다. resources/config/config.json에 정확히 정보를 입력해주세요.'

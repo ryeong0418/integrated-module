@@ -42,7 +42,7 @@ class Extractor(cm.CommonModule):
         """
         analysis_target_type = ''
 
-        if target == 'db':
+        if 'db' in target:
             analysis_target_type = f"{self.config['maxgauge_repo']['analysis_target_type']}/"
 
         extractor_file_path = f"{self.sql_file_root_path}" \
@@ -149,8 +149,8 @@ class Extractor(cm.CommonModule):
 
         analysis_target_type = f"{self.config['maxgauge_repo']['analysis_target_type']}/"
         extractor_file_path = f"{self.sql_file_root_path}" \
-                              f"{analysis_target_type}" \
-                              f"{SystemConstants.DB_PATH}"
+                              f"{SystemConstants.DB_PATH}" \
+                              f"{analysis_target_type}"
         extractor_detail_file_list = SystemUtils.get_filenames_from_path(extractor_file_path,'','txt')
 
         for detail_file in extractor_detail_file_list:

@@ -93,11 +93,11 @@ class Scheduler(cm.CommonModule):
                 self.sts.pre_load_tuning_sql_text()
 
                 self.bg_scheduler.add_job(
-                    self._sql_text_similarity_job,
+                    self._sql_text_similar_job,
                     CRON,
                     hour=self.config['scheduler']['sql_text_similarity_sched']['hour'],
                     minute=self.config['scheduler']['sql_text_similarity_sched']['minute'],
-                    id='_sql_text_similarity_job'
+                    id='_sql_text_similar_job'
                 )
             else:
                 self.scheduler_logger.info("SqlTextSimilar not activate, cause intermax_repo config use false")

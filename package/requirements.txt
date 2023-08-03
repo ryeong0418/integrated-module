@@ -24,3 +24,4 @@ portalocker==2.7.0
 pywin32==306; sys_platform != "linux"
 pycodestyle==2.10.0
 pymssql==2.2.7
+pre-commit==3.3.3

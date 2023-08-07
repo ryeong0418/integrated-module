@@ -1,1 +1,0 @@
-pycodestyle --show-source .\src

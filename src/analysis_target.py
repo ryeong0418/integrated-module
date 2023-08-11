@@ -74,6 +74,7 @@ class CommonTarget:
         :return: create_engine object
         """
         self.logger.info(f"Create engine info : {url_object}")
+        self.logger.info(f"Create engine conn args : {conn_args}")
 
         return create_engine(
             url_object,

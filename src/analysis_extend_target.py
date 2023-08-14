@@ -1,5 +1,6 @@
 import cx_Oracle
 
+from cx_Oracle import ProgrammingError
 from pathlib import Path
 
 from src.analysis_target import CommonTarget
@@ -20,7 +21,10 @@ class OracleTarget(CommonTarget):
         self.ora_extend_url_object, self.ora_extend_conn_args = None, None
         self.identifier = None
         oracle_client_path = f"{Path(self.config['home']).parent}/{SystemConstants.ORACLE_CLIENT_PATH}"
-        cx_Oracle.init_oracle_client(lib_dir=oracle_client_path)
+        try:
+            cx_Oracle.init_oracle_client(lib_dir=oracle_client_path)
+        except ProgrammingError:
+            self.logger.warn("Oracle init client exist")
 
     def set_extend_target_config(self, extend_target_info):
         """

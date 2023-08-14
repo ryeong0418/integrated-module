@@ -178,6 +178,8 @@ class Scheduler(cm.CommonModule):
         result_msg = MessageEnum[result_code].value
 
         try:
+            self._update_config_custom_values(proc="b")
+
             db = DataBase(self.config)
             db.create_engine()
             elm = ExecuteLogModel(
@@ -197,8 +199,6 @@ class Scheduler(cm.CommonModule):
             self._summarizer_job()
 
             self._sql_text_merge_job()
-
-            self._update_config_custom_values(proc="b")
 
             result = ResultConstants.SUCCESS
             result_code = "I001"

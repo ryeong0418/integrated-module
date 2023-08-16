@@ -47,16 +47,16 @@ class Extractor(cm.CommonModule):
         """
         DB 확장 타겟(실제 분석 대상 DB) 데이터 저장 함수
         """
-        extend_target_info_list = self.config["maxgauge_repo"].get("extend_target_info", [])
+        extend_target_repo_list = self.config["maxgauge_repo"].get("extend_target_repo", [])
 
-        for extend_target_info in extend_target_info_list:
-            extend_target_info["analysis_target_type"] = self.config["maxgauge_repo"]["analysis_target_type"]
+        for extend_target_repo in extend_target_repo_list:
+            extend_target_repo["analysis_target_type"] = self.config["maxgauge_repo"]["analysis_target_type"]
 
             if str(self.config["maxgauge_repo"]["analysis_target_type"]).lower() == DbTypeConstants.ORACLE:
                 if self.ot is None:
                     self.ot = OracleTarget(self.logger, self.config)
 
-                self.ot.set_extend_target_config(extend_target_info)
+                self.ot.set_extend_target_config(extend_target_repo)
                 self.ot.init_process()
 
                 self._insert_oracle_extend_target_data()

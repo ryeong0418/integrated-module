@@ -26,17 +26,17 @@ class OracleTarget(CommonTarget):
         except ProgrammingError:
             self.logger.warn("Oracle init client exist")
 
-    def set_extend_target_config(self, extend_target_info):
+    def set_extend_target_config(self, extend_target_repo):
         """
         extend target config 설정 함수.
-        :param extend_target_info:
+        :param extend_target_repo: 확장 분석 타겟 repo 정보
         :return:
         """
-        self.ora_extend_url_object, self.ora_extend_conn_args = TargetUtils.set_engine_param(extend_target_info, True)
+        self.ora_extend_url_object, self.ora_extend_conn_args = TargetUtils.set_engine_param(extend_target_repo, True)
         self.identifier = (
-            extend_target_info["service_name"]
-            if str(extend_target_info["service_name"]).strip() != ""
-            else str(extend_target_info["sid"])
+            extend_target_repo["service_name"]
+            if str(extend_target_repo["service_name"]).strip() != ""
+            else str(extend_target_repo["sid"])
         )
 
     def init_process(self):

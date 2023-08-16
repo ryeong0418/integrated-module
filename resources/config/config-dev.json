@@ -19,7 +19,7 @@
 		"password": "intermax",
 		"use": true,
 		"extend_mode": true,
-		"extend_target_info": [
+		"extend_target_repo": [
 			{
 				"host": "10.10.48.36",
 				"port": 1918,

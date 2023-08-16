@@ -19,7 +19,7 @@
 		"password": "",
 		"use": true,
 		"extend_mode": false,
-		"extend_target_info": [
+		"extend_target_repo": [
 			{
 				"host": "",
 				"port": 0,

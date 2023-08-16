@@ -17,7 +17,19 @@
 		"sid": "MFO",
 		"user": "postgres",
 		"password": "intermax",
-		"use": true
+		"use": true,
+		"extend_mode": true,
+		"extend_target_info": [
+			{
+				"host": "10.10.48.36",
+				"port": 1918,
+				"user": "sys",
+				"password": "oracle",
+				"role": "sysdba",
+				"service_name": "ORCLCDB",
+				"sid": ""
+			}
+		]
 	},
 	"analysis_repo": {
 		"analysis_target_type": "oracle",
@@ -47,8 +59,8 @@
 	},
 	"sql_debug_flag": false,
 	"data_handling_chunksize": 10000,
-	"sql_match_time": 0,  
-	"extract_bind_value": true,	
+	"sql_match_time": 0,
+	"extract_bind_value": true,
 	"sql_template_select_only": false,
 	"valid_sql_text_similarity": 0.7
 }

@@ -35,6 +35,13 @@ class CommonSql:
         where to_char(ten_min_time,'yyyymmdd')='#(date)'
     """
 
+    DELETE_EXTEND_TABLE_BY_DATE_QUERY = """
+        delete from #(table_name)
+        where to_char(end_time,'yyyy-mm-dd') >= '#(StartDate)'
+        and to_char(end_time, 'yyyy-mm-dd') < '#(EndDate)'
+        and lower(identifier) = lower('#(identifier)')
+    """
+
 
 class AeWasSqlTextSql:
     """

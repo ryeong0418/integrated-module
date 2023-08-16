@@ -36,7 +36,7 @@ class Visualization(cm.CommonModule):
         sql_name_list_sort = [" ".join(i) for i in sql_split_sort]
 
         for sql_name in sql_name_list_sort:
-            sql_query = SystemUtils.get_file_in_path(query_folder, sql_name)
+            sql_query = SystemUtils.get_file_content_in_path(query_folder, sql_name)
             table_name = TableConstants.AE_TXN_SQL_SUMMARY
             df = self.st.get_data_by_query_and_once(sql_query, table_name)
             result_df = self.data_processing(df)

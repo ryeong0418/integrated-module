@@ -1,69 +1,77 @@
-
-
 class SystemConstants:
-    CONFIG_FILE_PATH = 'config'
-    LOGGER_FILE_PATH = 'logger'
+    """
+    SystemConstants class
+    """
+
+    CONFIG_FILE_PATH = "config"
+    LOGGER_FILE_PATH = "logger"
 
     # env 별 config 파일 이름 prefix, suffix
-    CONFIG_FILE_PREFIX = 'config-'
-    CONFIG_FILE_SUFFIX = '.json'
+    CONFIG_FILE_PREFIX = "config-"
+    CONFIG_FILE_SUFFIX = ".json"
 
     # env 별 logger 파일 이름 prefix, suffix
-    LOGGER_FILE_PREFIX = 'logger-'
-    LOGGER_FILE_SUFFIX = '.json'
+    LOGGER_FILE_PREFIX = "logger-"
+    LOGGER_FILE_SUFFIX = ".json"
 
     # logger 파일 이름
-    MASTER_LOG_FILE_NAME = 'master'
-    ETC_LOG_FILE_NAME = 'etc'
-    SCHEDULER_LOG_FILE_NAME = 'scheduler'
-    SQL_TEXT_TEMPLATE_LOG_FILE_NAME = 'sql_text_template'
+    MASTER_LOG_FILE_NAME = "master"
+    ETC_LOG_FILE_NAME = "etc"
+    SCHEDULER_LOG_FILE_NAME = "scheduler"
+    SQL_TEXT_TEMPLATE_LOG_FILE_NAME = "sql_text_template"
 
     # logs 폴더명
-    LOGGER_PATH = 'logs'
+    LOGGER_PATH = "logs"
 
     # db sql text parquet 파일명
-    DB_SQL_TEXT_FILE_NAME = 'ae_db_sql_text'
+    DB_SQL_TEXT_FILE_NAME = "ae_db_sql_text"
 
     # parquet 파일 확장자
-    PARQUET_FILE_EXT = '.parquet'
+    PARQUET_FILE_EXT = ".parquet"
 
     # export 폴더명
-    EXPORT_PARQUET_PATH = 'export/parquet'
-    EXPORT_ETC_PATH = 'export/etc'
-    SQL_PATH = 'export/sql_excel/sql'
-    EXCEL_PATH = 'export/sql_excel/excel'
+    EXPORT_PARQUET_PATH = "export/parquet"
+    EXPORT_ETC_PATH = "export/etc"
+    SQL_PATH = "export/sql_excel/sql"
+    EXCEL_PATH = "export/sql_excel/excel"
 
     # batch_pid_tmp
-    TMP_PATH = 'tmp'
-    PID_TMP_FILE_NAME = 'pid.tmp'
+    TMP_PATH = "tmp"
+    PID_TMP_FILE_NAME = "pid.tmp"
 
     # sql path
-    SQL_ROOT_PATH = 'sql/'
-    DDL_PATH = 'ddl/'
-    META_PATH = 'meta/'
+    SQL_ROOT_PATH = "sql/"
+    DDL_PATH = "ddl/"
+    META_PATH = "meta/"
 
     # sql_text_template 관련 파일 경로
-    DRAIN_CONF_PATH = '/resources/drain/'
+    DRAIN_CONF_PATH = "/resources/drain/"
 
     # decoding jar 파일
-    DECODING_JAR_FILE_PATH = '/resources/intermax_decoding'
+    DECODING_JAR_FILE_PATH = "/resources/intermax_decoding"
 
     # jar 파일 확장자
-    JAR_FILE_EXT = '.jar'
+    JAR_FILE_EXT = ".jar"
 
     # 튜닝된 sql text path
-    TUNING_SQL_TEXT_PATH = 'tuning_sql/'
+    TUNING_SQL_TEXT_PATH = "tuning_sql/"
 
-    WAS_PATH = 'was/'
-    DB_PATH = 'db/'
+    WAS_PATH = "was/"
+    DB_PATH = "db/"
 
-    TEMP_PATH = 'temp/'
-    SUMMARY_PATH = 'summary/'
-    ZULU_PATH = 'zulu8/'
-    SPA_PATH = 'spa/'
+    TEMP_PATH = "temp/"
+    SUMMARY_PATH = "summary/"
+    ZULU_PATH = "zulu8/"
+    SPA_PATH = "spa/"
+    ORACLE_CLIENT_PATH = "oracle_client_12_1/"
+    EXTEND_PATH = "extend/"
 
 
 class TableConstants:
+    """
+    TableConstants class
+    """
+
     AE_WAS_INFO = "ae_was_info"
     AE_WAS_DB_INFO = "ae_was_db_info"
     AE_TXN_NAME = "ae_txn_name"
@@ -96,30 +104,42 @@ class TableConstants:
 
 
 class ResultConstants:
-    SUCCESS = 'S'
-    FAIL = 'F'
-    ERROR = 'E'
-    PROGRESS = 'P'
+    """
+    ResultConstants class
+    """
+
+    SUCCESS = "S"
+    FAIL = "F"
+    ERROR = "E"
+    PROGRESS = "P"
 
 
 class DrainConstants:
+    """
+    DrainConstants class
+    """
+
     # drain ini 파일 이름
-    DRAIN_INI_FILE_NAME = 'drain3.ini'
+    DRAIN_INI_FILE_NAME = "drain3.ini"
 
     # sql_text_template model 파일 이름
-    DRAIN_SELECT_MODEL_FILE_NAME = 'select_sql_text_template.bin'
-    DRAIN_ETC_MODEL_FILE_NAME = 'etc_sql_text_template.bin'
+    DRAIN_SELECT_MODEL_FILE_NAME = "select_sql_text_template.bin"
+    DRAIN_ETC_MODEL_FILE_NAME = "etc_sql_text_template.bin"
 
     # sql_text_template tree 파일 이름 debug용
-    DRAIN_SELECT_TEMPLATE_TREE_FILE_NAME = 'select_sql_text_template.tree'
-    DRAIN_ETC_TEMPLATE_TREE_FILE_NAME = 'etc_sql_text_template.tree'
+    DRAIN_SELECT_TEMPLATE_TREE_FILE_NAME = "select_sql_text_template.tree"
+    DRAIN_ETC_TEMPLATE_TREE_FILE_NAME = "etc_sql_text_template.tree"
 
     # cluster_id custom tag
-    SELECT_TEMPLATE_CLUSTER_ID_PREFIX = 'S_'
-    ETC_TEMPLATE_CLUSTER_ID_PREFIX = 'E_'
+    SELECT_TEMPLATE_CLUSTER_ID_PREFIX = "S_"
+    ETC_TEMPLATE_CLUSTER_ID_PREFIX = "E_"
 
 
 class DateFmtConstants:
+    """
+    DateFmtConstants class
+    """
+
     DATE_FORMAT = "%Y-%m-%d"
     DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -128,5 +148,10 @@ class DateFmtConstants:
 
 
 class DbTypeConstants:
+    """
+    DbTypeConstants class
+    """
+
     POSTGRES = "postgres"
     MSSQL = "mssql"
+    ORACLE = "oracle"

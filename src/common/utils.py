@@ -12,6 +12,8 @@ from datetime import datetime, timedelta
 from sqlalchemy import URL
 from src.common.constants import DbTypeConstants
 from src.common.module_exception import ModuleException
+from openpyxl.styles import Border, Side
+from openpyxl.utils.cell import get_column_letter
 
 
 class SystemUtils:
@@ -22,7 +24,7 @@ class SystemUtils:
     @staticmethod
     def to_camel_case(snake_str):
         """
-        모듈명 이름으로 클래스명을 획득하는 함수
+        모듈명 이름으로 클래스명을 획득하는 함
         :param snake_str: 모듈명 snake 형식
         :return: 클래스명
         """
@@ -127,6 +129,35 @@ class SystemUtils:
                 df.to_excel(writer, sheet_name=sheet_name_txt, index=False)
 
     @staticmethod
+    def insert_excel(excel_file_path,sheet_name, df, col_indx, row_indx):
+
+        with pd.ExcelWriter(excel_file_path, mode="a", engine="openpyxl", if_sheet_exists="overlay") as writer:
+            print(excel_file_path, sheet_name, df, col_indx, row_indx)
+            df.to_excel(writer, sheet_name=sheet_name, index=False, startcol=col_indx - 1, startrow=row_indx - 1)
+            print("insert 완료")
+
+    @staticmethod
+    def excel_export_sheet(excel_file, sheet_name, df, s_col, s_row):
+
+        if not os.path.exists(excel_file):
+            with pd.ExcelWriter(excel_file, mode="w", engine="openpyxl") as writer:
+                df.to_excel(writer, sheet_name=sheet_name, index=False, startcol=s_col, startrow=s_row)
+        else:
+            with pd.ExcelWriter(excel_file, mode="a", engine="openpyxl", if_sheet_exists="overlay") as writer:
+                df.to_excel(writer, sheet_name=sheet_name, index=False, startcol=s_col, startrow=s_row)
+
+    # @staticmethod
+    # def extract_cell_idx(ws, cell_value,instance_num):
+    #
+    #     col = [cell for cell in ws[ws.min_row] if cell.value == cell_value]
+    #     print(col[instance_num])
+    #
+    #         col_indx = col[instance_num].column
+    #         row_indx = col[instance_num].row
+    #
+    #         return col_indx, row_indx
+
+    @staticmethod
     def get_filenames_from_path(path: str, prefix: str = "", suffix: str = ""):
         """
         path에 모든 파일 이름을 가져오는 함수
@@ -181,6 +212,39 @@ class SystemUtils:
         """
         return filename.split(".")[0].split("-")[1]
 
+    @staticmethod
+    def apply_thin_border(ws, wb, excel_file_path, b_style):
+        """
+        :param ws: 엑셀 시트
+        :return : thin_border 적용한 데이터 테이블
+        """
+
+        border_style = Border(left=Side(style=b_style),
+                              right=Side(style=b_style),
+                              top=Side(style=b_style),
+                              bottom=Side(style=b_style))
+
+        for row_rng in ws.rows:
+            for cell in row_rng:
+                if cell.value != None:
+                    cell.border = border_style
+
+        wb.save(excel_file_path)
+
+    @staticmethod
+    def apply_column_width(ws, wb, excel_file_path, width_num):
+        """
+
+        """
+
+        for col in range(ws.min_column, ws.max_column+1):
+            ws.column_dimensions[get_column_letter(col)].width = width_num
+
+        wb.save(excel_file_path)
+
+    @staticmethod
+    def arithmetic_sequence(a, d, n):
+        return a +(n-1)*d
 
 class TargetUtils:
     """
@@ -405,3 +469,20 @@ class DateUtils:
             date_conditions.append(date_condition)
 
         return date_conditions
+
+    @staticmethod
+    def get_each_date_by_interval2(s_date, interval, arg_fmt):
+        """
+        input_date에서 interval 이후 날짜를 구하기 위한 함수
+        :param s_date: 시작 날짜
+        :param interval: 시간 간격
+        :param arg_fmt: 시작 날짜 format
+        :return: 시작날짜 , 끝날짜
+        """
+        s_date = datetime.strptime(str(s_date), "%Y%m%d")
+        e_date = s_date + timedelta(days=int(interval))
+        s_date = s_date.strftime(arg_fmt)
+        e_date = e_date.strftime(arg_fmt)
+
+        return s_date, e_date
+

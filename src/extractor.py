@@ -21,22 +21,22 @@ class Extractor(cm.CommonModule):
         """
         self.logger.debug("extractor")
         self._init_sa_target()
-
-        if self.config["intermax_repo"]["use"]:
-            self.logger.debug("Intermax extractor")
-            self._init_im_target()
-
-            self._insert_meta_data(SystemConstants.WAS_PATH, self.imt)
-            self._insert_intermax_detail_data()
-            self._teardown_im_target()
+        #
+        # if self.config["intermax_repo"]["use"]:
+        #     self.logger.debug("Intermax extractor")
+        #     self._init_im_target()
+        #
+        #     self._insert_meta_data(SystemConstants.WAS_PATH, self.imt)
+        #     self._insert_intermax_detail_data()
+        #     self._teardown_im_target()
 
         if self.config["maxgauge_repo"]["use"]:
-            self.logger.debug("maxgauge extractor")
-            self._init_mg_target()
-
-            self._insert_meta_data(SystemConstants.DB_PATH, self.mgt)
-            self._insert_maxgauge_detail_data()
-            self._teardown_mg_target()
+            # self.logger.debug("maxgauge extractor")
+            # self._init_mg_target()
+            #
+            # self._insert_meta_data(SystemConstants.DB_PATH, self.mgt)
+            # self._insert_maxgauge_detail_data()
+            # self._teardown_mg_target()
 
             if self.config["maxgauge_repo"].get("extend_mode", False):
                 self.logger.debug("DB extend_mode on")
@@ -50,7 +50,7 @@ class Extractor(cm.CommonModule):
         extend_target_repo_list = self.config["maxgauge_repo"].get("extend_target_repo", [])
 
         for extend_target_repo in extend_target_repo_list:
-            extend_target_repo["analysis_target_type"] = self.config["maxgauge_repo"]["analysis_target_type"]
+            extend_target_repo["analysis_target_type"] = self.config["maxgauge_repo"]["analysis_target_type"] #oracle
 
             if str(self.config["maxgauge_repo"]["analysis_target_type"]).lower() == DbTypeConstants.ORACLE:
                 if self.ot is None:

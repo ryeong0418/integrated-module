@@ -31,12 +31,12 @@ class Extractor(cm.CommonModule):
         #     self._teardown_im_target()
 
         if self.config["maxgauge_repo"]["use"]:
-            # self.logger.debug("maxgauge extractor")
-            # self._init_mg_target()
-            #
-            # self._insert_meta_data(SystemConstants.DB_PATH, self.mgt)
-            # self._insert_maxgauge_detail_data()
-            # self._teardown_mg_target()
+            self.logger.debug("maxgauge extractor")
+            self._init_mg_target()
+
+            self._insert_meta_data(SystemConstants.DB_PATH, self.mgt)
+            self._insert_maxgauge_detail_data()
+            self._teardown_mg_target()
 
             if self.config["maxgauge_repo"].get("extend_mode", False):
                 self.logger.debug("DB extend_mode on")

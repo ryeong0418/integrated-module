@@ -24,7 +24,7 @@ class SystemUtils:
     @staticmethod
     def to_camel_case(snake_str):
         """
-        모듈명 이름으로 클래스명을 획득하는 함
+        모듈명 이름으로 클래스명을 획득하는 함수
         :param snake_str: 모듈명 snake 형식
         :return: 클래스명
         """

@@ -21,14 +21,14 @@ class Extractor(cm.CommonModule):
         """
         self.logger.debug("extractor")
         self._init_sa_target()
-        #
-        # if self.config["intermax_repo"]["use"]:
-        #     self.logger.debug("Intermax extractor")
-        #     self._init_im_target()
-        #
-        #     self._insert_meta_data(SystemConstants.WAS_PATH, self.imt)
-        #     self._insert_intermax_detail_data()
-        #     self._teardown_im_target()
+
+        if self.config["intermax_repo"]["use"]:
+            self.logger.debug("Intermax extractor")
+            self._init_im_target()
+
+            self._insert_meta_data(SystemConstants.WAS_PATH, self.imt)
+            self._insert_intermax_detail_data()
+            self._teardown_im_target()
 
         if self.config["maxgauge_repo"]["use"]:
             self.logger.debug("maxgauge extractor")

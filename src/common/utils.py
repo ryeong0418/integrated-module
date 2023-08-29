@@ -14,7 +14,7 @@ from src.common.constants import DbTypeConstants
 from src.common.module_exception import ModuleException
 from openpyxl.styles import Border, Side
 from openpyxl.utils.cell import get_column_letter
-
+from openpyxl.chart import LineChart, Reference
 
 class SystemUtils:
     """
@@ -114,50 +114,6 @@ class SystemUtils:
         return sql_query
 
     @staticmethod
-    def excel_export(excel_file, sheet_name_txt, df):
-        """
-        visualization 엑셀 export 함수
-        :param excel_file: 엑셀 파일명
-        :param sheet_name_txt: 엑셀 sheet 이름
-        :param df: 추출하려는 데이터 데이터 프레임
-        """
-        if not os.path.exists(excel_file):
-            with pd.ExcelWriter(excel_file, mode="w", engine="openpyxl") as writer:
-                df.to_excel(writer, sheet_name=sheet_name_txt, index=False)
-        else:
-            with pd.ExcelWriter(excel_file, mode="a", engine="openpyxl", if_sheet_exists="replace") as writer:
-                df.to_excel(writer, sheet_name=sheet_name_txt, index=False)
-
-    @staticmethod
-    def insert_excel(excel_file_path,sheet_name, df, col_indx, row_indx):
-
-        with pd.ExcelWriter(excel_file_path, mode="a", engine="openpyxl", if_sheet_exists="overlay") as writer:
-            print(excel_file_path, sheet_name, df, col_indx, row_indx)
-            df.to_excel(writer, sheet_name=sheet_name, index=False, startcol=col_indx - 1, startrow=row_indx - 1)
-            print("insert 완료")
-
-    @staticmethod
-    def excel_export_sheet(excel_file, sheet_name, df, s_col, s_row):
-
-        if not os.path.exists(excel_file):
-            with pd.ExcelWriter(excel_file, mode="w", engine="openpyxl") as writer:
-                df.to_excel(writer, sheet_name=sheet_name, index=False, startcol=s_col, startrow=s_row)
-        else:
-            with pd.ExcelWriter(excel_file, mode="a", engine="openpyxl", if_sheet_exists="overlay") as writer:
-                df.to_excel(writer, sheet_name=sheet_name, index=False, startcol=s_col, startrow=s_row)
-
-    # @staticmethod
-    # def extract_cell_idx(ws, cell_value,instance_num):
-    #
-    #     col = [cell for cell in ws[ws.min_row] if cell.value == cell_value]
-    #     print(col[instance_num])
-    #
-    #         col_indx = col[instance_num].column
-    #         row_indx = col[instance_num].row
-    #
-    #         return col_indx, row_indx
-
-    @staticmethod
     def get_filenames_from_path(path: str, prefix: str = "", suffix: str = ""):
         """
         path에 모든 파일 이름을 가져오는 함수
@@ -245,6 +201,7 @@ class SystemUtils:
     @staticmethod
     def arithmetic_sequence(a, d, n):
         return a +(n-1)*d
+
 
 class TargetUtils:
     """
@@ -485,4 +442,55 @@ class DateUtils:
         e_date = e_date.strftime(arg_fmt)
 
         return s_date, e_date
+
+
+class ExcelUtils:
+
+    @staticmethod
+    def excel_export(excel_file, sheet_name_txt, df):
+        """
+        visualization 엑셀 export 함수
+        :param excel_file: 엑셀 파일명
+        :param sheet_name_txt: 엑셀 sheet 이름
+        :param df: 추출하려는 데이터 데이터 프레임
+        """
+        if not os.path.exists(excel_file):
+            with pd.ExcelWriter(excel_file, mode="w", engine="openpyxl") as writer:
+                df.to_excel(writer, sheet_name=sheet_name_txt, index=False)
+        else:
+            with pd.ExcelWriter(excel_file, mode="a", engine="openpyxl", if_sheet_exists="replace") as writer:
+                df.to_excel(writer, sheet_name=sheet_name_txt, index=False)
+
+    @staticmethod
+    def excel_export_append_overlay(excel_file, sheet_name, df, s_col, s_row):
+
+        if not os.path.exists(excel_file):
+            with pd.ExcelWriter(excel_file, mode="w", engine="openpyxl") as writer:
+                df.to_excel(writer, sheet_name=sheet_name, index=False, startcol=s_col, startrow=s_row)
+        else:
+            with pd.ExcelWriter(excel_file, mode="a", engine="openpyxl", if_sheet_exists="overlay") as writer:
+                df.to_excel(writer, sheet_name=sheet_name, index=False, startcol=s_col, startrow=s_row)
+
+    @staticmethod
+    def insert_df_into_excel(excel_file_path, sheet_name, df, s_col, s_row, write_mode, sheet_append_mode):
+        with pd.ExcelWriter(excel_file_path, mode=write_mode, engine="openpyxl", if_sheet_exists=sheet_append_mode) \
+                as writer:
+            df.to_excel(writer, sheet_name=sheet_name, index=False, startcol=s_col, startrow=s_row)
+
+    @staticmethod
+    def insert_linechart_into_excel(ws, sheet_name, data_dict, category_dict, graph_start_cell):
+        line_chart = LineChart()
+        line_chart.title = sheet_name
+
+        data = Reference(ws, min_col=data_dict["min_col"], max_col=data_dict["max_col"],
+                         min_row=data_dict["min_row"], max_row=data_dict["max_row"])
+
+        categories = Reference(ws, min_col=category_dict["min_col"], max_col=category_dict["max_col"],
+                               min_row=category_dict["min_row"], max_row=category_dict["max_row"])
+
+        line_chart.add_data(data)
+        line_chart.set_categories(categories)
+        ws.add_chart(line_chart, graph_start_cell)
+
+
 

@@ -68,6 +68,7 @@ class Scheduler(cm.CommonModule):
         백그라운드 스케쥴러 등록 및 시작 하기 위한 함수
         :return:
         """
+
         if self.config["scheduler"]["is_alive_sched"]["use"]:
             self.bg_scheduler.add_job(
                 self._is_alive_logging_job,

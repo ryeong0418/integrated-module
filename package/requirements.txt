@@ -27,3 +27,6 @@ pre-commit==3.3.3
 cx-oracle==8.3.0
 Sphinx==6.2.1
 sphinx-rtd-theme==1.2.2
+sqlglot==17.15.0
+sql-metadata==2.8.0
+sqlparse==0.4.4

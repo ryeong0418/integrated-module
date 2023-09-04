@@ -26,6 +26,9 @@ class SystemConstants:
     # db sql text parquet 파일명
     DB_SQL_TEXT_FILE_NAME = "ae_db_sql_text"
 
+    # dynamic query 분석을 위한db sql text paruqet 파일명
+    DB_SQL_TEXT_FOR_DYNAMIC_FILE_NAME = "ae_db_sql_text_for_dynamic"
+
     # parquet 파일 확장자
     PARQUET_FILE_EXT = ".parquet"
 
@@ -55,6 +58,9 @@ class SystemConstants:
 
     # 튜닝된 sql text path
     TUNING_SQL_TEXT_PATH = "tuning_sql/"
+
+    # dynamic query 분석 source file path
+    DYNAMIC_SQL_TEXT_PATH = "dynamic_sql/"
 
     WAS_PATH = "was/"
     DB_PATH = "db/"

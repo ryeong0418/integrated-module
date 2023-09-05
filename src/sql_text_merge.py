@@ -278,22 +278,28 @@ if __name__ == "__main__":
 
     home = Path(os.path.dirname(os.path.abspath(__file__))).parent
     filename = "ae_db_sql_text_220822001.parquet"
-    ae_db_sql_df = pd.read_parquet(f"{home}/{SystemConstants.EXPORT_PARQUET_PATH}/{filename}")
-    # print(ae_db_sql_df.head())
-
-    sql_uid = "270943BD179013A46E8113451191C87DD1000FF9"
-
-    select_sql_uids = ae_db_sql_df.index[ae_db_sql_df["sql_uid"] == sql_uid].tolist()
-    print(ae_db_sql_df.index[ae_db_sql_df["sql_uid"] == sql_uid].tolist())
-    print(ae_db_sql_df.columns)
+    ae_db_sql_df = None
+    try:
+        ae_db_sql_df = pd.read_parquet(f"{home}/{SystemConstants.EXPORT_PARQUET_PATH}/{filename}")
+    except Exception:
+        pass
 
     ae_db_sql_list = []
 
-    for sql_uids in select_sql_uids:
-        ae_db_sql_list = list(ae_db_sql_df.loc[sql_uids, "sql_text"])
-        print(ae_db_sql_list)
+    if ae_db_sql_df is not None:
+        # print(ae_db_sql_df.head())
 
-    print("*" * 79)
+        sql_uid = "270943BD179013A46E8113451191C87DD1000FF9"
+
+        select_sql_uids = ae_db_sql_df.index[ae_db_sql_df["sql_uid"] == sql_uid].tolist()
+        print(ae_db_sql_df.index[ae_db_sql_df["sql_uid"] == sql_uid].tolist())
+        print(ae_db_sql_df.columns)
+
+        for sql_uids in select_sql_uids:
+            ae_db_sql_list = list(ae_db_sql_df.loc[sql_uids, "sql_text"])
+            print(ae_db_sql_list)
+
+        print("*" * 79)
 
     st = SaTarget(logger, config)
     st.init_process()
@@ -323,6 +329,7 @@ if __name__ == "__main__":
 
     print("*" * 79)
 
-    for idx, (ae_was_sql, ae_db_sql) in enumerate(zip(ae_was_sql_list, ae_db_sql_list)):
-        if ae_was_sql != ae_db_sql:
-            print(f"idx : {idx} , {ae_was_sql} | {ae_db_sql}")
+    if ae_db_sql_list and ae_was_sql_list:
+        for idx, (ae_was_sql, ae_db_sql) in enumerate(zip(ae_was_sql_list, ae_db_sql_list)):
+            if ae_was_sql != ae_db_sql:
+                print(f"idx : {idx} , {ae_was_sql} | {ae_db_sql}")

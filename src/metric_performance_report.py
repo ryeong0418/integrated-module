@@ -1,12 +1,10 @@
-import pandas as pd
-
 from src import common_module as cm
 from src.common.constants import SystemConstants
 from src.common.utils import DateUtils, SystemUtils, SqlUtils, ExcelUtils
 
 import os
 import re
-
+import time
 from src.analysis_extend_target import OracleTarget
 from openpyxl import load_workbook
 from openpyxl.utils.cell import get_column_letter
@@ -27,34 +25,26 @@ class MetricPerformanceReport(cm.CommonModule):
 
         self.logger.debug("metric performance report")
         self._init_sa_target()
-        self._extract_txt_info()
+        self._insert_datatable_or_chartgraph()
 
-    def _convert_sql_to_df(self):
+    def _convert_sql_to_df(self, sql_path, filename):
 
         """
         sql query문을 dataframe 형태로 변환
         """
 
-        sql_path = f"{self.config['home']}/" + SystemConstants.CHART_SQL
-        txt_file_list = SystemUtils.get_filenames_from_path(sql_path)
-
         s_date, e_date = DateUtils.get_each_date_by_interval2(
             self.config["args"]["s_date"], self.config["args"]["interval"], arg_fmt="%Y-%m-%d"
         )
-
         date_dict = {"StartDate": s_date, "EndDate": e_date}
-
-        for file in txt_file_list:
-            if os.path.splitext(file)[0].split("_")[-1] != "COLUMN":
-                query = SystemUtils.get_file_content_in_path(sql_path, file)
-
+        query = SystemUtils.get_file_content_in_path(sql_path, filename+".txt")
         date_query = SqlUtils.sql_replace_to_dict(query, date_dict)
 
         for df in self.st.get_data_by_query(date_query):
             df.columns = [i.upper() for i in df.columns]
             return df
 
-    def _extract_txt_info(self):
+    def _insert_datatable_or_chartgraph(self):
 
         """
         column txt 파일 읽어서 column명 추출
@@ -66,19 +56,25 @@ class MetricPerformanceReport(cm.CommonModule):
         txt_file_list = SystemUtils.get_filenames_from_path(sql_path)
 
         for file in txt_file_list:
+            filename = file.split(".")[0] #AE_DB_SQLSTAT-1
+            excel_file_path = f"{excel_path}/{filename}.xlsx"
 
-            if os.path.splitext(file)[0].split("_")[-1] == "COLUMN":
-                query = SystemUtils.get_file_content_in_path(sql_path, file)
+            if re.search(r'-(\d+)', filename):
+                df = self._convert_sql_to_df(sql_path, filename)
+                ExcelUtils.excel_export(excel_file_path, 'Sheet1', df)
+                self._apply_excel_style(['Sheet1'], excel_file_path)
+
+            if re.search(r'CHART',filename):
+                table_name = filename.split("-")[0]
+                column_filename = f"{table_name}-COLUMN.txt" # AE_DB_SYSMETRIC-COLUMN.txt / AE_DB_TIME_MODEL-COLUMN.txt
+
+                query = SystemUtils.get_file_content_in_path(sql_path, column_filename)
                 re_query = re.sub("\n", "", query)  # python에서 엔터는 \n으로 기입된다. \n 제거해주는 코드
                 sheet_name_list = re_query.split(",")
 
-            else:
-                excel_file_name = os.path.splitext(file)[0]
-                excel_file_path = f"{excel_path}/" + excel_file_name + '.xlsx'
+                self.check_excel_format(sheet_name_list, excel_file_path, sql_path, filename)
 
-        self.check_excel_format(sheet_name_list, excel_file_path)
-
-    def check_excel_format(self,sheet_name_list, excel_file_path):
+    def check_excel_format(self,sheet_name_list, excel_file_path, sql_path, filename):
 
         """
         excel 파일이 있으면 해당 파일에 데이터 overwrite하고
@@ -86,33 +82,55 @@ class MetricPerformanceReport(cm.CommonModule):
         """
 
         if os.path.exists(excel_file_path):
-            self._overwrite_excel_sheet(sheet_name_list, excel_file_path)
+            self._check_sheet_name_list(sheet_name_list, excel_file_path, sql_path, filename)
             self._insert_linechart_from_data(sheet_name_list, excel_file_path)
             self._apply_excel_style(sheet_name_list, excel_file_path)
 
         else:
-            self._make_excel_sheet_data(sheet_name_list, excel_file_path)
+            self._make_excel_sheet_data(sheet_name_list, excel_file_path, sql_path, filename)
             self._insert_linechart_from_data(sheet_name_list, excel_file_path)
             self._apply_excel_style(sheet_name_list, excel_file_path)
 
-    def _make_excel_sheet_data(self, sheet_name_list, excel_file_path):
+    def _make_excel_sheet_data(self, sheet_name_list, excel_file_path, sql_path, filename):
 
         """
         df group by instance
         """
 
-        df = self._convert_sql_to_df()
-        unique_instance_numbers = df['INSTANCE_NUMBER'].unique()
+        if len(sheet_name_list) != 0:
+            df = self._convert_sql_to_df(sql_path, filename)
+            unique_instance_numbers = df['INSTANCE_NUMBER'].unique()
 
-        for idx, instance_num in enumerate(unique_instance_numbers):
-            instance_df = df[df['INSTANCE_NUMBER'] == instance_num]
+            for idx, instance_num in enumerate(unique_instance_numbers):
+                instance_df = df[df['INSTANCE_NUMBER'] == instance_num]
 
-            for sheet_name in sheet_name_list:
-                col_start = SystemUtils.arithmetic_sequence(1, 4, idx+1)
-                extract_df = instance_df[['DATE_TIME', 'INSTANCE_NUMBER', sheet_name]]
-                ExcelUtils.excel_export_append_overlay(excel_file_path, sheet_name, extract_df, col_start, 16)
+                for sheet_name in sheet_name_list:
+                    col_start = SystemUtils.arithmetic_sequence(1, 4, idx+1)
+                    extract_df = instance_df[['DATE_TIME', 'INSTANCE_NUMBER', sheet_name]]
+                    ExcelUtils.excel_export_append_overlay(excel_file_path, sheet_name, extract_df, col_start, 16)
 
-    def _overwrite_excel_sheet(self, sheet_name_list, excel_file_path):
+    def _check_sheet_name_list(self, sheet_name_list, excel_file_path, sql_path, filename):
+
+        """
+        sheet_name check
+        """
+
+        wb = load_workbook(excel_file_path, data_only=True)
+
+        not_exist_sheet_list = []
+        exist_sheet_list = []
+
+        for sheet_name in sheet_name_list:
+
+            if sheet_name in wb.get_sheet_names():
+                exist_sheet_list.append(sheet_name)
+            else:
+                not_exist_sheet_list.append(sheet_name)
+
+        self._make_excel_sheet_data(not_exist_sheet_list, excel_file_path, sql_path, filename)
+        self._overwrite_excel_sheet(exist_sheet_list, excel_file_path, sql_path, filename)
+
+    def _overwrite_excel_sheet(self, sheet_name_list, excel_file_path, sql_path, filename):
 
         """
         기존에 있는 excel을 읽어서
@@ -121,9 +139,8 @@ class MetricPerformanceReport(cm.CommonModule):
 
         wb = load_workbook(excel_file_path, data_only=True)
 
-        df = self._convert_sql_to_df()
+        df = self._convert_sql_to_df(sql_path, filename)
         unique_instance_numbers = df['INSTANCE_NUMBER'].unique()
-
         for sheet_name in sheet_name_list:
             ws = wb[sheet_name]
 
@@ -133,10 +150,16 @@ class MetricPerformanceReport(cm.CommonModule):
                 extract_df = instance_df[['DATE_TIME', 'INSTANCE_NUMBER', sheet_name]].head()
                 col = [cell for cell in ws[ws.min_row] if cell.value == "DATE_TIME"]
 
-                col_indx = col[idx].column
-                row_indx = col[idx].row
-
+                col_indx = None
+                row_indx = None
                 try:
+                    col_indx = col[idx].column
+                    row_indx = col[idx].row
+
+                except IndexError:
+                    col_indx = SystemUtils.arithmetic_sequence(1, 5, idx + 1)
+
+                finally:
                     if idx == 0:
                         ExcelUtils.insert_df_into_excel(excel_file_path, sheet_name, extract_df, col_indx-1, row_indx-1,
                                                         "a", "replace")
@@ -144,9 +167,6 @@ class MetricPerformanceReport(cm.CommonModule):
                     else:
                         ExcelUtils.insert_df_into_excel(excel_file_path, sheet_name, extract_df, col_indx-1, row_indx-1,
                                                         "a", "overlay")
-
-                except Exception as e:
-                    print("error: ", e)
 
     def _apply_excel_style(self, sheet_name_list, excel_file_path):
 
@@ -161,6 +181,7 @@ class MetricPerformanceReport(cm.CommonModule):
             ws = wb[sheet_name]
 
             SystemUtils.apply_thin_border(ws, wb, excel_file_path, "thin")
+            time.sleep(1)
             SystemUtils.apply_column_width(ws, wb, excel_file_path, 20)
 
     def _insert_linechart_from_data(self, sheet_name_list, excel_file_path):
@@ -175,6 +196,7 @@ class MetricPerformanceReport(cm.CommonModule):
 
             ws = wb[sheet_name]
             instance_col = [cell for cell in ws[ws.min_row] if cell.value == "INSTANCE_NUMBER"]
+            print(ws, instance_col)
 
             for instance_num_cell in instance_col:
                 row_idx = instance_num_cell.row

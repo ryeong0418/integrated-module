@@ -16,6 +16,7 @@ from openpyxl.styles import Border, Side
 from openpyxl.utils.cell import get_column_letter
 from openpyxl.chart import LineChart, Reference
 
+
 class SystemUtils:
     """
     SystemUtils class
@@ -170,11 +171,11 @@ class SystemUtils:
 
     @staticmethod
     def apply_thin_border(ws, wb, excel_file_path, b_style):
+
         """
         :param ws: 엑셀 시트
         :return : thin_border 적용한 데이터 테이블
         """
-
         border_style = Border(left=Side(style=b_style),
                               right=Side(style=b_style),
                               top=Side(style=b_style),
@@ -186,6 +187,7 @@ class SystemUtils:
                     cell.border = border_style
 
         wb.save(excel_file_path)
+        wb.close()
 
     @staticmethod
     def apply_column_width(ws, wb, excel_file_path, width_num):
@@ -197,6 +199,7 @@ class SystemUtils:
             ws.column_dimensions[get_column_letter(col)].width = width_num
 
         wb.save(excel_file_path)
+        wb.close()
 
     @staticmethod
     def arithmetic_sequence(a, d, n):
@@ -461,6 +464,7 @@ class ExcelUtils:
             with pd.ExcelWriter(excel_file, mode="a", engine="openpyxl", if_sheet_exists="replace") as writer:
                 df.to_excel(writer, sheet_name=sheet_name_txt, index=False)
 
+
     @staticmethod
     def excel_export_append_overlay(excel_file, sheet_name, df, s_col, s_row):
 
@@ -473,6 +477,7 @@ class ExcelUtils:
 
     @staticmethod
     def insert_df_into_excel(excel_file_path, sheet_name, df, s_col, s_row, write_mode, sheet_append_mode):
+        print(excel_file_path, sheet_name, df, s_col, s_row, write_mode, sheet_append_mode)
         with pd.ExcelWriter(excel_file_path, mode=write_mode, engine="openpyxl", if_sheet_exists=sheet_append_mode) \
                 as writer:
             df.to_excel(writer, sheet_name=sheet_name, index=False, startcol=s_col, startrow=s_row)
@@ -491,6 +496,9 @@ class ExcelUtils:
         line_chart.add_data(data)
         line_chart.set_categories(categories)
         ws.add_chart(line_chart, graph_start_cell)
+
+
+
 
 
 

@@ -40,7 +40,6 @@ class Extractor(cm.CommonModule):
 
             if self.config["maxgauge_repo"].get("extend_mode", False):
                 self.logger.debug("DB extend_mode on")
-
                 self._insert_extend_target_data()
 
     def _insert_extend_target_data(self):

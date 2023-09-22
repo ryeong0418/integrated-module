@@ -96,13 +96,13 @@ class DynamicSqlSearch(cm.CommonModule):
             f"{SystemConstants.DB_SQL_TEXT_FOR_DYNAMIC_FILE_NAME}{SystemConstants.PARQUET_FILE_EXT}"
         )
 
-        if self.config["args"].get("s_date") is not None and self.config["args"].get("interval") is not None:
+        if self.config["args"]["proc"] == "p":
             self.logger.info("다이나믹 쿼리 파싱 기능 수행..")
 
             with TimeLogger("_export_db_sql_text(),elapsed ", self.logger):
                 self._export_db_sql_text()
 
-        else:
+        elif self.config["args"]["proc"] == "d":
             self.logger.info("다이나믹 쿼리 분석 기능 수행..")
 
             with TimeLogger("_set_dynamic_source_query(),elapsed ", self.logger):

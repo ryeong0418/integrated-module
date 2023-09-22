@@ -15,6 +15,7 @@ class ModuleFactoryEnum(Enum):
     t = "sql_text_template"
     r = "sql_text_similar"
     d = "dynamic_sql_search"
+    p = "dynamic_sql_search"
 
 
 class MessageEnum(Enum):

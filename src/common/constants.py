@@ -108,6 +108,8 @@ class TableConstants:
     AE_BIND_SQL_ELAPSE = "ae_bind_sql_elapse"
     AE_HOST_INFO = "ae_host_info"
 
+    AE_DYNAMIC_SQL_SEARCH_RESULT = "ae_dynamic_sql_search_result"
+
 
 class ResultConstants:
     """

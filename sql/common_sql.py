@@ -149,6 +149,16 @@ class AeDbSqlTextSql:
         and seq = 1
     """
 
+    SELECT_AE_DB_SQL_TEXT_1SEQ_ORDERBY = """
+        select sql_uid, partition_key
+        from ae_db_sql_text
+        where 1=1
+        and partition_key = #(partition_key)
+        and seq = 1
+        group by sql_uid, partition_key
+        order by count(seq) asc
+    """
+
     SELECT_AE_DB_SQL_TEXT_WITH_DATA = """
         with data(sql_uid, partition_key) as (
             values %s
@@ -173,6 +183,35 @@ class AeWasDevMapSql:
     SELECT_AE_WAS_DEV_MAP = """
         select was_id
         from ae_was_dev_map
+    """
+
+
+class AeSqlStat10min:
+    """
+    ae_sql_stat_10min table sql class.
+    """
+
+    SELECT_AE_SQL_STAT_10MIN_BY_SQL_UID_AND_PARTITION_KEY = """
+        select
+            a.sql_uid,
+            a.sql_id,
+            case when sum(a.execution_count) != 0
+                 then sum(a.logical_reads) / sum(a.execution_count)
+                 else 0 end as avg_lio,
+            case when sum(a.execution_count) != 0
+                 then sum(a.physical_reads) / sum(a.execution_count)
+                 else 0 end as avg_pio,
+            case when sum(a.execution_count) != 0
+                 then sum(a.elapsed_time) / sum(a.execution_count)
+                 else 0 end as avg_elapsed_time,
+            sum(a.execution_count) as exec
+        from (
+            select sql_uid, sql_id, elapsed_time , logical_reads , physical_reads, execution_count
+            from ae_sql_stat_10min assm
+            where sql_uid in (#(sql_uids))
+            and partition_key in (#(partition_keys))
+        ) as a
+        group by a.sql_uid, a.sql_id
     """
 
 

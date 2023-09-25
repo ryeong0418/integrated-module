@@ -11,6 +11,7 @@ from src.sql.model import ExecuteLogModel
 from src.extractor import Extractor
 from src.summarizer import Summarizer
 from src.sql_text_merge import SqlTextMerge
+from src.dynamic_sql_search import DynamicSqlSearch
 from src.sql_text_similar import SqlTextSimilar
 from src.common.constants import SystemConstants, ResultConstants
 from src.common.utils import SystemUtils, DateUtils
@@ -200,6 +201,8 @@ class Scheduler(cm.CommonModule):
 
             self._sql_text_merge_job()
 
+            self._dynamic_sql_search_job()
+
             result = ResultConstants.SUCCESS
             result_code = "I001"
             result_msg = MessageEnum[result_code].value
@@ -267,6 +270,20 @@ class Scheduler(cm.CommonModule):
         stm.main_process()
 
         self.scheduler_logger.info("_sql_text_merge_job end")
+
+    def _dynamic_sql_search_job(self):
+        """
+        dynamic sql search job 함수
+        """
+        self.scheduler_logger.info("_dynamic_sql_search_job start")
+
+        self._update_config_custom_values(proc="p")
+
+        stm = DynamicSqlSearch(self.scheduler_logger)
+        stm.set_config(self.config)
+        stm.main_process()
+
+        self.scheduler_logger.info("_dynamic_sql_search_job end")
 
     def _sql_text_similar_job(self):
         """

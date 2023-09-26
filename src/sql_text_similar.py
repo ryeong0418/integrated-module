@@ -35,9 +35,12 @@ class SqlTextSimilar(cm.CommonModule):
         :return:
         """
         self._set_tuning_sql_text()
-        self.valid_sql_text_similarity = self.config.get('valid_sql_text_similarity', 0.6)
+        self.valid_sql_text_similarity = self.config.get("valid_sql_text_similarity", 0.6)
 
     def main_process(self):
+        """
+        Main process 함수
+        """
         self.logger.info("SqlTextSimilarity")
 
         self._set_tuning_sql_text()
@@ -56,12 +59,12 @@ class SqlTextSimilar(cm.CommonModule):
         :param xapm_sql_df: xapm_txn_sql_detail의 sql text
         :return: 전처리 된 xapm_txn_sql_detail의 sql text
         """
-        xapm_sql_df = xapm_sql_df[~xapm_sql_df['sql_text'].str.contains('sql is too big')]
-        xapm_sql_df = SqlUtils.remove_unnecess_char(xapm_sql_df, 'sql_text', contains_comma=True)
-        xapm_sql_df['sql_text'] = xapm_sql_df['sql_text'].str.lower().str.replace(r'\s+', ' ', regex=True)
+        xapm_sql_df = xapm_sql_df[~xapm_sql_df["sql_text"].str.contains("sql is too big")]
+        xapm_sql_df = SqlUtils.remove_unnecess_char(xapm_sql_df, "sql_text", contains_comma=True)
+        xapm_sql_df["sql_text"] = xapm_sql_df["sql_text"].str.lower().str.replace(r"\s+", " ", regex=True)
         xapm_sql_df = SqlUtils.rex_processing(xapm_sql_df)
-        xapm_sql_df['sql_text_split'] = xapm_sql_df['sql_text'].str.split(r'\s+')
-        xapm_sql_df.drop('sql_text', axis=1, inplace=True)
+        xapm_sql_df["sql_text_split"] = xapm_sql_df["sql_text"].str.split(r"\s+")
+        xapm_sql_df.drop("sql_text", axis=1, inplace=True)
         return xapm_sql_df
 
     def _set_tuning_sql_text(self):
@@ -69,7 +72,7 @@ class SqlTextSimilar(cm.CommonModule):
         로컬 디렉토리에 저장된 tuning sql text를 파싱하는 함수
         :return:
         """
-        home_parent_path = Path(self.config['home']).parent
+        home_parent_path = Path(self.config["home"]).parent
         tuning_sql_path = os.path.join(home_parent_path, SystemConstants.TUNING_SQL_TEXT_PATH)
 
         if not os.path.isdir(tuning_sql_path):
@@ -114,7 +117,6 @@ class SqlTextSimilar(cm.CommonModule):
         self._init_sa_target()
 
         for sql_id, pre_sql_text in self.origin_sql_id_dict.items():
-
             if pre_sql_text is None:
                 self.logger.info(f"new sql id : {sql_id}")
 
@@ -127,12 +129,13 @@ class SqlTextSimilar(cm.CommonModule):
 
                 tuning_sql_file = tuning_sql_files[0]
 
-                sql_text = self._get_sql_text_in_file(os.path.join(tuning_sql_path, sql_id, tuning_sql_file))
+                sql_text = SqlUtils.get_sql_text_in_file(os.path.join(tuning_sql_path, sql_id, tuning_sql_file))
 
                 self.origin_sql_id_dict[sql_id] = self._preprocessing_tuning_sql(sql_text)
                 cluster_id_df = self.st.get_ae_was_sql_text_by_sql_id(sql_id)
-                self.cluster_id_by_origin_sql_id_dict[sql_id] = cluster_id_df.iloc[0]['cluster_id'] \
-                    if len(cluster_id_df) > 0 else ''
+                self.cluster_id_by_origin_sql_id_dict[sql_id] = (
+                    cluster_id_df.iloc[0]["cluster_id"] if len(cluster_id_df) > 0 else ""
+                )
 
         self._teardown_sa_target()
 
@@ -144,32 +147,13 @@ class SqlTextSimilar(cm.CommonModule):
         :return: 전처리 된 tuning sql text
         """
         sql_text = sql_text.lower().strip()
-        sql_text = sql_text.replace(',', ' ')
-        sql_text = re.sub(r'\s+in\s?\([^)]*\)', ' in(<:args:>)', sql_text)
-        sql_text = re.sub(r'\s+values\s?\([^)]*\)', ' values(<:args:>)', sql_text)
-        sql_text = re.sub(r"\d{2,4}\-\d{2}\-\d{2} \d{2}:\d{2}:\d{2}\.?\d{0,3}", '<DATETIME>', sql_text)
-        sql_text = re.sub(r"\d{2,4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}\.?\d{0,3}", '<DATETIME>', sql_text)
-        sql_text = re.sub(r"\d{4}\-\d{2}\-\d{2}", '<DATE>', sql_text)
+        sql_text = sql_text.replace(",", " ")
+        sql_text = re.sub(r"\s+in\s?\([^)]*\)", " in(<:args:>)", sql_text)
+        sql_text = re.sub(r"\s+values\s?\([^)]*\)", " values(<:args:>)", sql_text)
+        sql_text = re.sub(r"\d{2,4}\-\d{2}\-\d{2} \d{2}:\d{2}:\d{2}\.?\d{0,3}", "<DATETIME>", sql_text)
+        sql_text = re.sub(r"\d{2,4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}\.?\d{0,3}", "<DATETIME>", sql_text)
+        sql_text = re.sub(r"\d{4}\-\d{2}\-\d{2}", "<DATE>", sql_text)
         return re.split(r"\s+", sql_text)
-
-    @staticmethod
-    def _get_sql_text_in_file(sql_file):
-        """
-        tuning sql text file를 로드하여 sql text를 만드는 함수
-        :param sql_file: tuning sql text file
-        :return: sql text
-        """
-        sql = []
-        with open(sql_file, 'r', encoding='utf-8') as file:
-            while True:
-                line = file.readline()
-                if not line:
-                    break
-
-                sql.append(line.strip())
-            file.close()
-
-        return ' '.join(sql)
 
     def _get_xapm_txn_sql_detail(self):
         """
@@ -193,14 +177,14 @@ class SqlTextSimilar(cm.CommonModule):
         """
         now = datetime.now()
 
-        start_date = \
-            now.replace(minute=now.minute - now.minute % INTERVAL_MINUTE, second=0, microsecond=0) - \
-            timedelta(minutes=INTERVAL_MINUTE)
+        start_date = now.replace(minute=now.minute - now.minute % INTERVAL_MINUTE, second=0, microsecond=0) - timedelta(
+            minutes=INTERVAL_MINUTE
+        )
         end_date = now.replace(minute=now.minute - now.minute % INTERVAL_MINUTE, second=0, microsecond=0)
 
-        return \
-            start_date.strftime(DateFmtConstants.DATETIME_FORMAT), \
-            end_date.strftime(DateFmtConstants.DATETIME_FORMAT)
+        return start_date.strftime(DateFmtConstants.DATETIME_FORMAT), end_date.strftime(
+            DateFmtConstants.DATETIME_FORMAT
+        )
 
     def _analysis_sql_text_similarity(self, xapm_sql_df):
         """
@@ -213,23 +197,24 @@ class SqlTextSimilar(cm.CommonModule):
         for origin_sql_id, pre_sql_text in self.origin_sql_id_dict.items():
             tmp_df = xapm_sql_df.copy(deep=True)
 
-            tmp_df['similarity'] = tmp_df['sql_text_split'].apply(lambda x: self.jaccard_similarity(x, pre_sql_text))
-            tmp_df.drop('sql_text_split', axis=1, inplace=True)
-            tmp_df = tmp_df[tmp_df['similarity'] >= self.valid_sql_text_similarity]
-            tmp_df['origin_sql_id'] = origin_sql_id
-            tmp_df['origin_cluster_id'] = self.cluster_id_by_origin_sql_id_dict[origin_sql_id]
-            tmp_df = tmp_df.sort_values(by='similarity', ascending=False)
+            tmp_df["similarity"] = tmp_df["sql_text_split"].apply(lambda x: self.jaccard_similarity(x, pre_sql_text))
+            tmp_df.drop("sql_text_split", axis=1, inplace=True)
+            tmp_df = tmp_df[tmp_df["similarity"] >= self.valid_sql_text_similarity]
+            tmp_df["origin_sql_id"] = origin_sql_id
+            tmp_df["origin_cluster_id"] = self.cluster_id_by_origin_sql_id_dict[origin_sql_id]
+            tmp_df = tmp_df.sort_values(by="similarity", ascending=False)
 
             valid_df_list.append(tmp_df)
 
         result_valid_df = pd.concat(valid_df_list)
-        result_valid_df['similarity'] = result_valid_df['similarity'].round(decimals=3)
+        result_valid_df["similarity"] = result_valid_df["similarity"].round(decimals=3)
 
         self.logger.info(f"valid similarity sql id {len(result_valid_df)} times")
 
         for _, row in result_valid_df.iterrows():
-            self.logger.info(f"{row['origin_sql_id']} ({row['origin_cluster_id']}) "
-                             f"-> {row['sql_id']} , {row['similarity']}")
+            self.logger.info(
+                f"{row['origin_sql_id']} ({row['origin_cluster_id']}) " f"-> {row['sql_id']} , {row['similarity']}"
+            )
 
         return result_valid_df
 

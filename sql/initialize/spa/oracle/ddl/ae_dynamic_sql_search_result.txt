@@ -1,0 +1,18 @@
+create table ae_dynamic_sql_search_result(
+	source_sql_uid varchar(40) not null,
+	source_sel_cols text null,
+	source_table_names text null,
+    source_join_cols text null,
+	source_where_cols text null,
+	target_sql_uid varchar(40) null,
+	target_sql_id varchar(50) null,
+	target_where_cols text null,
+    dynamic_pattern text null,
+	avg_lio float4 null,
+    avg_pio float4 null,
+	avg_elapsed_time float4 null,
+	exec int8,
+	create_dt timestamp with time zone default current_timestamp,
+    create_id varchar(20) default 'system' not null,
+    constraint pk_ae_dynamic_sql_search_result primary key (source_sql_uid, target_sql_uid)
+);

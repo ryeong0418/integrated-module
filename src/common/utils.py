@@ -4,7 +4,6 @@ import os
 import pandas as pd
 import time
 import re
-
 import cx_Oracle
 
 from pathlib import Path
@@ -12,9 +11,13 @@ from datetime import datetime, timedelta
 from sqlalchemy import URL
 from src.common.constants import DbTypeConstants
 from src.common.module_exception import ModuleException
+from openpyxl import Workbook
 from openpyxl.styles import Border, Side
 from openpyxl.utils.cell import get_column_letter
 from openpyxl.chart import LineChart, Reference
+from openpyxl.chart.label import DataLabelList
+from openpyxl.chart.text import RichText
+from openpyxl.drawing.text import Paragraph, ParagraphProperties, CharacterProperties, Font
 
 
 class SystemUtils:
@@ -170,7 +173,7 @@ class SystemUtils:
         return filename.split(".")[0].split("-")[1]
 
     @staticmethod
-    def apply_thin_border(ws, wb, excel_file_path, b_style):
+    def apply_thin_border(ws, b_style):
 
         """
         :param ws: 엑셀 시트
@@ -186,11 +189,8 @@ class SystemUtils:
                 if cell.value != None:
                     cell.border = border_style
 
-        wb.save(excel_file_path)
-        wb.close()
-
     @staticmethod
-    def apply_column_width(ws, wb, excel_file_path, width_num):
+    def apply_column_width(ws, width_num):
         """
 
         """
@@ -198,8 +198,7 @@ class SystemUtils:
         for col in range(ws.min_column, ws.max_column+1):
             ws.column_dimensions[get_column_letter(col)].width = width_num
 
-        wb.save(excel_file_path)
-        wb.close()
+
 
     @staticmethod
     def arithmetic_sequence(a, d, n):
@@ -464,41 +463,70 @@ class ExcelUtils:
             with pd.ExcelWriter(excel_file, mode="a", engine="openpyxl", if_sheet_exists="replace") as writer:
                 df.to_excel(writer, sheet_name=sheet_name_txt, index=False)
 
-
     @staticmethod
-    def excel_export_append_overlay(excel_file, sheet_name, df, s_col, s_row):
-
-        if not os.path.exists(excel_file):
-            with pd.ExcelWriter(excel_file, mode="w", engine="openpyxl") as writer:
-                df.to_excel(writer, sheet_name=sheet_name, index=False, startcol=s_col, startrow=s_row)
-        else:
-            with pd.ExcelWriter(excel_file, mode="a", engine="openpyxl", if_sheet_exists="overlay") as writer:
-                df.to_excel(writer, sheet_name=sheet_name, index=False, startcol=s_col, startrow=s_row)
-
-    @staticmethod
-    def insert_df_into_excel(excel_file_path, sheet_name, df, s_col, s_row, write_mode, sheet_append_mode):
-        print(excel_file_path, sheet_name, df, s_col, s_row, write_mode, sheet_append_mode)
-        with pd.ExcelWriter(excel_file_path, mode=write_mode, engine="openpyxl", if_sheet_exists=sheet_append_mode) \
-                as writer:
+    def append_df_into_excel(excel_file_path, sheet_name, df, s_col, s_row, sheet_append_mode):
+        with pd.ExcelWriter(excel_file_path, mode="a", engine="openpyxl", if_sheet_exists=sheet_append_mode) as writer:
             df.to_excel(writer, sheet_name=sheet_name, index=False, startcol=s_col, startrow=s_row)
 
     @staticmethod
-    def insert_linechart_into_excel(ws, sheet_name, data_dict, category_dict, graph_start_cell):
+    def create_excel_and_sheet(excel_file_path, metric_name_list):
+
+        wb = Workbook()
+
+        for idx, i in enumerate(metric_name_list):
+            wb.create_sheet(i, idx)
+
+        wb.remove(wb['Sheet'])
+        wb.save(excel_file_path)
+        wb.close()
+
+    @staticmethod
+    def set_linechart_object(metric_name):
+
         line_chart = LineChart()
-        line_chart.title = sheet_name
+        line_chart.style = "10"
+        line_chart.width = 40
+        line_chart.height = 8
+        line_chart.title = metric_name
 
-        data = Reference(ws, min_col=data_dict["min_col"], max_col=data_dict["max_col"],
-                         min_row=data_dict["min_row"], max_row=data_dict["max_row"])
+        return line_chart
 
-        categories = Reference(ws, min_col=category_dict["min_col"], max_col=category_dict["max_col"],
-                               min_row=category_dict["min_row"], max_row=category_dict["max_row"])
+    @staticmethod
+    def set_datalabel(line_chart):
 
-        line_chart.add_data(data)
-        line_chart.set_categories(categories)
-        ws.add_chart(line_chart, graph_start_cell)
+        line_chart.dataLabels=DataLabelList()
+        line_chart.dataLabels.showVal = True
+        line_chart.dataLabels.showSerName = None
+        line_chart.dataLabels.position = "t"
 
+        font_test = Font(typeface='Avenir LT Std 55 Roman')
+        cp1 = CharacterProperties(latin=font_test, sz=800, b=True, solidFill="000000")
+        line_chart.dataLabels.txPr = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=cp1), endParaRPr=cp1)])
 
+    @staticmethod
+    def set_data_and_category(ws, category, col, line_chart_type):
+        for idx, cell_col in enumerate(col):
+            data=Reference(ws, min_col=cell_col.column, max_col=cell_col.column, min_row=ws.min_row, max_row=ws.max_row)
+            line_chart_type.add_data(data, titles_from_data=True)
+            line_chart_type.set_categories(category)
 
+    @staticmethod
+    def set_series_marker_style(line_chart_series):
 
+        colors=["000000","CC3865"]
+
+        for indx, series in enumerate(line_chart_series):
+
+            series.marker.symbol = "circle"
+            series.marker.graphicalProperties.line.solidFill = "FFFFFF"
+            legend_name = f"INSTANCE-{indx + 1}"
+            series.tx.strRef.f = f'"{legend_name}"'
+
+            if indx < len(colors):
+                series.marker.graphicalProperties.solidFill = colors[indx]
+                series.graphicalProperties.line.solidFill = colors[indx]
+
+            else:
+                series.marker.graphicalProperties.solidFill = "FFFF00"
 
 

@@ -39,12 +39,25 @@ class DynamicSourceQuery:
         self.sql_text_without_comment = None
         self.invalid_sql_df = None
 
+    def __repr__(self):
+        """
+        __repr__ 함수
+        """
+        return (
+            f"{self.sql_uid} parsing result\n"
+            f"select column : {self.select_col_list} \n"
+            f"table name : {self.table_name_list} \n"
+            f"join column : {self.join_col_list} \n"
+            f"where column : {self.where_col_list}"
+        )
+
     def analyze_sql_text(self, sql_text):
         """
         Dynamic sql text 분석 및 매칭 데이터 세팅
         :param sql_text: 로컬에 저장된 sql text 원본 데이터
         """
         sql_text = sql_text.lower().strip()
+        sql_text = sql_text.replace("(+)", "")
 
         parts_of_cols_dict = DynamicSqlSearch.parsing_columns(sql_text)
         sql_text_without_comment = sqlparse.format(sql_text, strip_comments=True)
@@ -52,7 +65,7 @@ class DynamicSourceQuery:
         where_token_index = [
             token.position
             for token in Parser(sql_text_without_comment).tokens
-            if token.is_keyword and token.normalized == "FROM"
+            if token.is_keyword and token.normalized == "WHERE"
         ]
 
         self.select_col_list = parts_of_cols_dict.get("select", [])
@@ -97,13 +110,13 @@ class DynamicSqlSearch(cm.CommonModule):
         )
 
         if self.config["args"]["proc"] == "p":
-            self.logger.info("다이나믹 쿼리 파싱 기능 수행..")
+            self.logger.info("dynamic query parsing process execute..")
 
             with TimeLogger("_export_db_sql_text(),elapsed ", self.logger):
                 self._export_db_sql_text()
 
         elif self.config["args"]["proc"] == "d":
-            self.logger.info("다이나믹 쿼리 분석 기능 수행..")
+            self.logger.info("dynamic query analyze process execute..")
 
             with TimeLogger("_set_dynamic_source_query(),elapsed ", self.logger):
                 self._set_dynamic_source_query()
@@ -253,7 +266,7 @@ class DynamicSqlSearch(cm.CommonModule):
         :param dynamic_sql_list: dynamic sql sql_uid로 폴더링된 list
         """
         for sql_uid in dynamic_sql_list:
-            self.logger.info(sql_uid)
+            self.logger.info(f"{sql_uid} parsing start..")
 
             dynamic_sql_files = SystemUtils.get_filenames_from_path(
                 os.path.join(dynamic_sql_path, sql_uid), suffix=".sql"
@@ -275,6 +288,7 @@ class DynamicSqlSearch(cm.CommonModule):
         """
         dsq = DynamicSourceQuery(sql_uid)
         dsq.analyze_sql_text(sql_text)
+        self.logger.info(dsq)
         self.dynamic_source_sql_list.append(dsq)
 
     def _sql_metadata_parsing_by_df(self, df):
@@ -368,6 +382,7 @@ class DynamicSqlSearch(cm.CommonModule):
 
                         if pq_writer is None:
                             if is_exist_parquet_data:
+                                # 기존파일이 커서 메모리 오류 발생하면 tmp 파일 변경 후 batch로 읽어들이면서 재생성 하도록 변경
                                 grouping_df = pd.concat([pd.read_parquet(dynamic_sql_parquet_file), grouping_df])
 
                             pq_writer = pf.get_pqwriter(
@@ -429,6 +444,7 @@ class DynamicSqlSearch(cm.CommonModule):
         )
 
         grouping_df["sql_text"] = grouping_df["sql_text"].str.lower().str.strip()
+        grouping_df["sql_text"] = grouping_df["sql_text"].str.replace("(+)", "")
         grouping_df = grouping_df[~grouping_df["sql_text"].str.startswith(sql_filter)]
         return grouping_df
 

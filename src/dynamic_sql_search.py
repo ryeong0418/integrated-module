@@ -444,7 +444,7 @@ class DynamicSqlSearch(cm.CommonModule):
         )
 
         grouping_df["sql_text"] = grouping_df["sql_text"].str.lower().str.strip()
-        grouping_df["sql_text"] = grouping_df["sql_text"].str.replace("(+)", "")
+        grouping_df["sql_text"] = grouping_df["sql_text"].str.replace(r"(+)", "", regex=False)
         grouping_df = grouping_df[~grouping_df["sql_text"].str.startswith(sql_filter)]
         return grouping_df
 

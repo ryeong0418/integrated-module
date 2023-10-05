@@ -5,7 +5,7 @@ from datetime import datetime
 
 from src import common_module as cm
 from src.common.constants import SystemConstants, TableConstants
-from src.common.utils import SystemUtils
+from src.common.utils import SystemUtils, ExcelUtils
 
 
 class Visualization(cm.CommonModule):
@@ -47,10 +47,10 @@ class Visualization(cm.CommonModule):
 
             if sql_number == "1" and len(sql_number) == 1:
                 excel_file = excel_path + "/" + sheet_name_txt + "_" + now_date + ".xlsx"
-                SystemUtils.excel_export(excel_file, sheet_name_txt, result_df)
+                ExcelUtils.excel_export(excel_file, sheet_name_txt, result_df)
 
             else:
-                SystemUtils.excel_export(excel_file, sheet_name_txt, result_df)
+                ExcelUtils.excel_export(excel_file, sheet_name_txt, result_df)
 
     @staticmethod
     def data_processing(df):

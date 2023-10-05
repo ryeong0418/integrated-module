@@ -16,7 +16,6 @@ class Config:
         :return: config
         """
         config_path = [self.resources_path, sc.CONFIG_FILE_PATH]
-
         with open(f'{os.path.join(*config_path)}/{sc.CONFIG_FILE_PREFIX}{self.env}{sc.CONFIG_FILE_SUFFIX}', 'r') as f:
             config = json.load(f)
 

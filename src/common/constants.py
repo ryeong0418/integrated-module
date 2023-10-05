@@ -38,6 +38,10 @@ class SystemConstants:
     SQL_PATH = "export/sql_excel/sql"
     EXCEL_PATH = "export/sql_excel/excel"
 
+    # chart 폴더명
+    CHART_EXCEL = "export/excel_chart/excel"
+    CHART_SQL = "export/excel_chart/sql"
+
     # batch_pid_tmp
     TMP_PATH = "tmp"
     PID_TMP_FILE_NAME = "pid.tmp"

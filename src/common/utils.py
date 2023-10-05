@@ -4,7 +4,6 @@ import os
 import pandas as pd
 import time
 import re
-
 import cx_Oracle
 
 from pathlib import Path
@@ -12,6 +11,16 @@ from datetime import datetime, timedelta
 from sqlalchemy import URL
 from src.common.constants import DbTypeConstants
 from src.common.module_exception import ModuleException
+from openpyxl import Workbook
+from openpyxl.styles import Border, Side
+from openpyxl.utils.cell import get_column_letter
+from openpyxl.chart import LineChart, Reference
+from openpyxl.chart.label import DataLabelList
+from openpyxl.chart.text import RichText
+from openpyxl.chart.layout import Layout, ManualLayout
+from openpyxl.drawing.text import Paragraph, ParagraphProperties, CharacterProperties, Font
+from openpyxl.chart.shapes import GraphicalProperties
+from openpyxl.drawing.line import LineProperties
 
 
 class SystemUtils:
@@ -112,21 +121,6 @@ class SystemUtils:
         return sql_query
 
     @staticmethod
-    def excel_export(excel_file, sheet_name_txt, df):
-        """
-        visualization 엑셀 export 함수
-        :param excel_file: 엑셀 파일명
-        :param sheet_name_txt: 엑셀 sheet 이름
-        :param df: 추출하려는 데이터 데이터 프레임
-        """
-        if not os.path.exists(excel_file):
-            with pd.ExcelWriter(excel_file, mode="w", engine="openpyxl") as writer:
-                df.to_excel(writer, sheet_name=sheet_name_txt, index=False)
-        else:
-            with pd.ExcelWriter(excel_file, mode="a", engine="openpyxl", if_sheet_exists="replace") as writer:
-                df.to_excel(writer, sheet_name=sheet_name_txt, index=False)
-
-    @staticmethod
     def get_filenames_from_path(path: str, prefix: str = "", suffix: str = ""):
         """
         path에 모든 파일 이름을 가져오는 함수
@@ -180,6 +174,38 @@ class SystemUtils:
         :return: 추출된 테이블 명
         """
         return filename.split(".")[0].split("-")[1]
+
+    @staticmethod
+    def apply_thin_border(ws, b_style):
+
+        """
+        :param ws: 엑셀 시트
+        :return : thin_border 적용한 데이터 테이블
+        """
+        border_style = Border(left=Side(style=b_style),
+                              right=Side(style=b_style),
+                              top=Side(style=b_style),
+                              bottom=Side(style=b_style))
+
+        for row_rng in ws.rows:
+            for cell in row_rng:
+                if cell.value != None:
+                    cell.border = border_style
+
+    @staticmethod
+    def apply_column_width(ws, width_num):
+        """
+
+        """
+
+        for col in range(ws.min_column, ws.max_column+1):
+            ws.column_dimensions[get_column_letter(col)].width = width_num
+
+
+
+    @staticmethod
+    def arithmetic_sequence(a, d, n):
+        return a +(n-1)*d
 
 
 class TargetUtils:
@@ -424,3 +450,119 @@ class DateUtils:
             date_conditions.append(date_condition)
 
         return date_conditions
+
+    @staticmethod
+    def get_each_date_by_interval2(s_date, interval, arg_fmt):
+        """
+        input_date에서 interval 이후 날짜를 구하기 위한 함수
+        :param s_date: 시작 날짜
+        :param interval: 시간 간격
+        :param arg_fmt: 시작 날짜 format
+        :return: 시작날짜 , 끝날짜
+        """
+        s_date = datetime.strptime(str(s_date), "%Y%m%d")
+        e_date = s_date + timedelta(days=int(interval))
+        s_date = s_date.strftime(arg_fmt)
+        e_date = e_date.strftime(arg_fmt)
+
+        return s_date, e_date
+
+
+class ExcelUtils:
+
+    @staticmethod
+    def excel_export(excel_file, sheet_name_txt, df):
+        """
+        visualization 엑셀 export 함수
+        :param excel_file: 엑셀 파일명
+        :param sheet_name_txt: 엑셀 sheet 이름
+        :param df: 추출하려는 데이터 데이터 프레임
+        """
+        if not os.path.exists(excel_file):
+            with pd.ExcelWriter(excel_file, mode="w", engine="openpyxl") as writer:
+                df.to_excel(writer, sheet_name=sheet_name_txt, index=False)
+        else:
+            with pd.ExcelWriter(excel_file, mode="a", engine="openpyxl", if_sheet_exists="replace") as writer:
+                df.to_excel(writer, sheet_name=sheet_name_txt, index=False)
+
+    @staticmethod
+    def append_df_into_excel(excel_file_path, sheet_name, df, s_col, s_row, sheet_append_mode):
+        with pd.ExcelWriter(excel_file_path, mode="a", engine="openpyxl", if_sheet_exists=sheet_append_mode) as writer:
+            df.to_excel(writer, sheet_name=sheet_name, index=False, startcol=s_col, startrow=s_row)
+
+    @staticmethod
+    def create_excel_and_sheet(excel_file_path, metric_name_list):
+
+        wb = Workbook()
+
+        for idx, i in enumerate(metric_name_list):
+            wb.create_sheet(i, idx)
+
+        wb.remove(wb['Sheet'])
+        wb.save(excel_file_path)
+        wb.close()
+
+    @staticmethod
+    def set_linechart_object(metric_name):
+
+        line_chart = LineChart()
+        line_chart.style = "10"
+        line_chart.width = 40
+        line_chart.height = 8
+        line_chart.title = metric_name
+
+        y_axis_color = GraphicalProperties(ln=LineProperties(solidFill='FFFFFF'))
+        line_chart.y_axis.spPr = y_axis_color
+
+        font_test = Font(typeface='Calibri')
+        cp = CharacterProperties(latin=font_test, sz=600)
+        line_chart.x_axis.textProperties = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=cp), endParaRPr=cp)])
+        line_chart.y_axis.textProperties = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=cp), endParaRPr=cp)])
+        line_chart.legend.textProperties = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=cp), endParaRPr=cp)])
+
+        title_layout = ManualLayout(xMode="edge", yMode="edge", x=0.02, y=0.02)
+        line_chart.title.layout = Layout(manualLayout=title_layout)
+
+        gridlines_color = GraphicalProperties(ln=LineProperties(solidFill='BFBFBF'))
+        line_chart.y_axis.majorGridlines.spPr = gridlines_color
+
+        return line_chart
+
+    @staticmethod
+    def set_data_and_category(ws, category, col, line_chart_type):
+
+        for idx, cell_col in enumerate(col):
+            data = Reference(ws, min_col=cell_col.column, max_col=cell_col.column, min_row=ws.min_row, max_row=ws.max_row)
+            line_chart_type.add_data(data, titles_from_data=True)
+            line_chart_type.set_categories(category)
+
+    @staticmethod
+    def set_series_marker_style(line_chart_series):
+
+        colors = ["3F526C","C61D51"]
+
+        for indx, series in enumerate(line_chart_series):
+
+            series.marker.symbol = "circle"
+            series.marker.graphicalProperties.line.solidFill = "FFFFFF"
+            series.graphicalProperties.line.width = 28553
+            legend_name = f"INSTANCE-{indx + 1}"
+            series.tx.strRef.f = f'"{legend_name}"'
+            font_test = Font(typeface='Calibri')
+
+            series.dLbls = DataLabelList()
+            series.dLbls.showVal = True
+            series.dLbls.dLblPos = 't'
+
+            if indx < len(colors):
+
+                series.marker.graphicalProperties.solidFill = colors[indx]
+                series.graphicalProperties.line.solidFill = colors[indx]
+
+                cp1 = CharacterProperties(latin=font_test, sz=800, b=True, solidFill=colors[indx])
+                series.dLbls.txPr = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=cp1), endParaRPr=cp1)])
+
+            else:
+                series.marker.graphicalProperties.solidFill = "FFFF00"
+
+

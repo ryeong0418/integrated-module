@@ -14,7 +14,8 @@ from src.decoder.intermax_decryption import Decoding
 from src.common.utils import TargetUtils, SqlUtils
 from src.common.constants import TableConstants
 from src.common.timelogger import TimeLogger
-from sql.common_sql import CommonSql, AeWasSqlTextSql, AeDbSqlTemplateMapSql, AeDbInfoSql, AeDbSqlTextSql
+from sql.common_sql import CommonSql
+from sql.common_sql import AeWasSqlTextSql, AeDbSqlTemplateMapSql, AeDbInfoSql, AeDbSqlTextSql, AeSqlStat10min
 from sql.common_sql import XapmTxnSqlDetailSql
 
 
@@ -358,6 +359,18 @@ class SaTarget(CommonTarget):
         return self._get_df_by_chunk_size(self.analysis_engine, query, chunk_size=chunksize)
         # return pd.read_sql_query(query, self.sa_conn, chunksize=chunksize)
 
+    def get_ae_db_sql_text_by_1seq_orderby(self, partition_key, chunksize):
+        """
+        ae_db_sql_text 테이블에 seq가 1인 데이터 조회 함수
+        :param partition_key: 조회하려는 partition_key
+        :param chunksize: 조회하려는 chunksize
+        :return:
+        """
+        replace_dict = {"partition_key": partition_key}
+        query = SqlUtils.sql_replace_to_dict(AeDbSqlTextSql.SELECT_AE_DB_SQL_TEXT_1SEQ_ORDERBY, replace_dict)
+
+        return self._get_df_by_chunk_size(self.analysis_engine, query, chunk_size=chunksize)
+
     def get_all_ae_db_sql_text_by_1seq(self, df, chunksize):
         """
         ae_db_sql_text 데이터중 seq가 1인 sql_uid에 해당하는 모든 데이터를 가져오기 위한 함수.
@@ -586,3 +599,20 @@ class SaTarget(CommonTarget):
         query = SqlUtils.sql_replace_to_dict(AeWasSqlTextSql.SELECT_CLUSTER_ID_BY_SQL_ID, {"sql_id": sql_id})
         df = self._get_target_data_by_query(self.sa_conn, query, table_name)
         return df
+
+    def get_ae_sql_stat_10min_by_sql_uid_and_partition_key(self, sql_uid_list: list, partition_key_list: list):
+        """
+        ae_sql_stat_10min 테이블에 sql_uid, partition_key 조회 함수
+        :param sql_uid_list: 조회하려는 sql_uid list
+        :param partition_key_list: 조회하려는 partition_key list
+        :return: 조회 결과
+        """
+        table_name = TableConstants.AE_SQL_STAT_10MIN
+        query = SqlUtils.sql_replace_to_dict(
+            AeSqlStat10min.SELECT_AE_SQL_STAT_10MIN_BY_SQL_UID_AND_PARTITION_KEY,
+            {
+                "sql_uids": ",".join(f"'{x}'" for x in sql_uid_list),
+                "partition_keys": ",".join(f"'{x}'" for x in partition_key_list),
+            },
+        )
+        return self._get_target_data_by_query(self.sa_conn, query, table_name)

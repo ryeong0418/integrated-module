@@ -52,15 +52,15 @@ class SqlTextTemplate(cm.CommonModule):
         self.etc_worker = DrainWorker(self.config, self.sql_text_template_logger, "etc")
         self.etc_worker.init_drain()
 
-        if self.config["intermax_repo"]["use"]:
+        if self.config["maxgauge_repo"]["use"]:
+            self._db_sql_text_template()
+            self._wait_end_of_threads()
+
+        elif self.config["intermax_repo"]["use"]:
             self._was_sql_text_template()
 
             self._wait_end_of_threads()
             self._update_unanalyzed_was_sql_text()
-
-        elif self.config["maxgauge_repo"]["use"]:
-            self._db_sql_text_template()
-            self._wait_end_of_threads()
 
         self._save_top_cluster_template(self.extract_cnt)
 

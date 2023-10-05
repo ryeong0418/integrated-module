@@ -15,6 +15,8 @@ class ModuleFactoryEnum(Enum):
     t = "sql_text_template"
     r = "sql_text_similar"
     c = "metric_performance_report"
+    d = "dynamic_sql_search"
+    p = "dynamic_sql_search"
 
 
 class MessageEnum(Enum):
@@ -28,6 +30,7 @@ class MessageEnum(Enum):
     # 경고 메세지 W
     W001 = "진행중"
     W002 = "tuning_sql 경로에 tuning sql text가 존재하지 않습니다."
+    W003 = "Dynamic sql이 존재 하지 않습니다."
 
     # 에러 메세지 E
     E001 = "비정상종료"

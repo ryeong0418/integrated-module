@@ -242,3 +242,94 @@ class SqlTextMerge(cm.CommonModule):
             prefix.append(parquet_file_name_suffix)
 
         return prefix
+
+
+if __name__ == "__main__":
+    import os
+    from pathlib import Path
+    from resources.config_manager import Config
+    from src.analysis_target import SaTarget
+
+    class Logger:
+        """
+        Logger
+        """
+
+        def info(self, text):
+            """
+            info
+            :param text:
+            :return:
+            """
+            print(text)
+
+        def debug(self, text):
+            """
+            debug
+            :param text:
+            :return:
+            """
+            print(text)
+
+    logger = Logger()
+    env = "prod"
+
+    config = Config(env).get_config()
+
+    home = Path(os.path.dirname(os.path.abspath(__file__))).parent
+    filename = "ae_db_sql_text_220822001.parquet"
+    ae_db_sql_df = None
+    try:
+        ae_db_sql_df = pd.read_parquet(f"{home}/{SystemConstants.EXPORT_PARQUET_PATH}/{filename}")
+    except Exception:
+        pass
+
+    ae_db_sql_list = []
+
+    if ae_db_sql_df is not None:
+        # print(ae_db_sql_df.head())
+
+        sql_uid = "270943BD179013A46E8113451191C87DD1000FF9"
+
+        select_sql_uids = ae_db_sql_df.index[ae_db_sql_df["sql_uid"] == sql_uid].tolist()
+        print(ae_db_sql_df.index[ae_db_sql_df["sql_uid"] == sql_uid].tolist())
+        print(ae_db_sql_df.columns)
+
+        for sql_uids in select_sql_uids:
+            ae_db_sql_list = list(ae_db_sql_df.loc[sql_uids, "sql_text"])
+            print(ae_db_sql_list)
+
+        print("*" * 79)
+
+    st = SaTarget(logger, config)
+    st.init_process()
+
+    was_sql_id = "23095459BE1686331CC27F019FE1C68EA4D0F247"
+    query = f"""
+        select sql_id, sql_text
+        from ae_was_sql_text
+        where sql_id = '{was_sql_id}'
+    """
+    stm = SqlTextMerge(logger)
+    stm.sql_match_sensitive = 4  # * 50
+    stm.match_mode = "token"
+
+    ae_was_sql_list = []
+
+    for df in st.get_data_by_query(query):
+        ae_was_df = stm._preprocessing(df)
+        ae_was_df["sql_text"].apply(np.array)
+        # print(ae_was_df.head())
+        select_sql_ids = ae_was_df.index[ae_was_df["sql_id"] == was_sql_id].tolist()
+        print(ae_was_df.index[ae_was_df["sql_id"] == was_sql_id].tolist())
+
+        for sql_id in select_sql_ids:
+            ae_was_sql_list = ae_was_df.loc[sql_id, "sql_text"]
+            print(ae_was_sql_list)
+
+    print("*" * 79)
+
+    if ae_db_sql_list and ae_was_sql_list:
+        for idx, (ae_was_sql, ae_db_sql) in enumerate(zip(ae_was_sql_list, ae_db_sql_list)):
+            if ae_was_sql != ae_db_sql:
+                print(f"idx : {idx} , {ae_was_sql} | {ae_db_sql}")

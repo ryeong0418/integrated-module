@@ -374,6 +374,25 @@ class SqlUtils:
 
         return sql
 
+    @staticmethod
+    def get_sql_text_in_file(sql_file):
+        """
+        tuning sql text file를 로드하여 sql text를 만드는 함수
+        :param sql_file: tuning sql text file
+        :return: sql text
+        """
+        sql = []
+        with open(sql_file, "r", encoding="utf-8") as file:
+            while True:
+                line = file.readline()
+                if not line:
+                    break
+
+                sql.append(line.strip())
+            file.close()
+
+        return " ".join(sql)
+
 
 class DateUtils:
     """

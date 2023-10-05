@@ -6,6 +6,7 @@ from src.analysis_extend_target import OracleTarget
 import os
 import re
 import pandas as pd
+import psutil
 from openpyxl import load_workbook
 from resources.config_manager import Config
 from openpyxl.chart import  Reference
@@ -144,8 +145,8 @@ class MetricPerformanceReport(cm.CommonModule):
         else:
             self.logger.debug(f"{filename}: filename INSERT")
             self._make_excel_sheet_data(excel_file_path, sql_path, filename)
-            self._apply_excel_style(excel_file_path, sql_path, filename)
-            self._insert_linechart_from_data(excel_file_path)
+            # self._apply_excel_style(excel_file_path, sql_path, filename)
+            # self._insert_linechart_from_data(excel_file_path)
 
     def _make_excel_sheet_data(self,excel_file_path, sql_path, filename):
 
@@ -159,6 +160,17 @@ class MetricPerformanceReport(cm.CommonModule):
         for metric_name in metric_name_list:
             result_df = self._make_union_df(df, metric_name)
             ExcelUtils.append_df_into_excel(excel_file_path, metric_name, result_df, 2, 29, "overlay")
+
+
+        for process in psutil.process_iter(['pid', 'name']):
+            if 'EXCEL.EXE' in process.info['name']:
+                open_files = psutil.Process(process.info['pid']).open_files()
+                if any(excel_file_path.lower() in file.path.lower() for file in open_files):
+                    print("aaaaa")
+
+        # for metric_name in metric_name_list:
+        #     result_df = self._make_union_df(df, metric_name)
+        #     ExcelUtils.append_df_into_excel(excel_file_path, metric_name, result_df, 2, 29, "overlay")
 
     def _check_sheet_name_list(self, excel_file_path, sql_path, filename):
 

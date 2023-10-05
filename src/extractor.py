@@ -22,25 +22,25 @@ class Extractor(cm.CommonModule):
         self.logger.debug("extractor")
         self._init_sa_target()
 
-        # if self.config["intermax_repo"]["use"]:
-        #     self.logger.debug("Intermax extractor")
-        #     self._init_im_target()
-        #
-        #     self._insert_meta_data(SystemConstants.WAS_PATH, self.imt)
-        #     self._insert_intermax_detail_data()
-        #     self._teardown_im_target()
+        if self.config["intermax_repo"]["use"]:
+            self.logger.debug("Intermax extractor")
+            self._init_im_target()
+
+            self._insert_meta_data(SystemConstants.WAS_PATH, self.imt)
+            self._insert_intermax_detail_data()
+            self._teardown_im_target()
 
         if self.config["maxgauge_repo"]["use"]:
             self.logger.debug("maxgauge extractor")
             self._init_mg_target()
 
             self._insert_meta_data(SystemConstants.DB_PATH, self.mgt)
-            # self._insert_maxgauge_detail_data()
-            # self._teardown_mg_target()
-            #
-            # if self.config["maxgauge_repo"].get("extend_mode", False):
-            #     self.logger.debug("DB extend_mode on")
-            #     self._insert_extend_target_data()
+            self._insert_maxgauge_detail_data()
+            self._teardown_mg_target()
+
+            if self.config["maxgauge_repo"].get("extend_mode", False):
+                self.logger.debug("DB extend_mode on")
+                self._insert_extend_target_data()
 
     def _insert_extend_target_data(self):
         """

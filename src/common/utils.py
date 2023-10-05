@@ -17,7 +17,10 @@ from openpyxl.utils.cell import get_column_letter
 from openpyxl.chart import LineChart, Reference
 from openpyxl.chart.label import DataLabelList
 from openpyxl.chart.text import RichText
+from openpyxl.chart.layout import Layout, ManualLayout
 from openpyxl.drawing.text import Paragraph, ParagraphProperties, CharacterProperties, Font
+from openpyxl.chart.shapes import GraphicalProperties
+from openpyxl.drawing.line import LineProperties
 
 
 class SystemUtils:
@@ -489,42 +492,56 @@ class ExcelUtils:
         line_chart.height = 8
         line_chart.title = metric_name
 
+        y_axis_color = GraphicalProperties(ln=LineProperties(solidFill='FFFFFF'))
+        line_chart.y_axis.spPr = y_axis_color
+
+        font_test = Font(typeface='Calibri')
+        cp = CharacterProperties(latin=font_test, sz=600)
+        line_chart.x_axis.textProperties = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=cp), endParaRPr=cp)])
+        line_chart.y_axis.textProperties = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=cp), endParaRPr=cp)])
+        line_chart.legend.textProperties = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=cp), endParaRPr=cp)])
+
+        title_layout = ManualLayout(xMode="edge", yMode="edge", x=0.02, y=0.02)
+        line_chart.title.layout = Layout(manualLayout=title_layout)
+
+        gridlines_color = GraphicalProperties(ln=LineProperties(solidFill='BFBFBF'))
+        line_chart.y_axis.majorGridlines.spPr = gridlines_color
+
         return line_chart
 
     @staticmethod
-    def set_datalabel(line_chart):
-
-        line_chart.dataLabels=DataLabelList()
-        line_chart.dataLabels.showVal = True
-        line_chart.dataLabels.showSerName = None
-        line_chart.dataLabels.position = "t"
-
-        font_test = Font(typeface='Avenir LT Std 55 Roman')
-        cp1 = CharacterProperties(latin=font_test, sz=800, b=True, solidFill="000000")
-        line_chart.dataLabels.txPr = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=cp1), endParaRPr=cp1)])
-
-    @staticmethod
     def set_data_and_category(ws, category, col, line_chart_type):
+
         for idx, cell_col in enumerate(col):
-            data=Reference(ws, min_col=cell_col.column, max_col=cell_col.column, min_row=ws.min_row, max_row=ws.max_row)
+            data = Reference(ws, min_col=cell_col.column, max_col=cell_col.column, min_row=ws.min_row, max_row=ws.max_row)
             line_chart_type.add_data(data, titles_from_data=True)
             line_chart_type.set_categories(category)
 
     @staticmethod
     def set_series_marker_style(line_chart_series):
 
-        colors=["000000","CC3865"]
+        colors = ["3F526C","C61D51"]
 
         for indx, series in enumerate(line_chart_series):
 
             series.marker.symbol = "circle"
             series.marker.graphicalProperties.line.solidFill = "FFFFFF"
+            series.graphicalProperties.line.width = 28553
             legend_name = f"INSTANCE-{indx + 1}"
             series.tx.strRef.f = f'"{legend_name}"'
+            font_test = Font(typeface='Calibri')
+
+            series.dLbls = DataLabelList()
+            series.dLbls.showVal = True
+            series.dLbls.dLblPos = 't'
 
             if indx < len(colors):
+
                 series.marker.graphicalProperties.solidFill = colors[indx]
                 series.graphicalProperties.line.solidFill = colors[indx]
+
+                cp1 = CharacterProperties(latin=font_test, sz=800, b=True, solidFill=colors[indx])
+                series.dLbls.txPr = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=cp1), endParaRPr=cp1)])
 
             else:
                 series.marker.graphicalProperties.solidFill = "FFFF00"

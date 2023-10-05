@@ -124,7 +124,7 @@ class MetricPerformanceReport(cm.CommonModule):
                 df = self._convert_sql_to_df(sql_path, filename)
                 ExcelUtils.excel_export(excel_file_path, 'Sheet1', df)
 
-            if re.search(r'CHART', filename):
+            elif re.search(r'CHART', filename):
                 self.check_excel_format(excel_file_path, sql_path, filename)
 
     def check_excel_format(self,excel_file_path, sql_path, filename):
@@ -157,7 +157,7 @@ class MetricPerformanceReport(cm.CommonModule):
 
         for metric_name in metric_name_list:
             result_df = self._make_union_df(df, metric_name)
-            ExcelUtils.append_df_into_excel(excel_file_path, metric_name, result_df, 2, 17, "overlay")
+            ExcelUtils.append_df_into_excel(excel_file_path, metric_name, result_df, 2, 29, "overlay")
 
     def _check_sheet_name_list(self, excel_file_path, sql_path, filename):
 
@@ -234,17 +234,17 @@ class MetricPerformanceReport(cm.CommonModule):
             category = Reference(ws, min_col=ws.min_column+2, max_col=ws.min_column+2, min_row=ws.min_row + 1,
                                  max_row=ws.max_row)
 
-            line_chart_avg = ExcelUtils.set_linechart_object(metric_name)
-            ExcelUtils.set_datalabel(line_chart_avg)
+            AVG_METRIC_NAME=f'{metric_name}-AVG'
+            line_chart_avg = ExcelUtils.set_linechart_object(AVG_METRIC_NAME)
             ExcelUtils.set_data_and_category(ws, category, avg_col, line_chart_avg)
             ExcelUtils.set_series_marker_style(line_chart_avg.series)
             ws.add_chart(line_chart_avg, "C1")
 
-            line_chart_max = ExcelUtils.set_linechart_object(metric_name)
-            ExcelUtils.set_datalabel(line_chart_max)
+            MAX_METRIC_NAME = f'{metric_name}-MAX'
+            line_chart_max = ExcelUtils.set_linechart_object(MAX_METRIC_NAME)
             ExcelUtils.set_data_and_category(ws, category, max_col, line_chart_max)
             ExcelUtils.set_series_marker_style(line_chart_max.series)
-            ws.add_chart(line_chart_max, "O1")
+            ws.add_chart(line_chart_max, "C15")
 
         wb.save(excel_file_path)
         wb.close()

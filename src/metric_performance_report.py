@@ -8,7 +8,7 @@ import re
 import pandas as pd
 from openpyxl import load_workbook
 from resources.config_manager import Config
-from openpyxl.chart import  Reference
+from openpyxl.chart import Reference
 
 
 class MetricPerformanceReport(cm.CommonModule):

@@ -481,8 +481,12 @@ class ExcelUtils:
 
     @staticmethod
     def append_df_into_excel(excel_file_path, sheet_name, df, s_col, s_row, sheet_append_mode):
-        with pd.ExcelWriter(excel_file_path, mode="a", engine="openpyxl", if_sheet_exists=sheet_append_mode) as writer:
-            df.to_excel(writer, sheet_name=sheet_name, index=False, startcol=s_col, startrow=s_row)
+
+        writer = pd.ExcelWriter(excel_file_path, mode="a", engine="openpyxl", if_sheet_exists=sheet_append_mode)
+        df.to_excel(writer, sheet_name=sheet_name, index=False, startcol=s_col, startrow=s_row)
+        writer.save()
+        writer.close()
+
 
     @staticmethod
     def create_excel_and_sheet(excel_file_path, metric_name_list):

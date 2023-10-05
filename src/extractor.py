@@ -125,6 +125,9 @@ class Extractor(cm.CommonModule):
                     self.st.upsert_data(df, target_table_name)
 
                 else:
+                    delete_query = CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY
+                    delete_dict = {"table_name": target_table_name}
+                    self.st.delete_data(delete_query, delete_dict)
                     self.st.insert_table_by_df(meta_df, target_table_name)
 
     def _insert_intermax_detail_data(self):

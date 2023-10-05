@@ -34,6 +34,7 @@ setup(
     package_data={
         "resources": ["*/*-prod.json", "*/*-dev.json", "*/*-report.json","drain/drain3.ini", "intermax_decoding/intermax_decryption.jar"],
         "sql": ["*/*/*.txt", "*/*/*/*.txt", "*/*/*/*/*.txt"],
-        "": ["../export/sql_excel/sql/*.txt", "../package/setup/*", "../bin/*.sh", "../*.bat", "../docs/*.pptx"],
+        "": ["../export/excel_chart/sql/*.txt", "../package/setup/*", "../bin/*.sh", "../*.bat", "../docs/*.pptx",
+             "../export/excel_chart/excel/*.xlsx"],
     },
 )

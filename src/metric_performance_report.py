@@ -114,6 +114,7 @@ class MetricPerformanceReport(cm.CommonModule):
 
         sql_path = f"{self.config['home']}/" + SystemConstants.CHART_SQL
         excel_path = f"{self.config['home']}/" + SystemConstants.CHART_EXCEL
+        os.makedirs(excel_path, exist_ok=True)
         txt_file_list = SystemUtils.get_filenames_from_path(sql_path)
 
         for file in txt_file_list:

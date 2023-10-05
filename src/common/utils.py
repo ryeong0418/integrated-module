@@ -195,17 +195,11 @@ class SystemUtils:
     @staticmethod
     def apply_column_width(ws, width_num):
         """
-
+        excel column width 설정
         """
 
         for col in range(ws.min_column, ws.max_column+1):
             ws.column_dimensions[get_column_letter(col)].width = width_num
-
-
-
-    @staticmethod
-    def arithmetic_sequence(a, d, n):
-        return a +(n-1)*d
 
 
 class TargetUtils:

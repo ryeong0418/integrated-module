@@ -1,12 +1,12 @@
 # Integrated technology Group WAS&DB Data Analysis
 
-Exem Was/DB 통합 데이터 분석 모듈 
+Exem Was/DB 통합 데이터 분석 모듈
 
 ## Required Software
 
 - python >= 3.8.10
 - postgresql >= 15.2
-- JRE >= 1.8 
+- JRE >= 1.8
 
 ## Settings
 

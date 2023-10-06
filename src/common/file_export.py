@@ -112,10 +112,10 @@ if __name__ == "__main__":
 
     pf = ParquetFile(logger, config)
 
-    table_list = [v for k, v in TableConstants().__class__.__dict__.items() if not k.startswith('_')]
+    table_list = [v for k, v in TableConstants().__class__.__dict__.items() if not k.startswith("_")]
     table_list = [table for table in table_list if table not in no_need_table]
 
-    export_parquet_root_path = f'{home}/{SystemConstants.EXPORT_ETC_PATH}'
+    export_parquet_root_path = f"{home}/{SystemConstants.EXPORT_ETC_PATH}"
 
     st = SaTarget(logger, config)
     st.init_process()
@@ -148,11 +148,10 @@ if __name__ == "__main__":
 
             logger.info(f"{table} table parquet export data, row count : {table_total_len}")
 
-    elif args.proc == 'insert':
-
+    elif args.proc == "insert":
         file_list = os.listdir(export_parquet_root_path)
 
-        table_list = [str(file).split('.', maxsplit=1)[0] for file in file_list]
+        table_list = [str(file).split(".", maxsplit=1)[0] for file in file_list]
         logger.info(f"Insert Target Table List : {table_list}")
 
         for table in table_list:
@@ -160,7 +159,6 @@ if __name__ == "__main__":
             insert_data = 0
 
             for batch in parquet_file.iter_batches(batch_size=chunksize):
-
                 df = batch.to_pandas()
                 insert_data += len(df)
                 st.insert_table_by_df(df, table)

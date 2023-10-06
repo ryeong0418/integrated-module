@@ -9,7 +9,6 @@ from src.common.constants import SystemConstants
 
 
 class OracleTarget(CommonTarget):
-
     """
     Extend 분석용 Oracle Target Class
     """
@@ -31,13 +30,11 @@ class OracleTarget(CommonTarget):
             self.logger.warn("Oracle init client exist")
 
     def set_extend_target_config(self, extend_target_repo):
-
         """
         extend target config 설정 함수.
         :param extend_target_repo: 확장 분석 타겟 repo 정보
         :return:
         """
-
         self.ora_extend_url_object, self.ora_extend_conn_args = TargetUtils.set_engine_param(extend_target_repo, True)
 
         self.identifier = (

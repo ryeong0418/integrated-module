@@ -4,7 +4,6 @@ from src.common.enum_module import ModuleFactoryEnum
 
 
 class CommonModule:
-
     def __init__(self, logger):
         self.logger = logger
         self.config: dict = None
@@ -16,9 +15,11 @@ class CommonModule:
     def set_config(self, config: dict):
         self.config = config
 
-        self.sql_file_root_path = f"{self.config['home']}/" \
-                                  f"{SystemConstants.SQL_ROOT_PATH}" \
-                                  f"{ModuleFactoryEnum[self.config['args']['proc']].value}/"
+        self.sql_file_root_path = (
+            f"{self.config['home']}/"
+            f"{SystemConstants.SQL_ROOT_PATH}"
+            f"{ModuleFactoryEnum[self.config['args']['proc']].value}/"
+        )
 
     def main_process(self):
         pass

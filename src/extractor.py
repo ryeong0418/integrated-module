@@ -49,7 +49,7 @@ class Extractor(cm.CommonModule):
         extend_target_repo_list = self.config["maxgauge_repo"].get("extend_target_repo", [])
 
         for extend_target_repo in extend_target_repo_list:
-            extend_target_repo["analysis_target_type"] = self.config["maxgauge_repo"]["analysis_target_type"] #oracle
+            extend_target_repo["analysis_target_type"] = self.config["maxgauge_repo"]["analysis_target_type"]  # oracle
 
             if str(self.config["maxgauge_repo"]["analysis_target_type"]).lower() == DbTypeConstants.ORACLE:
                 if self.ot is None:

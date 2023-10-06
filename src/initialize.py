@@ -32,14 +32,16 @@ class Initialize(cm.CommonModule):
         analysis_target_type = f"{self.config['analysis_repo']['analysis_target_type']}/"
 
         self.logger.debug("_create_table() start")
-        init_ddl_path = f"{self.sql_file_root_path}" \
-                        f"{SystemConstants.SPA_PATH}" \
-                        f"{analysis_target_type}" \
-                        f"{SystemConstants.DDL_PATH}"
+        init_ddl_path = (
+            f"{self.sql_file_root_path}"
+            f"{SystemConstants.SPA_PATH}"
+            f"{analysis_target_type}"
+            f"{SystemConstants.DDL_PATH}"
+        )
         init_files = SystemUtils.get_filenames_from_path(init_ddl_path)
 
         for init_file in init_files:
-            with open(f"{init_ddl_path}{init_file}", mode='r', encoding='utf-8') as file:
+            with open(f"{init_ddl_path}{init_file}", mode="r", encoding="utf-8") as file:
                 ddl = file.read()
 
             self.st.create_table(ddl)
@@ -50,13 +52,13 @@ class Initialize(cm.CommonModule):
         :return:
         """
         self.logger.debug("_insert_init_meta() start")
-        if self.config['intermax_repo']['use']:
+        if self.config["intermax_repo"]["use"]:
             self._init_im_target()
 
             self._insert_init_meta_by_target(SystemConstants.WAS_PATH, self.imt)
             self._teardown_im_target()
 
-        if self.config['maxgauge_repo']['use']:
+        if self.config["maxgauge_repo"]["use"]:
             self._init_mg_target()
 
             self._insert_init_meta_by_target(SystemConstants.DB_PATH, self.mgt)
@@ -69,25 +71,24 @@ class Initialize(cm.CommonModule):
         :param target_instance: 분석 타겟 instance
         :return:
         """
-        analysis_target_type = ''
+        analysis_target_type = ""
 
-        if target == 'db':
+        if target == "db":
             analysis_target_type = f"{self.config['maxgauge_repo']['analysis_target_type']}/"
 
-        init_meta_path = f"{self.sql_file_root_path}" \
-                         f"{target}" \
-                         f"{analysis_target_type}" \
-                         f"{SystemConstants.META_PATH}"
+        init_meta_path = (
+            f"{self.sql_file_root_path}" f"{target}" f"{analysis_target_type}" f"{SystemConstants.META_PATH}"
+        )
         init_files = SystemUtils.get_filenames_from_path(init_meta_path)
 
         delete_query = CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY
 
         for init_file in init_files:
-            with open(f"{init_meta_path}{init_file}", mode='r', encoding='utf-8') as file:
+            with open(f"{init_meta_path}{init_file}", mode="r", encoding="utf-8") as file:
                 meta_query = file.read()
 
             target_table_name = SystemUtils.extract_tablename_in_filename(init_file)
-            delete_dict = {'table_name': target_table_name}
+            delete_dict = {"table_name": target_table_name}
 
             self.st.delete_data(delete_query, delete_dict)
 

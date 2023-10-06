@@ -177,19 +177,17 @@ class SystemUtils:
 
     @staticmethod
     def apply_thin_border(ws, b_style):
-
         """
         :param ws: 엑셀 시트
         :return : thin_border 적용한 데이터 테이블
         """
-        border_style = Border(left=Side(style=b_style),
-                              right=Side(style=b_style),
-                              top=Side(style=b_style),
-                              bottom=Side(style=b_style))
+        border_style = Border(
+            left=Side(style=b_style), right=Side(style=b_style), top=Side(style=b_style), bottom=Side(style=b_style)
+        )
 
         for row_rng in ws.rows:
             for cell in row_rng:
-                if cell.value != None:
+                if cell.value is not None:
                     cell.border = border_style
 
     @staticmethod
@@ -197,8 +195,7 @@ class SystemUtils:
         """
         excel column width 설정
         """
-
-        for col in range(ws.min_column, ws.max_column+1):
+        for col in range(ws.min_column, ws.max_column + 1):
             ws.column_dimensions[get_column_letter(col)].width = width_num
 
 
@@ -463,6 +460,9 @@ class DateUtils:
 
 
 class ExcelUtils:
+    """
+    ExcelUtils class
+    """
 
     @staticmethod
     def excel_export(excel_file, sheet_name_txt, df):
@@ -481,38 +481,43 @@ class ExcelUtils:
 
     @staticmethod
     def append_df_into_excel(excel_file_path, sheet_name, df, s_col, s_row, sheet_append_mode):
-
+        """
+        pandas를 이용해서 data를 excel에 insert함
+        """
         writer = pd.ExcelWriter(excel_file_path, mode="a", engine="openpyxl", if_sheet_exists=sheet_append_mode)
         df.to_excel(writer, sheet_name=sheet_name, index=False, startcol=s_col, startrow=s_row)
         writer.save()
         writer.close()
 
-
     @staticmethod
     def create_excel_and_sheet(excel_file_path, metric_name_list):
-
+        """
+        excel worksheet 생성
+        """
         wb = Workbook()
 
         for idx, i in enumerate(metric_name_list):
             wb.create_sheet(i, idx)
 
-        wb.remove(wb['Sheet'])
+        wb.remove(wb["Sheet"])
         wb.save(excel_file_path)
         wb.close()
 
     @staticmethod
     def set_linechart_object(metric_name):
-
+        """
+        Linechart생성 및 그래프 설정 함수
+        """
         line_chart = LineChart()
         line_chart.style = "10"
         line_chart.width = 40
         line_chart.height = 8
         line_chart.title = metric_name
 
-        y_axis_color = GraphicalProperties(ln=LineProperties(solidFill='FFFFFF'))
+        y_axis_color = GraphicalProperties(ln=LineProperties(solidFill="FFFFFF"))
         line_chart.y_axis.spPr = y_axis_color
 
-        font_test = Font(typeface='Calibri')
+        font_test = Font(typeface="Calibri")
         cp = CharacterProperties(latin=font_test, sz=600)
         line_chart.x_axis.textProperties = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=cp), endParaRPr=cp)])
         line_chart.y_axis.textProperties = RichText(p=[Paragraph(pPr=ParagraphProperties(defRPr=cp), endParaRPr=cp)])
@@ -521,39 +526,43 @@ class ExcelUtils:
         title_layout = ManualLayout(xMode="edge", yMode="edge", x=0.02, y=0.02)
         line_chart.title.layout = Layout(manualLayout=title_layout)
 
-        gridlines_color = GraphicalProperties(ln=LineProperties(solidFill='BFBFBF'))
+        gridlines_color = GraphicalProperties(ln=LineProperties(solidFill="BFBFBF"))
         line_chart.y_axis.majorGridlines.spPr = gridlines_color
 
         return line_chart
 
     @staticmethod
     def set_data_and_category(ws, category, col, line_chart_type):
-
+        """
+        linechart에 데이터 및 카테고리 insert
+        """
         for idx, cell_col in enumerate(col):
-            data = Reference(ws, min_col=cell_col.column, max_col=cell_col.column, min_row=ws.min_row, max_row=ws.max_row)
+            data = Reference(
+                ws, min_col=cell_col.column, max_col=cell_col.column, min_row=ws.min_row, max_row=ws.max_row
+            )
             line_chart_type.add_data(data, titles_from_data=True)
             line_chart_type.set_categories(category)
 
     @staticmethod
     def set_series_marker_style(line_chart_series):
-
-        colors = ["3F526C","C61D51"]
+        """
+        차트 series별로 marker스타일 및 글자크기 지정
+        """
+        colors = ["3F526C", "C61D51"]
 
         for indx, series in enumerate(line_chart_series):
-
             series.marker.symbol = "circle"
             series.marker.graphicalProperties.line.solidFill = "FFFFFF"
             series.graphicalProperties.line.width = 28553
             legend_name = f"INSTANCE-{indx + 1}"
             series.tx.strRef.f = f'"{legend_name}"'
-            font_test = Font(typeface='Calibri')
+            font_test = Font(typeface="Calibri")
 
             series.dLbls = DataLabelList()
             series.dLbls.showVal = True
-            series.dLbls.dLblPos = 't'
+            series.dLbls.dLblPos = "t"
 
             if indx < len(colors):
-
                 series.marker.graphicalProperties.solidFill = colors[indx]
                 series.graphicalProperties.line.solidFill = colors[indx]
 
@@ -562,5 +571,3 @@ class ExcelUtils:
 
             else:
                 series.marker.graphicalProperties.solidFill = "FFFF00"
-
-

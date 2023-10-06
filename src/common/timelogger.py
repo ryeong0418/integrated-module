@@ -68,7 +68,6 @@ class TimeLogger(types.ModuleType):
         return self.__class__(name or self._name)
 
     def decorator(self, func):
-
         context = self.contextmanager(self._name or func.__name__)
 
         @self.functools.wraps(func)

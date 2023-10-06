@@ -4,7 +4,6 @@ from src.common.utils import SystemUtils
 
 
 class ModuleFactory:
-
     def __init__(self, logger):
         self.logger = logger
 
@@ -25,16 +24,12 @@ class ModuleFactory:
 
             module_path = os.path.dirname(os.path.abspath(__file__))
 
-            target_class = SystemUtils.get_module_class(
-                module_name, class_name, module_path
-            )
+            target_class = SystemUtils.get_module_class(module_name, class_name, module_path)
 
             instance = target_class(self.logger)
 
         except KeyError as ke:
-            self.logger.error(
-                f"Process {process} invalid. Please check ModuleFactoryEnum.. Terminated.."
-            )
+            self.logger.error(f"Process {process} invalid. Please check ModuleFactoryEnum.. Terminated..")
             exit()
 
         except Exception as e:

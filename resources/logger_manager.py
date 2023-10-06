@@ -8,8 +8,7 @@ from concurrent_log_handler import ConcurrentTimedRotatingFileHandler
 
 
 class Logger(ConcurrentTimedRotatingFileHandler):
-
-    def __init__(self, env='prod'):
+    def __init__(self, env="prod"):
         self.resources_path = os.path.dirname(os.path.abspath(__file__))
         self.env = env
 
@@ -26,7 +25,7 @@ class Logger(ConcurrentTimedRotatingFileHandler):
 
         logger_path = [self.resources_path, sc.LOGGER_FILE_PATH]
 
-        with open(f'{os.path.join(*logger_path)}/{sc.LOGGER_FILE_PREFIX}{self.env}{sc.LOGGER_FILE_SUFFIX}', 'r') as f:
+        with open(f"{os.path.join(*logger_path)}/{sc.LOGGER_FILE_PREFIX}{self.env}{sc.LOGGER_FILE_SUFFIX}", "r") as f:
             logger_dict = json.load(f)
 
         logger_dict["handlers"]["file"]["filename"] = str(Path(log_dir) / f"{log_file_name}.log")
@@ -34,7 +33,7 @@ class Logger(ConcurrentTimedRotatingFileHandler):
         handlers = list()
         handlers.append("file")
 
-        if self.env == 'local':
+        if self.env == "local":
             handlers.append("console")
 
         # error_log_dict 없으면 생성 안하게 설정

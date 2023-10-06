@@ -6,13 +6,12 @@ from src.common.utils import TargetUtils
 
 
 class DataBase:
-
     def __init__(self, config):
         self.config = config
         self.engine = None
-        self.sql_debug_flag = config['sql_debug_flag'] if config['sql_debug_flag'] is not None else True
+        self.sql_debug_flag = config["sql_debug_flag"] if config["sql_debug_flag"] is not None else True
 
-        self.analysis_url_object, self.analysis_conn_args = TargetUtils.set_engine_param(config['analysis_repo'])
+        self.analysis_url_object, self.analysis_conn_args = TargetUtils.set_engine_param(config["analysis_repo"])
 
     def create_engine(self):
         self.engine = create_engine(

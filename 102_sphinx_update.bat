@@ -10,4 +10,4 @@ cd %SPHINX_DIR%
 
 
 sphinx-apidoc -f -o . ..
-make html  
+make html

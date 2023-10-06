@@ -18,5 +18,5 @@ class BackgroundTask(threading.Thread):
         """
         self.logger.info(f"{self.func.__name__} func execute by thread. kwargs keys : {self.kwargs.keys()}")
 
-        if self.func.__name__ in ('update_cluster_id_by_sql_id', 'upsert_cluster_id_by_sql_uid'):
-            self.func(self.kwargs['df'], self.kwargs['target'])
+        if self.func.__name__ in ("update_cluster_id_by_sql_id", "upsert_cluster_id_by_sql_uid"):
+            self.func(self.kwargs["df"], self.kwargs["target"])

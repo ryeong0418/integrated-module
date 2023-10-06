@@ -5,8 +5,7 @@ from src.common.constants import SystemConstants as sc
 
 
 class Config:
-
-    def __init__(self, env='dev'):
+    def __init__(self, env="dev"):
         self.resources_path = os.path.dirname(os.path.abspath(__file__))
         self.env = env
 
@@ -16,7 +15,7 @@ class Config:
         :return: config
         """
         config_path = [self.resources_path, sc.CONFIG_FILE_PATH]
-        with open(f'{os.path.join(*config_path)}/{sc.CONFIG_FILE_PREFIX}{self.env}{sc.CONFIG_FILE_SUFFIX}', 'r') as f:
+        with open(f"{os.path.join(*config_path)}/{sc.CONFIG_FILE_PREFIX}{self.env}{sc.CONFIG_FILE_SUFFIX}", "r") as f:
             config = json.load(f)
 
         return config

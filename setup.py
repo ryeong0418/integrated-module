@@ -32,9 +32,21 @@ setup(
     python_requires=">=3.8",
     package_dir={"resources": "resources", "sql": "sql"},
     package_data={
-        "resources": ["*/*-prod.json", "*/*-dev.json", "*/*-report.json","drain/drain3.ini", "intermax_decoding/intermax_decryption.jar"],
+        "resources": [
+            "*/*-prod.json",
+            "*/*-dev.json",
+            "*/*-report.json",
+            "drain/drain3.ini",
+            "intermax_decoding/intermax_decryption.jar",
+        ],
         "sql": ["*/*/*.txt", "*/*/*/*.txt", "*/*/*/*/*.txt"],
-        "": ["../export/excel_chart/sql/*.txt", "../package/setup/*", "../bin/*.sh", "../*.bat", "../docs/*.pptx",
-             "../export/excel_chart/excel/*.xlsx"],
+        "": [
+            "../export/excel_chart/sql/*.txt",
+            "../package/setup/*",
+            "../bin/*.sh",
+            "../*.bat",
+            "../docs/*.pptx",
+            "../export/excel_chart/excel/*.xlsx",
+        ],
     },
 )

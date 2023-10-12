@@ -16,6 +16,7 @@ from src.common.constants import SystemConstants, TableConstants
 from src.common.file_export import ParquetFile
 from src.common.utils import SystemUtils, MaxGaugeUtils, DateUtils
 from src.common.module_exception import ModuleException
+from src.excel.excel_writer_worker import ExcelWriterWorker, ExcelAlignment
 
 
 class DynamicSourceQuery:
@@ -38,6 +39,7 @@ class DynamicSourceQuery:
         self.where_token_index_list = []
         self.sql_text_without_comment = None
         self.invalid_sql_df = None
+        self.tmp_df = None
 
     def __repr__(self):
         """
@@ -86,6 +88,9 @@ class DynamicSqlSearch(cm.CommonModule):
     Dynamic sql text 분석 및 찾기 위한 Class
     """
 
+    DYNAMIC_PATTERN_COLUMN_IDX = "D"
+    FREEZE_PANES_IDX = "A5"
+
     def __init__(self, logger):
         super().__init__(logger)
         self.export_parquet_root_path = None
@@ -93,6 +98,7 @@ class DynamicSqlSearch(cm.CommonModule):
         self.dynamic_source_sql_list = []
         self.n_cores = 0
         self.dynamic_sql_parquet_file_name = None
+        self.dynamic_sql_path = None
 
     def main_process(self):
         """
@@ -183,13 +189,111 @@ class DynamicSqlSearch(cm.CommonModule):
                 },
                 inplace=True,
             )
-
+            dynamic_source_sql.tmp_df = tmp_df
             self.st.upsert_data(tmp_df, TableConstants.AE_DYNAMIC_SQL_SEARCH_RESULT)
 
     def _make_excel(self):
         """
-        분석 후 유효한 데이터의 엑셀 저장 기능.
+        분석 후 유효한 데이터 엑셀 저장 기능.
         """
+        columns_with_width_dict = {DynamicSqlSearch.DYNAMIC_PATTERN_COLUMN_IDX: 120}
+        source_sql_style_option_dict = {"source_sql_text": ExcelAlignment.ALIGN_WRAP_TEXT}
+        target_sql_style_option_dict = {"dynamic_pattern": ExcelAlignment.ALIGN_WRAP_TEXT}
+
+        for dynamic_source_sql_obj in self.dynamic_source_sql_list:
+            source_df = self._make_export_excel_source_data_by_obj(dynamic_source_sql_obj)
+
+            start_row_index = 1
+
+            # 기본설정
+            eww = ExcelWriterWorker()
+            eww.create_workbook()
+            sheet_name = eww.set_active_sheet_name(dynamic_source_sql_obj.sql_uid)
+
+            eww.set_cell_width_columns(columns_with_width_dict)
+            eww.set_height_row(row=2, height=120)
+            eww.set_freeze_panes(DynamicSqlSearch.FREEZE_PANES_IDX)
+
+            # 상단 source sql
+            eww.set_value_from_pandas(source_df, start_row_index, align_vertical=True, contain_header=True)
+            eww.set_style_by_option(source_df, start_row_index, source_sql_style_option_dict)
+
+            # 하단 target sql
+            if dynamic_source_sql_obj.tmp_df is not None and len(dynamic_source_sql_obj.tmp_df) > 0:
+                export_excel_data_df = self._make_export_excel_target_data_by_df(dynamic_source_sql_obj.tmp_df)
+
+                next_row_index = len(source_df) + start_row_index + 1
+
+                eww.set_value_from_pandas(
+                    export_excel_data_df, next_row_index, align_vertical=True, contain_header=True
+                )
+                eww.set_style_by_option(export_excel_data_df, next_row_index, target_sql_style_option_dict)
+
+            else:
+                self.logger.info("No valid data")
+
+            eww.save_workbook(
+                f"{self.dynamic_sql_path}/{dynamic_source_sql_obj.sql_uid}",
+                f"{sheet_name}.xlsx"
+                # f"{sheet_name}_{datetime.now().strftime(DateFmtConstants.DATE_YMDHMS)}.xlsx"
+            )
+
+    def _make_export_excel_source_data_by_obj(self, dynamic_source_sql_obj):
+        """
+        source sql 데이터 엑셀 추출을 위한 변환 함수
+        :param dynamic_source_sql_obj: dynamic source sql object
+        :return: 추출된 데이터 프레임
+        """
+        start_dt, end_dt = DateUtils.get_each_date_by_interval2(
+            self.config["args"]["s_date"], self.config["args"]["interval"], "%Y%m%d"
+        )
+
+        source_df = pd.DataFrame.from_dict(
+            [
+                {
+                    "source_sql_uid": dynamic_source_sql_obj.sql_uid,
+                    "analyze_date": f"{start_dt}~{end_dt}",
+                    "source_where_cols": ",".join(dynamic_source_sql_obj.where_col_list),
+                    "source_sql_text": dynamic_source_sql_obj.origin_sql_text,
+                    "source_sel_cols": ",".join(dynamic_source_sql_obj.select_col_list),
+                    "source_table_names": ",".join(dynamic_source_sql_obj.table_name_list),
+                    "source_join_cols": ",".join(dynamic_source_sql_obj.join_col_list),
+                }
+            ]
+        )
+
+        return source_df
+
+    @staticmethod
+    def _make_export_excel_target_data_by_df(tmp_df):
+        """
+        target sql 데이터 엑셀 추출을 위한 변환 함수
+        :param tmp_df: DB에 저장한 유효한 target sql 데이터 프레임
+        :return: 추출된 데이터 프레임
+        """
+        export_excel_data_df = tmp_df.drop(
+            columns=[
+                "source_table_names",
+                "source_sel_cols",
+                "source_join_cols",
+                "source_sql_uid",
+                "source_where_cols",
+            ],
+            axis=1,
+        )
+        export_excel_data_df = export_excel_data_df[
+            [
+                "target_sql_uid",
+                "target_sql_id",
+                "target_where_cols",
+                "dynamic_pattern",
+                "avg_lio",
+                "avg_pio",
+                "avg_elapsed_time",
+                "exec",
+            ]
+        ]
+        return export_excel_data_df
 
     def _search_dynamic_sql_text(self):
         """
@@ -245,38 +349,42 @@ class DynamicSqlSearch(cm.CommonModule):
         dynamic source query 추출 함수
         """
         home_parent_path = Path(self.config["home"]).parent
-        dynamic_sql_path = os.path.join(home_parent_path, SystemConstants.DYNAMIC_SQL_TEXT_PATH)
+        self.dynamic_sql_path = os.path.join(home_parent_path, SystemConstants.DYNAMIC_SQL_TEXT_PATH)
 
-        if not os.path.isdir(dynamic_sql_path):
-            os.mkdir(dynamic_sql_path)
+        if not os.path.isdir(self.dynamic_sql_path):
+            os.mkdir(self.dynamic_sql_path)
 
-        dynamic_sql_list = os.listdir(dynamic_sql_path)
+        dynamic_sql_list = SystemUtils.get_folder_to_path(self.dynamic_sql_path)
 
         self.logger.info(f"dynamic sql path {len(dynamic_sql_list)} things exist")
 
         if len(dynamic_sql_list) == 0:
             raise ModuleException("W003")
 
-        self._set_dynamic_sql_text_in_txt(dynamic_sql_path, dynamic_sql_list)
+        self._set_dynamic_sql_text_in_txt(dynamic_sql_list)
 
-    def _set_dynamic_sql_text_in_txt(self, dynamic_sql_path, dynamic_sql_list):
+    def _set_dynamic_sql_text_in_txt(self, dynamic_sql_list):
         """
         txt 파일에서 dynamic sql 추출하여 object 생성 함수
-        :param dynamic_sql_path: dynamic sql txt 파일 path
         :param dynamic_sql_list: dynamic sql sql_uid로 폴더링된 list
         """
         for sql_uid in dynamic_sql_list:
             self.logger.info(f"{sql_uid} parsing start..")
 
             dynamic_sql_files = SystemUtils.get_filenames_from_path(
-                os.path.join(dynamic_sql_path, sql_uid), suffix=".sql"
+                os.path.join(self.dynamic_sql_path, sql_uid), suffix=".sql"
             )
+
+            if dynamic_sql_files is None:
+                continue
 
             if len(dynamic_sql_files) > 1:
                 self.logger.warn(f"[{sql_uid}] dynamic sql file {len(dynamic_sql_files)} exist. Check file in path")
 
             dynamic_sql_file = dynamic_sql_files[0]
-            sql_text = SystemUtils.get_file_content_in_path(os.path.join(dynamic_sql_path, sql_uid), dynamic_sql_file)
+            sql_text = SystemUtils.get_file_content_in_path(
+                os.path.join(self.dynamic_sql_path, sql_uid), dynamic_sql_file
+            )
 
             self._set_dynamic_source_sql_object(sql_uid, sql_text)
 

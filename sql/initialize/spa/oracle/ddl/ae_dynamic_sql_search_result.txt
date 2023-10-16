@@ -11,6 +11,7 @@ create table ae_dynamic_sql_search_result(
 	avg_lio float4 null,
     avg_pio float4 null,
 	avg_elapsed_time float4 null,
+	avg_cpu_time float4 null,
 	exec int8,
 	create_dt timestamp with time zone default current_timestamp,
     create_id varchar(20) default 'system' not null,

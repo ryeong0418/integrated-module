@@ -90,6 +90,7 @@ class DynamicSqlSearch(cm.CommonModule):
 
     DYNAMIC_PATTERN_COLUMN_IDX = "D"
     FREEZE_PANES_IDX = "A5"
+    DEFAULT_CELL_HEIGHT = 100
 
     def __init__(self, logger):
         super().__init__(logger)
@@ -150,7 +151,7 @@ class DynamicSqlSearch(cm.CommonModule):
         )
         partition_key_list = [f"{date}{db_info}" for db_info in ae_db_infos for date in date_conditions]
         list_type_col_names = ["select", "where", "tables", "join"]
-        fillna_col_names = ["avg_lio", "avg_pio", "avg_elapsed_time", "exec"]
+        fillna_col_names = ["avg_lio", "avg_pio", "avg_elapsed_time", "avg_cpu_time", "exec"]
 
         for dynamic_source_sql in self.dynamic_source_sql_list:
             if dynamic_source_sql.valid_sql_df is None:
@@ -167,6 +168,7 @@ class DynamicSqlSearch(cm.CommonModule):
             dynamic_source_sql.valid_sql_df["sql_id"].fillna("", inplace=True)
 
             tmp_df = dynamic_source_sql.valid_sql_df.copy()
+            tmp_df["where"] = tmp_df["where"].apply(lambda x: sorted(x))
 
             tmp_df.drop(
                 columns=["check_contains", "parts_of_cols", "from_token_index", "sql_text_without_comment", "sql_text"],
@@ -211,7 +213,7 @@ class DynamicSqlSearch(cm.CommonModule):
             sheet_name = eww.set_active_sheet_name(dynamic_source_sql_obj.sql_uid)
 
             eww.set_cell_width_columns(columns_with_width_dict)
-            eww.set_height_row(row=2, height=120)
+            eww.set_height_row(row=2, height=DynamicSqlSearch.DEFAULT_CELL_HEIGHT)
             eww.set_freeze_panes(DynamicSqlSearch.FREEZE_PANES_IDX)
 
             # 상단 source sql
@@ -228,6 +230,9 @@ class DynamicSqlSearch(cm.CommonModule):
                     export_excel_data_df, next_row_index, align_vertical=True, contain_header=True
                 )
                 eww.set_style_by_option(export_excel_data_df, next_row_index, target_sql_style_option_dict)
+
+                for idx in range(len(export_excel_data_df)):
+                    eww.set_height_row(row=next_row_index + 1 + idx + 1, height=DynamicSqlSearch.DEFAULT_CELL_HEIGHT)
 
             else:
                 self.logger.info("No valid data")
@@ -290,6 +295,7 @@ class DynamicSqlSearch(cm.CommonModule):
                 "avg_lio",
                 "avg_pio",
                 "avg_elapsed_time",
+                "avg_cpu_time",
                 "exec",
             ]
         ]
@@ -341,6 +347,9 @@ class DynamicSqlSearch(cm.CommonModule):
                 dynamic_source_sql.valid_sql_df = pd.concat([dynamic_source_sql.valid_sql_df, valid_sql_df])
 
             loop_cnt += len(df)
+
+            # if loop_cnt >= 20000:
+            #     break
 
             self.logger.info(f"{loop_cnt} rows processing..")
 

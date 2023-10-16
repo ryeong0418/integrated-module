@@ -204,9 +204,12 @@ class AeSqlStat10min:
             case when sum(a.execution_count) != 0
                  then sum(a.elapsed_time) / sum(a.execution_count)
                  else 0 end as avg_elapsed_time,
+            case when sum(a.execution_count) != 0
+                 then sum(a.cpu_time) / sum(a.execution_count)
+                 else 0 end as avg_cpu_time,
             sum(a.execution_count) as exec
         from (
-            select sql_uid, sql_id, elapsed_time , logical_reads , physical_reads, execution_count
+            select sql_uid, sql_id, elapsed_time , logical_reads , physical_reads, execution_count, cpu_time
             from ae_sql_stat_10min assm
             where sql_uid in (#(sql_uids))
             and partition_key in (#(partition_keys))

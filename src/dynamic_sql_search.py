@@ -26,12 +26,13 @@ class DynamicSourceQuery:
     Dynamic sql text source object
     """
 
-    def __init__(self, sql_uid="temp"):
+    def __init__(self, sql_id="temp"):
         self.select_col_list = []
         self.table_name_list = []
         self.where_col_list = []
         self.origin_where_sql = None
-        self.sql_uid = sql_uid
+        self.sql_id = sql_id
+        self.sql_uid = ""
         self.join_col_list = []
         self.origin_sql_text = None
         self.valid_sql_df = None
@@ -89,6 +90,7 @@ class DynamicSqlSearch(cm.CommonModule):
     """
 
     DYNAMIC_PATTERN_COLUMN_IDX = "D"
+    DYNAMIC_PATTERN_COLUMN_WITDH = 80
     FREEZE_PANES_IDX = "A5"
     DEFAULT_CELL_HEIGHT = 100
 
@@ -125,6 +127,8 @@ class DynamicSqlSearch(cm.CommonModule):
         elif self.config["args"]["proc"] == "d":
             self.logger.info("dynamic query analyze process execute..")
 
+            self._init_sa_target()
+
             with TimeLogger("_set_dynamic_source_query(),elapsed ", self.logger):
                 self._set_dynamic_source_query()
 
@@ -141,8 +145,6 @@ class DynamicSqlSearch(cm.CommonModule):
         """
         분석 후 유효한 데이터의 추가 정보 추출 및 DB 저장 기능.
         """
-        self._init_sa_target()
-
         ae_db_info_df = self.st.get_ae_db_info()
         ae_db_infos = ae_db_info_df["lpad_db_id"].to_list()
 
@@ -151,7 +153,18 @@ class DynamicSqlSearch(cm.CommonModule):
         )
         partition_key_list = [f"{date}{db_info}" for db_info in ae_db_infos for date in date_conditions]
         list_type_col_names = ["select", "where", "tables", "join"]
-        fillna_col_names = ["avg_lio", "avg_pio", "avg_elapsed_time", "avg_cpu_time", "exec"]
+        fillna_col_names = [
+            "avg_lio",
+            "avg_pio",
+            "avg_elapsed_time",
+            "avg_cpu_time",
+            "exec",
+            "sum_lio",
+            "sum_pio",
+            "sum_elapsed_time",
+            "sum_cpu_time",
+        ]
+        sum_metrics = ["sum_lio", "sum_pio", "sum_elapsed_time", "sum_cpu_time"]
 
         for dynamic_source_sql in self.dynamic_source_sql_list:
             if dynamic_source_sql.valid_sql_df is None:
@@ -167,6 +180,8 @@ class DynamicSqlSearch(cm.CommonModule):
             ].fillna(0)
             dynamic_source_sql.valid_sql_df["sql_id"].fillna("", inplace=True)
 
+            self._calc_ratio_each_metric(dynamic_source_sql, sum_metrics)
+
             tmp_df = dynamic_source_sql.valid_sql_df.copy()
             tmp_df["where"] = tmp_df["where"].apply(lambda x: sorted(x))
 
@@ -177,6 +192,7 @@ class DynamicSqlSearch(cm.CommonModule):
             )
 
             tmp_df["source_sql_uid"] = dynamic_source_sql.sql_uid
+            tmp_df["source_sql_id"] = dynamic_source_sql.sql_id
             tmp_df["source_where_cols"] = ",".join(dynamic_source_sql.where_col_list)
             tmp_df[list_type_col_names] = tmp_df[list_type_col_names].applymap(self._list_to_str)
 
@@ -194,13 +210,37 @@ class DynamicSqlSearch(cm.CommonModule):
             dynamic_source_sql.tmp_df = tmp_df
             self.st.upsert_data(tmp_df, TableConstants.AE_DYNAMIC_SQL_SEARCH_RESULT)
 
+    @staticmethod
+    def _calc_ratio_each_metric(dynamic_source_sql, sum_metrics):
+        """
+        sum_metric으로 ratio_metric 구하기
+        :param dynamic_source_sql: source sql object
+        :param sum_metrics: sum_ 으로 시작되는 metrics
+        """
+        ratio_metrics = []
+        for sum_metric in sum_metrics:
+            ratio_metric = sum_metric.replace("sum", "ratio")
+            dynamic_source_sql.valid_sql_df[ratio_metric] = (
+                dynamic_source_sql.valid_sql_df[sum_metric].div(
+                    dynamic_source_sql.valid_sql_df[sum_metric].sum(), fill_value=0
+                )
+                * 100
+            )
+
+            ratio_metrics.append(ratio_metric)
+
+        dynamic_source_sql.valid_sql_df[ratio_metrics] = dynamic_source_sql.valid_sql_df[ratio_metrics].fillna(0)
+
     def _make_excel(self):
         """
         분석 후 유효한 데이터 엑셀 저장 기능.
         """
-        columns_with_width_dict = {DynamicSqlSearch.DYNAMIC_PATTERN_COLUMN_IDX: 120}
+        columns_with_width_dict = {
+            DynamicSqlSearch.DYNAMIC_PATTERN_COLUMN_IDX: DynamicSqlSearch.DYNAMIC_PATTERN_COLUMN_WITDH
+        }
         source_sql_style_option_dict = {"source_sql_text": ExcelAlignment.ALIGN_WRAP_TEXT}
         target_sql_style_option_dict = {"dynamic_pattern": ExcelAlignment.ALIGN_WRAP_TEXT}
+        ratio_metrics = ["ratio_elapsed_time", "ratio_cpu_time", "ratio_lio", "ratio_pio"]
 
         for dynamic_source_sql_obj in self.dynamic_source_sql_list:
             source_df = self._make_export_excel_source_data_by_obj(dynamic_source_sql_obj)
@@ -210,7 +250,7 @@ class DynamicSqlSearch(cm.CommonModule):
             # 기본설정
             eww = ExcelWriterWorker()
             eww.create_workbook()
-            sheet_name = eww.set_active_sheet_name(dynamic_source_sql_obj.sql_uid)
+            export_excel_file_name = eww.set_active_sheet_name(dynamic_source_sql_obj.sql_id)
 
             eww.set_cell_width_columns(columns_with_width_dict)
             eww.set_height_row(row=2, height=DynamicSqlSearch.DEFAULT_CELL_HEIGHT)
@@ -219,10 +259,15 @@ class DynamicSqlSearch(cm.CommonModule):
             # 상단 source sql
             eww.set_value_from_pandas(source_df, start_row_index, align_vertical=True, contain_header=True)
             eww.set_style_by_option(source_df, start_row_index, source_sql_style_option_dict)
+            eww.set_border_by_option(source_df, start_row_index - 1)
 
             # 하단 target sql
             if dynamic_source_sql_obj.tmp_df is not None and len(dynamic_source_sql_obj.tmp_df) > 0:
                 export_excel_data_df = self._make_export_excel_target_data_by_df(dynamic_source_sql_obj.tmp_df)
+
+                target_columns = self._extract_ratio_metric_column_idx(export_excel_data_df, ratio_metrics)
+
+                export_excel_data_df = self._rename_export_excel_data_df(export_excel_data_df)
 
                 next_row_index = len(source_df) + start_row_index + 1
 
@@ -230,18 +275,51 @@ class DynamicSqlSearch(cm.CommonModule):
                     export_excel_data_df, next_row_index, align_vertical=True, contain_header=True
                 )
                 eww.set_style_by_option(export_excel_data_df, next_row_index, target_sql_style_option_dict)
+                eww.set_border_by_option(export_excel_data_df, next_row_index)
+                eww.set_databar_by_value(export_excel_data_df, next_row_index, target_columns)
 
                 for idx in range(len(export_excel_data_df)):
                     eww.set_height_row(row=next_row_index + 1 + idx + 1, height=DynamicSqlSearch.DEFAULT_CELL_HEIGHT)
 
             else:
-                self.logger.info("No valid data")
+                self.logger.info(f"{dynamic_source_sql_obj.sql_id} sql_id not exists valid data")
+                export_excel_file_name = "nodata"
 
             eww.save_workbook(
-                f"{self.dynamic_sql_path}/{dynamic_source_sql_obj.sql_uid}",
-                f"{sheet_name}.xlsx"
-                # f"{sheet_name}_{datetime.now().strftime(DateFmtConstants.DATE_YMDHMS)}.xlsx"
+                f"{self.dynamic_sql_path}/{dynamic_source_sql_obj.sql_id}",
+                f"{export_excel_file_name}.xlsx"
+                # f"{export_excel_file_name}_{datetime.now().strftime(DateFmtConstants.DATE_YMDHMS)}.xlsx"
             )
+
+    @staticmethod
+    def _extract_ratio_metric_column_idx(df, ratio_metrics):
+        target_columns = []
+
+        for ratio_metric in ratio_metrics:
+            target_columns.append(df.columns.get_loc(ratio_metric) + 1)
+
+        return target_columns
+
+    @staticmethod
+    def _rename_export_excel_data_df(export_excel_data_df):
+        export_excel_data_df = export_excel_data_df.rename(
+            columns={
+                "ratio_elapsed_time": "Elapsed Time (%)",
+                "ratio_cpu_time": "CPU Time (%)",
+                "ratio_lio": "Logical Reads (%)",
+                "ratio_pio": "Physical Reads (%)",
+                "exec": "Executions",
+                "sum_elapsed_time": "Elapsed Time (Sec)",
+                "sum_cpu_time": "CPU Time (Sec)",
+                "sum_lio": "Logical Reads (blocks)",
+                "sum_pio": "Physical Reads (blocks)",
+                "avg_elapsed_time": "Elapsed Time/exec (Sec)",
+                "avg_cpu_time": "CPU Time/exec (Sec)",
+                "avg_lio": "Logical Reads/exec (blocks)",
+                "avg_pio": "Physical Reads/exec (blocks)",
+            },
+        )
+        return export_excel_data_df
 
     def _make_export_excel_source_data_by_obj(self, dynamic_source_sql_obj):
         """
@@ -257,12 +335,13 @@ class DynamicSqlSearch(cm.CommonModule):
             [
                 {
                     "source_sql_uid": dynamic_source_sql_obj.sql_uid,
-                    "analyze_date": f"{start_dt}~{end_dt}",
+                    "source_sql_id": dynamic_source_sql_obj.sql_id,
                     "source_where_cols": ",".join(dynamic_source_sql_obj.where_col_list),
                     "source_sql_text": dynamic_source_sql_obj.origin_sql_text,
                     "source_sel_cols": ",".join(dynamic_source_sql_obj.select_col_list),
                     "source_table_names": ",".join(dynamic_source_sql_obj.table_name_list),
                     "source_join_cols": ",".join(dynamic_source_sql_obj.join_col_list),
+                    "analyze_date": f"{start_dt}~{end_dt}",
                 }
             ]
         )
@@ -292,13 +371,24 @@ class DynamicSqlSearch(cm.CommonModule):
                 "target_sql_id",
                 "target_where_cols",
                 "dynamic_pattern",
-                "avg_lio",
-                "avg_pio",
+                "ratio_elapsed_time",
+                "ratio_cpu_time",
+                "ratio_lio",
+                "ratio_pio",
+                "exec",
+                "sum_elapsed_time",
+                "sum_cpu_time",
+                "sum_lio",
+                "sum_pio",
                 "avg_elapsed_time",
                 "avg_cpu_time",
-                "exec",
+                "avg_lio",
+                "avg_pio",
             ]
         ]
+
+        export_excel_data_df.sort_values(by=["ratio_elapsed_time"], axis=0, ascending=False, inplace=True)
+
         return export_excel_data_df
 
     def _search_dynamic_sql_text(self):
@@ -348,8 +438,8 @@ class DynamicSqlSearch(cm.CommonModule):
 
             loop_cnt += len(df)
 
-            # if loop_cnt >= 20000:
-            #     break
+            if loop_cnt >= 50000:
+                break
 
             self.logger.info(f"{loop_cnt} rows processing..")
 
@@ -372,38 +462,50 @@ class DynamicSqlSearch(cm.CommonModule):
 
         self._set_dynamic_sql_text_in_txt(dynamic_sql_list)
 
+        self._set_dynamic_sql_uid()
+
+    def _set_dynamic_sql_uid(self):
+        """
+        sql_id 로 ae_session_stat_10min 테이블에서 sql_uid 조회하여 세팅하는 함수
+        """
+        for dynamic_source_sql in self.dynamic_source_sql_list:
+            result_df = self.st.get_ae_session_stat_10min_by_sql_id(dynamic_source_sql.sql_id)
+
+            if len(result_df) >= 1:
+                dynamic_source_sql.sql_uid = result_df.at[0, "sql_uid"]
+
     def _set_dynamic_sql_text_in_txt(self, dynamic_sql_list):
         """
         txt 파일에서 dynamic sql 추출하여 object 생성 함수
         :param dynamic_sql_list: dynamic sql sql_uid로 폴더링된 list
         """
-        for sql_uid in dynamic_sql_list:
-            self.logger.info(f"{sql_uid} parsing start..")
+        for sql_id in dynamic_sql_list:
+            self.logger.info(f"{sql_id} parsing start..")
 
             dynamic_sql_files = SystemUtils.get_filenames_from_path(
-                os.path.join(self.dynamic_sql_path, sql_uid), suffix=".sql"
+                os.path.join(self.dynamic_sql_path, sql_id), suffix=".sql"
             )
 
             if dynamic_sql_files is None:
                 continue
 
             if len(dynamic_sql_files) > 1:
-                self.logger.warn(f"[{sql_uid}] dynamic sql file {len(dynamic_sql_files)} exist. Check file in path")
+                self.logger.warn(f"[{sql_id}] dynamic sql file {len(dynamic_sql_files)} exist. Check file in path")
 
             dynamic_sql_file = dynamic_sql_files[0]
             sql_text = SystemUtils.get_file_content_in_path(
-                os.path.join(self.dynamic_sql_path, sql_uid), dynamic_sql_file
+                os.path.join(self.dynamic_sql_path, sql_id), dynamic_sql_file
             )
 
-            self._set_dynamic_source_sql_object(sql_uid, sql_text)
+            self._set_dynamic_source_sql_object(sql_id, sql_text)
 
-    def _set_dynamic_source_sql_object(self, sql_uid, sql_text):
+    def _set_dynamic_source_sql_object(self, sql_id, sql_text):
         """
         dynamic source sql 객체 생성 및 값 세팅 함수
         :param sql_uid: 분석하는 sql text의 sql_uid
         :param sql_text: 분석하는 sql text
         """
-        dsq = DynamicSourceQuery(sql_uid)
+        dsq = DynamicSourceQuery(sql_id)
         dsq.analyze_sql_text(sql_text)
         self.logger.info(dsq)
         self.dynamic_source_sql_list.append(dsq)

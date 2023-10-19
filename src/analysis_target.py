@@ -616,3 +616,18 @@ class SaTarget(CommonTarget):
             },
         )
         return self._get_target_data_by_query(self.sa_conn, query, table_name)
+
+    def get_ae_session_stat_10min_by_sql_id(self, sql_id):
+        """
+        ae_sql_stat_10min 테이블에 sql_id별 sql_uid를 조회 함수
+        :param sql_id: 조회하려는 sql_id
+        :return: 조회 결과
+        """
+        table_name = TableConstants.AE_SQL_STAT_10MIN
+        query = SqlUtils.sql_replace_to_dict(
+            AeSqlStat10min.SELECT_AE_SESSION_STAT_10MIN_BY_SQL_ID,
+            {
+                "sql_id": sql_id,
+            },
+        )
+        return self._get_target_data_by_query(self.sa_conn, query, table_name)

@@ -1,6 +1,8 @@
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl import Workbook
-from openpyxl.styles import Alignment
+from openpyxl.styles import Alignment, Border, Side, colors
+from openpyxl.formatting.rule import DataBarRule
+from openpyxl.utils import get_column_letter
 
 
 class ExcelAlignment:
@@ -10,6 +12,29 @@ class ExcelAlignment:
 
     ALIGN_VERTICAL = "align_vertical"
     ALIGN_WRAP_TEXT = "align_wrap_text"
+
+
+class ExcelBorder:
+    """
+    ExcelBorder class
+    """
+
+    BORDER_NONE = None
+    BORDER_DASHDOT = "dashDot"
+    BORDER_DASHDOTDOT = "dashDotDot"
+    BORDER_DASHED = "dashed"
+    BORDER_DOTTED = "dotted"
+    BORDER_DOUBLE = "double"
+    BORDER_HAIR = "hair"
+    BORDER_MEDIUM = "medium"
+    BORDER_MEDIUMDASHDOT = "mediumDashDot"
+    BORDER_MEDIUMDASHDOTDOT = "mediumDashDotDot"
+    BORDER_MEDIUMDASHED = "mediumDashed"
+    BORDER_SLANTDASHDOT = "slantDashDot"
+    BORDER_THICK = "thick"
+    BORDER_THIN = "thin"
+
+    BLACK_RGB = "000000"
 
 
 class ExcelWriterWorker:
@@ -30,12 +55,12 @@ class ExcelWriterWorker:
 
     def set_active_sheet_name(self, sheet_name: str):
         """
-        active_worksheet에 title 설정 함수 (10자리 제한)
+        active_worksheet에 title 설정 함수 (20자리 제한)
         :param sheet_name: 시트 title 이름
         :return: (10자리 제한된) 시트 title 이름
         """
-        if len(sheet_name) > 10:
-            sheet_name = sheet_name[:10]
+        if len(sheet_name) > 20:
+            sheet_name = sheet_name[:20]
 
         self.active_worksheet.title = sheet_name
         return sheet_name
@@ -92,6 +117,22 @@ class ExcelWriterWorker:
         for column_value, style in style_option_dict.items():
             self._set_style_by_option(ExcelAlignment.ALIGN_WRAP_TEXT, start_row_index, df, column_value)
 
+    def set_border_by_option(self, df, start_row_index):
+        """
+        테두리 설정 함수
+        :param df: 테두리 설정 하려는 데이터 프레임
+        :param start_row_index: 시작 row index
+        :return:
+        """
+        for cell in self.active_worksheet.iter_rows(min_row=start_row_index + 1, max_row=start_row_index + len(df) + 1):
+            for cell_in_row in cell:
+                cell_in_row.border = Border(
+                    left=Side(border_style=ExcelBorder.BORDER_THIN, color=ExcelBorder.BLACK_RGB),
+                    right=Side(border_style=ExcelBorder.BORDER_THIN, color=ExcelBorder.BLACK_RGB),
+                    top=Side(border_style=ExcelBorder.BORDER_THIN, color=ExcelBorder.BLACK_RGB),
+                    bottom=Side(border_style=ExcelBorder.BORDER_THIN, color=ExcelBorder.BLACK_RGB),
+                )
+
     # 현재 사용하는 style은 alignment에 대해서만 적용
     def _set_style_by_option(self, alignment_style, start_row_index, df, column_to_style=None):
         """
@@ -144,3 +185,18 @@ class ExcelWriterWorker:
         """
         self.wb.save(f"{file_path}/{file_name}")
         self.wb.close()
+
+    def set_databar_by_value(self, df, start_row_index, target_columns):
+        """
+        Databar를 각 셀에 적용 하려는 함수
+        :param df: Databar 적용 하려는 데이터 프레임
+        :param start_row_index: 시작 row index
+        :param target_columns: 적용하려는 타겟 컬럼
+        """
+        rule = DataBarRule(start_type="num", start_value=5, end_type="num", end_value=100, color=colors.BLUE)
+
+        for target_column in target_columns:
+            column_letter = get_column_letter(target_column)
+            start_row = self.active_worksheet[column_letter][start_row_index + 1].coordinate
+            end_row = self.active_worksheet[column_letter][start_row_index + len(df)].coordinate
+            self.active_worksheet.conditional_formatting.add(f"{start_row}:{end_row}", rule)

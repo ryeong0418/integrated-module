@@ -37,9 +37,9 @@ class ExcelBorder:
     BLACK_RGB = "000000"
 
 
-class ExcelWriterWorker:
+class ExcelWriter:
     """
-    ExcelWriterWorker class
+    ExcelWriter class
     """
 
     def __init__(self):

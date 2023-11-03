@@ -1,14 +1,17 @@
-import numpy as np
-import pandas as pd
+import re
 import faulthandler
 import os
+
+import numpy as np
+import pandas as pd
 import pyarrow.parquet as pq
-import sqlparse
 
 from ast import literal_eval
 from pathlib import Path
 from sql_metadata.parser import Parser
+from sql_metadata.keywords_lists import TokenType
 from pathos import multiprocessing
+from pprint import pformat
 
 from src import common_module as cm
 from src.common.timelogger import TimeLogger
@@ -16,31 +19,56 @@ from src.common.constants import SystemConstants, TableConstants
 from src.common.file_export import ParquetFile
 from src.common.utils import SystemUtils, MaxGaugeUtils, DateUtils
 from src.common.module_exception import ModuleException
-from src.excel.excel_writer_worker import ExcelWriterWorker, ExcelAlignment
+from src.excel.excel_writer import ExcelWriter, ExcelAlignment
+from src.common.stack import Stack
 
 
-class DynamicSourceQuery:
+class AnalyzedQueryPartObj:
+    """
+    AnalyzedQueryPartObj Class
+
+    Analyzed Query Part Template object
+    """
+
+    def __init__(self):
+        self.sql_fixed_part = {
+            "select_col_list": {},
+            "table_name_list": {},
+            "join_col_list": {},
+            "where_col_list": {},
+            "etc_col_list": {},
+        }
+        self.sql_dynamic_part = {
+            "select_col_list": {},
+            "table_name_list": {},
+            "join_col_list": {},
+            "where_col_list": {},
+            "etc_col_list": {},
+        }
+
+
+class DynamicSourceQuery(AnalyzedQueryPartObj):
     """
     DynamicSourceQuery Class
 
     Dynamic sql text source object
     """
 
-    def __init__(self, sql_id="temp"):
-        self.select_col_list = []
-        self.table_name_list = []
-        self.where_col_list = []
-        self.origin_where_sql = None
+    def __init__(self, sql_id, dynamic_where_index):
+        super().__init__()
         self.sql_id = sql_id
+        self.dynamic_where_index = dynamic_where_index
+
         self.sql_uid = ""
-        self.join_col_list = []
         self.origin_sql_text = None
         self.valid_sql_df = None
-        self.from_token_index_list = []
         self.where_token_index_list = []
-        self.sql_text_without_comment = None
         self.invalid_sql_df = None
         self.tmp_df = None
+        self.first_fixed_sel_depth = 0
+        self.first_fixed_sel_col = ""
+        self.first_fixed_table_depth = 0
+        self.first_fixed_table_name = ""
 
     def __repr__(self):
         """
@@ -48,37 +76,61 @@ class DynamicSourceQuery:
         """
         return (
             f"{self.sql_uid} parsing result\n"
-            f"select column : {self.select_col_list} \n"
-            f"table name : {self.table_name_list} \n"
-            f"join column : {self.join_col_list} \n"
-            f"where column : {self.where_col_list}"
+            f"sql_fixed_part : {pformat(self.sql_fixed_part)} \n"
+            f"{'*' * 99}\n"
+            f"sql_dynamic_part: {pformat(self.sql_dynamic_part)} \n"
         )
 
     def analyze_sql_text(self, sql_text):
         """
         Dynamic sql text 분석 및 매칭 데이터 세팅
         :param sql_text: 로컬에 저장된 sql text 원본 데이터
+        :param dynamic_where_index: dynamic sql patter이 시작되는 where keyword index
         """
         sql_text = sql_text.lower().strip()
-        sql_text = sql_text.replace("(+)", "")
+        sql_text = re.sub(r"\( *\+ *\)", "", sql_text)
+        stack = Stack()
 
-        parts_of_cols_dict = DynamicSqlSearch.parsing_columns(sql_text)
-        sql_text_without_comment = sqlparse.format(sql_text, strip_comments=True)
-        from_token_index = DynamicSqlSearch.get_from_token_index(sql_text_without_comment)
-        where_token_index = [
-            token.position
-            for token in Parser(sql_text_without_comment).tokens
-            if token.is_keyword and token.normalized == "WHERE"
-        ]
+        parser = DynamicSqlSearch.get_sql_metadata_obj(sql_text)
 
-        self.select_col_list = parts_of_cols_dict.get("select", [])
-        self.where_col_list = parts_of_cols_dict.get("where", [])
-        self.join_col_list = parts_of_cols_dict.get("join", [])
+        # where idx 0 인것 고려해야함
+        where_token_index = DynamicSqlSearch.get_where_token_idx(parser)
 
-        self.table_name_list = DynamicSqlSearch.parsing_tables(sql_text)
-        self.from_token_index_list = from_token_index
+        index = 1
+        for token in parser.tokens:
+            if index == 1:
+                stack.push("SELECT")
+
+            # 같은 depth 에서 키워드가 변경될때, select from where 에서만
+            if token.next_token is not None and token.next_token.last_keyword != stack.peek():
+                stack.pop()
+                stack.push(token.next_token.last_keyword)
+
+            # 여는 소괄호가 나오면 1. 함수 2. 서브쿼리 반드시 select가 나옴
+            if token.is_left_parenthesis:
+                if token.next_token is not None and token.next_token.normalized == "SELECT":
+                    stack.push(token.next_token.normalized)
+                else:
+                    stack.push(token.next_token.last_keyword)
+
+            # 닫는 소괄호가 나오면
+            elif token.is_right_parenthesis:
+                stack.pop()
+
+            if len(where_token_index) == 0 or token.position < where_token_index[int(self.dynamic_where_index) - 1]:
+                DynamicSqlSearch.analyze_token_type(token, self.sql_fixed_part, parser.columns_aliases)
+            else:
+                DynamicSqlSearch.analyze_token_type(token, self.sql_dynamic_part, parser.columns_aliases)
+
+        index += 1
+
+        self.first_fixed_sel_depth, self.first_fixed_sel_col = DynamicSqlSearch.extract_first_key_and_value_in_obj(
+            self.sql_fixed_part, "select_col_list"
+        )
+        self.first_fixed_table_depth, self.first_fixed_table_name = DynamicSqlSearch.extract_first_key_and_value_in_obj(
+            self.sql_fixed_part, "table_name_list"
+        )
         self.origin_sql_text = sql_text
-        self.sql_text_without_comment = sql_text_without_comment
         self.where_token_index_list = where_token_index
 
 
@@ -112,6 +164,7 @@ class DynamicSqlSearch(cm.CommonModule):
         self.n_cores = int(os.cpu_count() * 0.5)
 
         self.chunk_size = int(self.config.get("data_handling_chunksize", 10000))
+        self.chunk_size = int(self.chunk_size / 2)
         self.export_parquet_root_path = f'{self.config["home"]}/{SystemConstants.EXPORT_PARQUET_PATH}'
 
         self.dynamic_sql_parquet_file_name = (
@@ -152,7 +205,6 @@ class DynamicSqlSearch(cm.CommonModule):
             self.config["args"]["s_date"], self.config["args"]["interval"], return_fmt="%y%m%d"
         )
         partition_key_list = [f"{date}{db_info}" for db_info in ae_db_infos for date in date_conditions]
-        list_type_col_names = ["select", "where", "tables", "join"]
         fillna_col_names = [
             "avg_lio",
             "avg_pio",
@@ -175,34 +227,47 @@ class DynamicSqlSearch(cm.CommonModule):
             df = self.st.get_ae_sql_stat_10min_by_sql_uid_and_partition_key(sql_uid_list, partition_key_list)
 
             dynamic_source_sql.valid_sql_df = pd.merge(dynamic_source_sql.valid_sql_df, df, on="sql_uid", how="left")
-            dynamic_source_sql.valid_sql_df[fillna_col_names] = dynamic_source_sql.valid_sql_df[
-                fillna_col_names
-            ].fillna(0)
+            dynamic_source_sql.valid_sql_df[fillna_col_names] = (
+                dynamic_source_sql.valid_sql_df[fillna_col_names].fillna(0).round(2)
+            )
+
             dynamic_source_sql.valid_sql_df["sql_id"].fillna("", inplace=True)
+
+            dynamic_source_sql.valid_sql_df["target_where_cols"] = (
+                dynamic_source_sql.valid_sql_df["sql_dynamic_part_by_idx"]
+                .apply(lambda x: x.get("where_col_list", {}))
+                .astype(str)
+            )
 
             self._calc_ratio_each_metric(dynamic_source_sql, sum_metrics)
 
             tmp_df = dynamic_source_sql.valid_sql_df.copy()
-            tmp_df["where"] = tmp_df["where"].apply(lambda x: sorted(x))
+            # tmp_df["where"] = tmp_df["where"].apply(lambda x: sorted(x))
 
             tmp_df.drop(
-                columns=["check_contains", "parts_of_cols", "from_token_index", "sql_text_without_comment", "sql_text"],
+                columns=["sql_text", "sql_dynamic_part_by_idx", "sql_fixed_part_by_idx"],
                 axis=1,
                 inplace=True,
             )
 
             tmp_df["source_sql_uid"] = dynamic_source_sql.sql_uid
             tmp_df["source_sql_id"] = dynamic_source_sql.sql_id
-            tmp_df["source_where_cols"] = ",".join(dynamic_source_sql.where_col_list)
-            tmp_df[list_type_col_names] = tmp_df[list_type_col_names].applymap(self._list_to_str)
+
+            tmp_df["source_fixed_sel_cols"] = str(dynamic_source_sql.sql_fixed_part.get("select_col_list", {}))
+            tmp_df["source_fixed_join_cols"] = str(dynamic_source_sql.sql_fixed_part.get("join_col_list", {}))
+            tmp_df["source_fixed_table_names"] = str(dynamic_source_sql.sql_fixed_part.get("table_name_list", {}))
+            tmp_df["source_fixed_where_cols"] = str(dynamic_source_sql.sql_fixed_part.get("where_col_list", {}))
+
+            tmp_df["source_dynamic_sel_cols"] = str(dynamic_source_sql.sql_dynamic_part.get("select_col_list", {}))
+            tmp_df["source_dynamic_join_cols"] = str(dynamic_source_sql.sql_dynamic_part.get("join_col_list", {}))
+            tmp_df["source_dynamic_table_names"] = str(dynamic_source_sql.sql_dynamic_part.get("table_name_list", {}))
+            tmp_df["source_dynamic_where_cols"] = str(dynamic_source_sql.sql_dynamic_part.get("where_col_list", {}))
+
+            # tmp_df[list_type_col_names] = tmp_df[list_type_col_names].applymap(self._list_to_str)
 
             tmp_df.rename(
                 columns={
-                    "select": "source_sel_cols",
-                    "tables": "source_table_names",
-                    "join": "source_join_cols",
                     "sql_uid": "target_sql_uid",
-                    "where": "target_where_cols",
                     "sql_id": "target_sql_id",
                 },
                 inplace=True,
@@ -230,6 +295,7 @@ class DynamicSqlSearch(cm.CommonModule):
             ratio_metrics.append(ratio_metric)
 
         dynamic_source_sql.valid_sql_df[ratio_metrics] = dynamic_source_sql.valid_sql_df[ratio_metrics].fillna(0)
+        dynamic_source_sql.valid_sql_df[ratio_metrics] = dynamic_source_sql.valid_sql_df[ratio_metrics].round(2)
 
     def _make_excel(self):
         """
@@ -248,7 +314,7 @@ class DynamicSqlSearch(cm.CommonModule):
             start_row_index = 1
 
             # 기본설정
-            eww = ExcelWriterWorker()
+            eww = ExcelWriter()
             eww.create_workbook()
             export_excel_file_name = eww.set_active_sheet_name(dynamic_source_sql_obj.sql_id)
 
@@ -274,6 +340,7 @@ class DynamicSqlSearch(cm.CommonModule):
                 eww.set_value_from_pandas(
                     export_excel_data_df, next_row_index, align_vertical=True, contain_header=True
                 )
+
                 eww.set_style_by_option(export_excel_data_df, next_row_index, target_sql_style_option_dict)
                 eww.set_border_by_option(export_excel_data_df, next_row_index)
                 eww.set_databar_by_value(export_excel_data_df, next_row_index, target_columns)
@@ -293,6 +360,12 @@ class DynamicSqlSearch(cm.CommonModule):
 
     @staticmethod
     def _extract_ratio_metric_column_idx(df, ratio_metrics):
+        """
+        비율을 구하는 지표들의 컬럼 인덱스를 추출하는 함수
+        :param df: 대상 데이터프레임
+        :param ratio_metrics: 비율을 구하려는 지표
+        :return: 추출된 컬럼 인덱스
+        """
         target_columns = []
 
         for ratio_metric in ratio_metrics:
@@ -302,6 +375,11 @@ class DynamicSqlSearch(cm.CommonModule):
 
     @staticmethod
     def _rename_export_excel_data_df(export_excel_data_df):
+        """
+        엑셀 추출시 표시되는 컬럼명 변경을 위한 함수
+        :param export_excel_data_df: 엑셀 추출 데이터 프레임
+        :return: 변경된 데이터 프레임
+        """
         export_excel_data_df = export_excel_data_df.rename(
             columns={
                 "ratio_elapsed_time": "Elapsed Time (%)",
@@ -336,11 +414,17 @@ class DynamicSqlSearch(cm.CommonModule):
                 {
                     "source_sql_uid": dynamic_source_sql_obj.sql_uid,
                     "source_sql_id": dynamic_source_sql_obj.sql_id,
-                    "source_where_cols": ",".join(dynamic_source_sql_obj.where_col_list),
+                    "source_dynamic_where_cols": str(dynamic_source_sql_obj.sql_dynamic_part.get("where_col_list", {})),
                     "source_sql_text": dynamic_source_sql_obj.origin_sql_text,
-                    "source_sel_cols": ",".join(dynamic_source_sql_obj.select_col_list),
-                    "source_table_names": ",".join(dynamic_source_sql_obj.table_name_list),
-                    "source_join_cols": ",".join(dynamic_source_sql_obj.join_col_list),
+                    "source_fixed_sel_cols": str(dynamic_source_sql_obj.sql_fixed_part.get("select_col_list", {})),
+                    "source_fixed_table_names": str(dynamic_source_sql_obj.sql_fixed_part.get("table_name_list", {})),
+                    "source_fixed_join_cols": str(dynamic_source_sql_obj.sql_fixed_part.get("join_col_list", {})),
+                    "source_fixed_where_cols": str(dynamic_source_sql_obj.sql_fixed_part.get("where_col_list", {})),
+                    "source_dynamic_sel_cols": str(dynamic_source_sql_obj.sql_dynamic_part.get("select_col_list", {})),
+                    "source_dynamic_table_names": str(
+                        dynamic_source_sql_obj.sql_dynamic_part.get("table_name_list", {})
+                    ),
+                    "source_dynamic_join_cols": str(dynamic_source_sql_obj.sql_dynamic_part.get("join_col_list", {})),
                     "analyze_date": f"{start_dt}~{end_dt}",
                 }
             ]
@@ -355,17 +439,7 @@ class DynamicSqlSearch(cm.CommonModule):
         :param tmp_df: DB에 저장한 유효한 target sql 데이터 프레임
         :return: 추출된 데이터 프레임
         """
-        export_excel_data_df = tmp_df.drop(
-            columns=[
-                "source_table_names",
-                "source_sel_cols",
-                "source_join_cols",
-                "source_sql_uid",
-                "source_where_cols",
-            ],
-            axis=1,
-        )
-        export_excel_data_df = export_excel_data_df[
+        export_excel_data_df = tmp_df[
             [
                 "target_sql_uid",
                 "target_sql_id",
@@ -400,45 +474,101 @@ class DynamicSqlSearch(cm.CommonModule):
 
         for batch in pre_proc_file.iter_batches(batch_size=self.chunk_size):
             df = batch.to_pandas()
-            df = self._extract_parts_of_cols(df)
-            df["tables"] = df["tables"].apply(lambda x: literal_eval(x))
 
             for dynamic_source_sql in self.dynamic_source_sql_list:
+                # where keyword index가 작은것들 제거
                 valid_sql_df = df[
-                    df["select"].apply(lambda x: x == dynamic_source_sql.select_col_list)
-                    & df["join"].apply(lambda x: x == dynamic_source_sql.join_col_list)
-                    & df["tables"].apply(lambda x: x == dynamic_source_sql.table_name_list)
+                    ~df["where_token_len"].apply(
+                        lambda x: int(x) < int(dynamic_source_sql.dynamic_where_index)
+                        or int(x) >= int(dynamic_source_sql.dynamic_where_index) + 10
+                    )
                 ]
 
                 if len(valid_sql_df) == 0:
                     continue
 
-                valid_sql_df = self._sql_metadata_from_index_parsing_by_df(valid_sql_df)
-                valid_sql_df = valid_sql_df[
-                    valid_sql_df["from_token_index"].apply(lambda x: x == dynamic_source_sql.from_token_index_list)
-                ]
+                valid_sql_df.drop(columns="where_token_len", inplace=True)
+                # 다음 파싱 이후 지워야함
+                valid_sql_df.drop(columns="row_str_contains_list", inplace=True)
 
-                if len(valid_sql_df) == 0:
-                    continue
+                valid_sql_df["sql_fixed_parts"] = valid_sql_df["sql_fixed_parts"].apply(lambda x: literal_eval(x))
 
-                valid_sql_df["check_contains"] = valid_sql_df["where"].apply(
-                    lambda x: self._check_contains_where_col(x, dynamic_source_sql.where_col_list)
+                # 파싱된 fixed parts의 지정된 index 값 추출 , where가 없을것 고려 해야함, where_token_idx의 range
+                valid_sql_df["sql_fixed_part_by_idx"] = valid_sql_df["sql_fixed_parts"].apply(
+                    lambda x: x.get(f"{int(dynamic_source_sql.dynamic_where_index) - 1}", {})
                 )
+                valid_sql_df.drop(columns="sql_fixed_parts", inplace=True)
 
-                valid_sql_df = valid_sql_df[valid_sql_df["check_contains"]]
+                # fixed parts 비교
+                valid_sql_df = valid_sql_df[
+                    valid_sql_df["sql_fixed_part_by_idx"].apply(
+                        lambda x: self.compare_dicts(
+                            x.get("select_col_list", {}), dynamic_source_sql.sql_fixed_part.get("select_col_list", {})
+                        )
+                    )
+                    & valid_sql_df["sql_fixed_part_by_idx"].apply(
+                        lambda x: self.compare_dicts(
+                            x.get("table_name_list", {}), dynamic_source_sql.sql_fixed_part.get("table_name_list", {})
+                        )
+                    )
+                    & valid_sql_df["sql_fixed_part_by_idx"].apply(
+                        lambda x: self.compare_dicts(
+                            x.get("join_col_list", {}), dynamic_source_sql.sql_fixed_part.get("join_col_list", {})
+                        )
+                    )
+                    & valid_sql_df["sql_fixed_part_by_idx"].apply(
+                        lambda x: self.compare_dicts(
+                            x.get("where_col_list", {}), dynamic_source_sql.sql_fixed_part.get("where_col_list", {})
+                        )
+                    )
+                ]
 
                 if len(valid_sql_df) == 0:
                     continue
 
-                valid_sql_df["dynamic_pattern"] = valid_sql_df["sql_text_without_comment"].apply(
-                    lambda x: self._make_from_where_pattern(x, dynamic_source_sql.from_token_index_list[-1])
+                valid_sql_df["sql_dynamic_parts"] = valid_sql_df["sql_dynamic_parts"].apply(lambda x: literal_eval(x))
+
+                # 파싱된 dynamic parts의 지정된 index 값 추출
+                valid_sql_df["sql_dynamic_part_by_idx"] = valid_sql_df["sql_dynamic_parts"].apply(
+                    lambda x: x.get(f"{int(dynamic_source_sql.dynamic_where_index) - 1}", "")
+                )
+                valid_sql_df.drop(columns="sql_dynamic_parts", inplace=True)
+
+                valid_sql_df = valid_sql_df[
+                    valid_sql_df["sql_dynamic_part_by_idx"].apply(
+                        lambda x: self._check_contains_where_col(
+                            x.get("select_col_list", {}), dynamic_source_sql.sql_dynamic_part.get("select_col_list", {})
+                        )
+                    )
+                    & valid_sql_df["sql_dynamic_part_by_idx"].apply(
+                        lambda x: self._check_contains_where_col(
+                            x.get("table_name_list", {}), dynamic_source_sql.sql_dynamic_part.get("table_name_list", {})
+                        )
+                    )
+                    & valid_sql_df["sql_dynamic_part_by_idx"].apply(
+                        lambda x: self._check_contains_where_col(
+                            x.get("join_col_list", {}), dynamic_source_sql.sql_dynamic_part.get("join_col_list", {})
+                        )
+                    )
+                    & valid_sql_df["sql_dynamic_part_by_idx"].apply(
+                        lambda x: self._check_contains_where_col(
+                            x.get("where_col_list", {}), dynamic_source_sql.sql_dynamic_part.get("where_col_list", {})
+                        )
+                    )
+                ]
+
+                if len(valid_sql_df) == 0:
+                    continue
+
+                valid_sql_df["dynamic_pattern"] = valid_sql_df["sql_text"].apply(
+                    lambda x: self._make_from_where_pattern(x, int(dynamic_source_sql.dynamic_where_index) - 1)
                 )
 
                 dynamic_source_sql.valid_sql_df = pd.concat([dynamic_source_sql.valid_sql_df, valid_sql_df])
 
             loop_cnt += len(df)
 
-            if loop_cnt >= 50000:
+            if loop_cnt >= 10000:
                 break
 
             self.logger.info(f"{loop_cnt} rows processing..")
@@ -497,15 +627,29 @@ class DynamicSqlSearch(cm.CommonModule):
                 os.path.join(self.dynamic_sql_path, sql_id), dynamic_sql_file
             )
 
-            self._set_dynamic_source_sql_object(sql_id, sql_text)
+            file_name = dynamic_sql_file.split(".")[0]
 
-    def _set_dynamic_source_sql_object(self, sql_id, sql_text):
+            if "_" in file_name:
+                dynamic_where_index = file_name.split("_")[1]
+            else:
+                self.logger.warn(
+                    f"[{sql_id}] dynamic sql filename not contain where index. set default index 1. "
+                    f"please check filename ex) xxxxxx_(dynamic where index).sql"
+                )
+                dynamic_where_index = "1"
+
+            if not dynamic_where_index.isdecimal():
+                raise ModuleException("E010")
+
+            self._set_dynamic_source_sql_object(sql_id, sql_text, dynamic_where_index)
+
+    def _set_dynamic_source_sql_object(self, sql_id, sql_text, dynamic_where_index):
         """
         dynamic source sql 객체 생성 및 값 세팅 함수
         :param sql_uid: 분석하는 sql text의 sql_uid
         :param sql_text: 분석하는 sql text
         """
-        dsq = DynamicSourceQuery(sql_id)
+        dsq = DynamicSourceQuery(sql_id, dynamic_where_index)
         dsq.analyze_sql_text(sql_text)
         self.logger.info(dsq)
         self.dynamic_source_sql_list.append(dsq)
@@ -516,19 +660,99 @@ class DynamicSqlSearch(cm.CommonModule):
         :param df: 파싱 전 데이터 프레임
         :return: 결과 데이터 프레임
         """
-        df["parts_of_cols"] = df["sql_text"].apply(lambda x: self.parsing_columns(x))
-        df["tables"] = df["sql_text"].apply(lambda x: self.parsing_tables(x))
+        df[
+            [
+                "sql_fixed_parts",
+                "sql_dynamic_parts",
+                "where_token_len",
+                "first_fixed_sel_depth",
+                "first_fixed_sel_col",
+                "first_fixed_table_depth",
+                "first_fixed_table_name",
+            ]
+        ] = df.apply(self._parsing_sql_each_parts, axis=1)
         return df
 
-    def _sql_metadata_from_index_parsing_by_df(self, df):
+    @staticmethod
+    def get_sql_metadata_obj(sql_text):
         """
-        sql_metadata lib를 사용한 sql table toke index parsing
-        :param df: 파싱 전 데이터 프레임
-        :return: 결과 데이터 프레임
+        sql_metadata 라이브러리 Parser obj 생성 함수
+        :param sql_text: 파싱하려는 sql text
+        :return: Parser 객체
+        :exception: False (bool)
         """
-        df["sql_text_without_comment"] = df["sql_text"].apply(lambda x: sqlparse.format(x, strip_comments=True))
-        df["from_token_index"] = df["sql_text_without_comment"].apply(lambda x: self.get_from_token_index(x))
-        return df
+        try:
+            parser = Parser(sql_text)
+            parser.columns
+        except Exception:
+            return False
+        return parser
+
+    def _parsing_sql_each_parts(self, row):
+        """
+        sql의 고정 부분과 다이나믹 부분을 각각 파싱하는 함수
+        :param row: 파싱하려는 데이터프레임 row
+        :return: 파싱된 각 Series
+        """
+        sql_text = row["sql_text"]
+        sql_fixed_parts = {}
+        sql_dynamic_parts = {}
+        first_fixed_sel_depth = "-1"
+        first_fixed_sel_col = "-1"
+        first_fixed_table_depth = "-1"
+        first_fixed_table_name = "-1"
+
+        parser = self.get_sql_metadata_obj(sql_text)
+
+        if not parser:
+            return pd.Series(
+                [
+                    sql_fixed_parts,
+                    sql_dynamic_parts,
+                    -1,
+                    first_fixed_sel_depth,
+                    first_fixed_sel_col,
+                    first_fixed_table_depth,
+                    first_fixed_table_name,
+                ]
+            )
+
+        where_token_idxs = self.get_where_token_idx(parser)
+
+        for idx in range(len(where_token_idxs)):
+            query_part_obj = AnalyzedQueryPartObj()
+
+            sql_fixed_part = query_part_obj.sql_fixed_part
+            sql_dynamic_part = query_part_obj.sql_dynamic_part
+
+            for token in parser.tokens:
+                if len(where_token_idxs) == 0 or token.position < where_token_idxs[idx]:
+                    DynamicSqlSearch.analyze_token_type(token, sql_fixed_part, parser.columns_aliases)
+                else:
+                    DynamicSqlSearch.analyze_token_type(token, sql_dynamic_part, parser.columns_aliases)
+
+            sql_fixed_parts[f"{idx}"] = sql_fixed_part
+            sql_dynamic_parts[f"{idx}"] = sql_dynamic_part
+
+        if len(where_token_idxs) > 0:
+            first_fixed_sel_depth, first_fixed_sel_col = self.extract_first_key_and_value_in_obj(
+                sql_fixed_parts.get("0"), "select_col_list"
+            )
+            first_fixed_table_depth, first_fixed_table_name = self.extract_first_key_and_value_in_obj(
+                sql_fixed_parts.get("0"), "table_name_list"
+            )
+
+        return pd.Series(
+            [
+                sql_fixed_parts,
+                sql_dynamic_parts,
+                len(where_token_idxs),
+                first_fixed_sel_depth,
+                first_fixed_sel_col,
+                first_fixed_table_depth,
+                first_fixed_table_name,
+            ]
+        )
 
     def _export_db_sql_text(self):
         """
@@ -595,7 +819,12 @@ class DynamicSqlSearch(cm.CommonModule):
                         grouping_df = self.parallelize_dataframe(
                             grouping_df, self._sql_metadata_parsing_by_df, n_cores=self.n_cores
                         )
-                        grouping_df = grouping_df.astype({"parts_of_cols": "str", "tables": "str"})
+
+                        # grouping_df = self._sql_metadata_parsing_by_df(grouping_df)
+
+                        grouping_df = grouping_df[grouping_df["where_token_len"] >= 0]
+
+                        grouping_df = grouping_df.astype({"sql_fixed_parts": "str", "sql_dynamic_parts": "str"})
 
                         self._init_sa_target()
 
@@ -663,77 +892,23 @@ class DynamicSqlSearch(cm.CommonModule):
         )
 
         grouping_df["sql_text"] = grouping_df["sql_text"].str.lower().str.strip()
-        grouping_df["sql_text"] = grouping_df["sql_text"].str.replace(r"(+)", "", regex=False)
+        grouping_df["sql_text"] = grouping_df["sql_text"].str.replace(r"\( *\+ *\)", "", regex=False)
         grouping_df = grouping_df[~grouping_df["sql_text"].str.startswith(sql_filter)]
         return grouping_df
 
     @staticmethod
-    def get_from_token_index(sql_text):
-        """
-        from 절 토큰 인덱스 추출 함수
-        :param sql_text: 추출하려는 sql text
-        :return: 토큰 인덱스 리스트
-        :except: -1 리스트
-        """
-        try:
-            from_token_indexs = [
-                token.position for token in Parser(sql_text).tokens if token.is_keyword and token.normalized == "FROM"
-            ]
-            if len(from_token_indexs) == 0:
-                from_token_indexs = [-1]
-            return from_token_indexs
-        except Exception:
-            return [-1]
-
-    @staticmethod
-    def parsing_columns(sql_text):
-        """
-        컬럼 파싱 함수
-        :param sql_text: 파싱 대상 sql text
-        :return: 파싱 결과
-        :except: 빈 dict
-        """
-        try:
-            return Parser(sql_text).columns_dict if Parser(sql_text).columns_dict is not None else {}
-        except Exception:
-            return {}
-
-    @staticmethod
-    def parsing_tables(sql_text):
-        """
-        테이블명 파싱 함수
-        :param sql_text: 파싱 대상 sql text
-        :return: 파싱 결과
-        :except: 빈 list
-        """
-        try:
-            return Parser(sql_text).tables if Parser(sql_text).tables is not None else []
-        except Exception:
-            return []
-
-    @staticmethod
-    def _check_contains_where_col(target_where_col_list: list, dynamic_src_sql_where_col_list: list):
+    def _check_contains_where_col(parquet_data_dict: dict, obj_dict: dict):
         """
         where 절 컬럼을 포함 여부 확인 함수
-        :param target_where_col_list: 대상 where 컬럼 리스트
-        :param dynamic_src_sql_where_col_list: 다이나믹 sql where 컬럼 리스트
+        :param parquet_data_dict: 대상 where 컬럼 dict
+        :param obj_dict: 다이나믹 sql where 컬럼 dict
         :return: 포함 여부
         """
-        return all(col in target_where_col_list for col in dynamic_src_sql_where_col_list)
+        for key, value in obj_dict.items():
+            if key not in parquet_data_dict or not all(col in parquet_data_dict[key] for col in value):
+                return False
 
-    @staticmethod
-    def _extract_parts_of_cols(df):
-        """
-        sql 구문별 컬럼 추출 함수
-        :param df: 추출하려는 sql text 데이터 프레임
-        :return: 추출된 데이터 프레임
-        """
-        df["parts_of_cols"] = df["parts_of_cols"].apply(lambda x: literal_eval(x))
-
-        df["select"] = df["parts_of_cols"].apply(lambda x: x.get("select", []))
-        df["join"] = df["parts_of_cols"].apply(lambda x: x.get("join", []))
-        df["where"] = df["parts_of_cols"].apply(lambda x: x.get("where", []))
-        return df
+        return True
 
     @staticmethod
     def _list_to_str(target_list, sep=","):
@@ -746,15 +921,19 @@ class DynamicSqlSearch(cm.CommonModule):
         return sep.join(target_list)
 
     @staticmethod
-    def _make_from_where_pattern(sql_text_without_comment, from_position):
+    def _make_from_where_pattern(sql_text, where_idx):
         """
         from ~ where patter str 생성 함수
-        :param sql_text_without_comment: 주석 제거 sql text
-        :param from_position: from절 포지션
+        :param sql_text: 주석 제거 sql text
+        :param where_idx: where절 포지션
         :return: from ~ where str
         """
+        parser = Parser(sql_text)
+
+        where_token_list = DynamicSqlSearch.get_where_token_idx(parser)
+
         sql_str_list_by_from_position_tokens = [
-            token for token in Parser(sql_text_without_comment).tokens if token.position >= from_position
+            token for token in parser.tokens if token.position >= where_token_list[where_idx]
         ]
 
         sql_str_list_by_from_position = [
@@ -765,3 +944,122 @@ class DynamicSqlSearch(cm.CommonModule):
         ]
 
         return " ".join(sql_str_list_by_from_position)
+
+    @staticmethod
+    def get_where_token_idx(parser):
+        """
+        Where position 획득 함수
+        :param parser: sql parser
+        :return: 파싱된 position list
+        """
+        return [token.position for token in parser.tokens if token.is_keyword and token.normalized == "WHERE"]
+
+    @staticmethod
+    def analyze_token_type(token, obj, columns_aliases):
+        """
+        Token 타입별 분석 함수
+        :param token: 분석 하려는 token
+        :param obj: 분석된 token을 저장하려는 obj
+        :param columns_aliases: parser column_aliases (파싱된 alias를 select column으로 보정하기 위해)
+        """
+        part_obj_key = None
+
+        if token.token_type is TokenType.TABLE:
+            part_obj_key = "table_name_list"
+
+        elif token.token_type is TokenType.COLUMN:
+            if token.last_keyword == "SELECT":
+                part_obj_key = "select_col_list"
+
+            elif token.last_keyword == "WHERE":
+                part_obj_key = "where_col_list"
+
+            elif token.last_keyword == "ON" or token.last_keyword == "USING":
+                part_obj_key = "join_col_list"
+
+            else:
+                part_obj_key = "etc_col_list"
+
+        elif token.is_potential_column_name and "row" in token.value:
+            if token.last_keyword == "SELECT":
+                part_obj_key = "select_col_list"
+
+            elif token.last_keyword == "WHERE":
+                part_obj_key = "where_col_list"
+
+        elif (
+            columns_aliases is not None
+            and token.is_potential_alias
+            and token.is_potential_column_name
+            and token.value in columns_aliases.keys()
+        ):
+            if token.last_keyword == "SELECT":
+                part_obj_key = "select_col_list"
+
+            elif token.last_keyword == "WHERE":
+                part_obj_key = "where_col_list"
+
+        elif token.is_potential_column_name and token.is_wildcard:
+            if token.last_keyword == "SELECT":
+                part_obj_key = "select_col_list"
+
+            elif token.last_keyword == "WHERE":
+                part_obj_key = "where_col_list"
+
+        elif token.token_type is TokenType.COLUMN_ALIAS:
+            if token.last_keyword == "SELECT":
+                part_obj_key = "select_col_list"
+
+            elif token.last_keyword == "WHERE":
+                part_obj_key = "where_col_list"
+
+        if part_obj_key is not None:
+            DynamicSqlSearch.set_token_value_by_part(token, obj, part_obj_key)
+
+    @staticmethod
+    def set_token_value_by_part(token, part_obj, part_obj_key):
+        """
+        각 부분별 token값 세팅 함수
+        :param token: 분석 token
+        :param part_obj: 값 세팅 하려는 obj
+        :param part_obj_key: 각 부분을 구별하는 part key
+        """
+        if f"{token.parenthesis_level}" not in part_obj[part_obj_key]:
+            part_obj[part_obj_key][f"{token.parenthesis_level}"] = []
+
+        part_obj[part_obj_key][f"{token.parenthesis_level}"].append(token.value)
+
+    @staticmethod
+    def compare_dicts(parquet_data_dict, obj_dict):
+        """
+        dict 값 비교 함수
+        :param parquet_data_dict: parquet에 저장된 데이터 dict
+        :param obj_dict: 원본 sql 분석 dict
+        :return: 일치 결과 (bool)
+        """
+        if len(parquet_data_dict) != len(obj_dict):
+            return False
+
+        for key, value in parquet_data_dict.items():
+            if key not in obj_dict or obj_dict[key] != value:
+                return False
+
+        return True
+
+    @staticmethod
+    def extract_first_key_and_value_in_obj(sql_fixed_part, part_key):
+        """
+        sql 고정 부분으로 분석된 데이터의 첫번째 키와 첫번째 값을 추출하기 위한 함수
+        :param sql_fixed_part: 분석된 고정 부분 데이터
+        :param part_key: 추출하려는 부분 key 값
+        :return: 추출된 key (depth), value
+        """
+        key = "-1"
+        value = "-1"
+        if sql_fixed_part.get(part_key, {}):
+            key = next(iter(sql_fixed_part.get(part_key, {})))
+
+            if sql_fixed_part.get(part_key, {}).get(key):
+                value = sql_fixed_part.get(part_key, {}).get(key)[0]
+
+        return key, value

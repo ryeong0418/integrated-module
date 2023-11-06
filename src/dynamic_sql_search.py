@@ -101,21 +101,21 @@ class DynamicSourceQuery(AnalyzedQueryPartObj):
             if index == 1:
                 stack.push("SELECT")
 
-            # 같은 depth 에서 키워드가 변경될때, select from where 에서만
-            if token.next_token is not None and token.next_token.last_keyword != stack.peek():
-                stack.pop()
-                stack.push(token.next_token.last_keyword)
-
-            # 여는 소괄호가 나오면 1. 함수 2. 서브쿼리 반드시 select가 나옴
-            if token.is_left_parenthesis:
-                if token.next_token is not None and token.next_token.normalized == "SELECT":
-                    stack.push(token.next_token.normalized)
-                else:
-                    stack.push(token.next_token.last_keyword)
-
-            # 닫는 소괄호가 나오면
-            elif token.is_right_parenthesis:
-                stack.pop()
+            # # 같은 depth 에서 키워드가 변경될때, select from where 에서만
+            # if token.next_token is not None and token.next_token.last_keyword != stack.peek():
+            #     stack.pop()
+            #     stack.push(token.next_token.last_keyword)
+            #
+            # # 여는 소괄호가 나오면 1. 함수 2. 서브쿼리 반드시 select가 나옴
+            # if token.is_left_parenthesis:
+            #     if token.next_token is not None and token.next_token.normalized == "SELECT":
+            #         stack.push(token.next_token.normalized)
+            #     else:
+            #         stack.push(token.next_token.last_keyword)
+            #
+            # # 닫는 소괄호가 나오면
+            # elif token.is_right_parenthesis:
+            #     stack.pop()
 
             if len(where_token_index) == 0 or token.position < where_token_index[int(self.dynamic_where_index) - 1]:
                 DynamicSqlSearch.analyze_token_type(token, self.sql_fixed_part, parser.columns_aliases)
@@ -475,21 +475,38 @@ class DynamicSqlSearch(cm.CommonModule):
         for batch in pre_proc_file.iter_batches(batch_size=self.chunk_size):
             df = batch.to_pandas()
 
+            # df = df[df["sql_uid"].isin(filted_sql_uids)]
+            # if len(df) == 0:
+            #     continue
+
             for dynamic_source_sql in self.dynamic_source_sql_list:
-                # where keyword index가 작은것들 제거
                 valid_sql_df = df[
-                    ~df["where_token_len"].apply(
+                    (df.first_fixed_sel_depth == dynamic_source_sql.first_fixed_sel_depth)
+                    & (df.first_fixed_sel_col == dynamic_source_sql.first_fixed_sel_col)
+                    & (df.first_fixed_table_depth == dynamic_source_sql.first_fixed_table_depth)
+                    & (df.first_fixed_table_name == dynamic_source_sql.first_fixed_table_name)
+                ]
+
+                # where keyword index가 작은것들 제거
+                valid_sql_df = valid_sql_df[
+                    ~valid_sql_df["where_token_len"].apply(
                         lambda x: int(x) < int(dynamic_source_sql.dynamic_where_index)
-                        or int(x) >= int(dynamic_source_sql.dynamic_where_index) + 10
                     )
                 ]
 
                 if len(valid_sql_df) == 0:
                     continue
 
-                valid_sql_df.drop(columns="where_token_len", inplace=True)
-                # 다음 파싱 이후 지워야함
-                valid_sql_df.drop(columns="row_str_contains_list", inplace=True)
+                valid_sql_df.drop(
+                    columns=[
+                        "where_token_len",
+                        "first_fixed_sel_depth",
+                        "first_fixed_sel_col",
+                        "first_fixed_table_name",
+                        "first_fixed_table_depth",
+                    ],
+                    inplace=True,
+                )
 
                 valid_sql_df["sql_fixed_parts"] = valid_sql_df["sql_fixed_parts"].apply(lambda x: literal_eval(x))
 
@@ -568,8 +585,8 @@ class DynamicSqlSearch(cm.CommonModule):
 
             loop_cnt += len(df)
 
-            if loop_cnt >= 10000:
-                break
+            # if loop_cnt >= 10000:
+            #     break
 
             self.logger.info(f"{loop_cnt} rows processing..")
 
@@ -719,20 +736,10 @@ class DynamicSqlSearch(cm.CommonModule):
 
         where_token_idxs = self.get_where_token_idx(parser)
 
-        for idx in range(len(where_token_idxs)):
-            query_part_obj = AnalyzedQueryPartObj()
-
-            sql_fixed_part = query_part_obj.sql_fixed_part
-            sql_dynamic_part = query_part_obj.sql_dynamic_part
-
-            for token in parser.tokens:
-                if len(where_token_idxs) == 0 or token.position < where_token_idxs[idx]:
-                    DynamicSqlSearch.analyze_token_type(token, sql_fixed_part, parser.columns_aliases)
-                else:
-                    DynamicSqlSearch.analyze_token_type(token, sql_dynamic_part, parser.columns_aliases)
-
-            sql_fixed_parts[f"{idx}"] = sql_fixed_part
-            sql_dynamic_parts[f"{idx}"] = sql_dynamic_part
+        [
+            self._analyze_each_idx(idx, sql_fixed_parts, sql_dynamic_parts, parser, where_token_idxs)
+            for idx in range(len(where_token_idxs))
+        ]
 
         if len(where_token_idxs) > 0:
             first_fixed_sel_depth, first_fixed_sel_col = self.extract_first_key_and_value_in_obj(
@@ -753,6 +760,22 @@ class DynamicSqlSearch(cm.CommonModule):
                 first_fixed_table_name,
             ]
         )
+
+    @staticmethod
+    def _analyze_each_idx(idx, sql_fixed_parts, sql_dynamic_parts, parser, where_token_idxs):
+        query_part_obj = AnalyzedQueryPartObj()
+
+        sql_fixed_part = query_part_obj.sql_fixed_part
+        sql_dynamic_part = query_part_obj.sql_dynamic_part
+
+        for token in parser.tokens:
+            if len(where_token_idxs) == 0 or token.position < where_token_idxs[idx]:
+                DynamicSqlSearch.analyze_token_type(token, sql_fixed_part, parser.columns_aliases)
+            else:
+                DynamicSqlSearch.analyze_token_type(token, sql_dynamic_part, parser.columns_aliases)
+
+        sql_fixed_parts[f"{idx}"] = sql_fixed_part
+        sql_dynamic_parts[f"{idx}"] = sql_dynamic_part
 
     def _export_db_sql_text(self):
         """
@@ -790,12 +813,17 @@ class DynamicSqlSearch(cm.CommonModule):
         for date in date_conditions:
             for db_id in ae_db_infos:
                 total_row_cnt = 0
+                real_row_cnt = 0
                 partition_key = f"{date}{db_id}"
 
                 with TimeLogger(f"Make_parquet_file_ae_db_sql_text (date:{date}, db_id:{db_id}),elapsed ", self.logger):
                     for df in self.st.get_ae_db_sql_text_by_1seq_orderby(partition_key, chunksize=self.chunk_size):
+                        # df = df[df["sql_uid"].isin(filted_sql_uids)]
+
                         if len(df) == 0:
                             break
+
+                        total_row_cnt += len(df)
 
                         df = df[~df["sql_uid"].isin(analyzed_sql_uid_df["sql_uid"])]
 
@@ -838,9 +866,12 @@ class DynamicSqlSearch(cm.CommonModule):
                             )
 
                         pf.make_parquet_by_df(grouping_df, pq_writer)
-                        total_row_cnt += len(grouping_df)
+                        real_row_cnt += len(grouping_df)
 
-                    self.logger.info(f"Total export data count (date:{date}, db_id:{db_id}): {total_row_cnt} rows")
+                    self.logger.info(
+                        f"Total export data count (date:{date}, db_id:{db_id}): "
+                        f"{total_row_cnt} total rows / {real_row_cnt} analysis real rows"
+                    )
 
         if pq_writer:
             pq_writer.close()
@@ -892,7 +923,7 @@ class DynamicSqlSearch(cm.CommonModule):
         )
 
         grouping_df["sql_text"] = grouping_df["sql_text"].str.lower().str.strip()
-        grouping_df["sql_text"] = grouping_df["sql_text"].str.replace(r"\( *\+ *\)", "", regex=False)
+        grouping_df["sql_text"] = grouping_df["sql_text"].str.replace(r"\( *\+ *\)", "", regex=True)
         grouping_df = grouping_df[~grouping_df["sql_text"].str.startswith(sql_filter)]
         return grouping_df
 

@@ -1,6 +1,6 @@
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl import Workbook
-from openpyxl.styles import Alignment, Border, Side, colors
+from openpyxl.styles import Alignment, Border, Side
 from openpyxl.formatting.rule import DataBarRule
 from openpyxl.utils import get_column_letter
 
@@ -193,10 +193,37 @@ class ExcelWriter:
         :param start_row_index: 시작 row index
         :param target_columns: 적용하려는 타겟 컬럼
         """
-        rule = DataBarRule(start_type="num", start_value=5, end_type="num", end_value=100, color=colors.BLUE)
+        rule = DataBarRule(start_type="num", start_value=0, end_type="num", end_value=1, color="5080C0")
 
         for target_column in target_columns:
             column_letter = get_column_letter(target_column)
             start_row = self.active_worksheet[column_letter][start_row_index + 1].coordinate
             end_row = self.active_worksheet[column_letter][start_row_index + len(df)].coordinate
             self.active_worksheet.conditional_formatting.add(f"{start_row}:{end_row}", rule)
+            [self._set_cell_format(cell[0], "0.0%") for cell in self.active_worksheet[start_row:end_row]]
+
+    def set_value_to_target(self, value, cell_idx, row=None, heigth=None):
+        """
+        특정 셀에 값을 넣는 함수
+        :param value: 입력하려는 값
+        :param cell_idx: 입력하려는 cell 인덱스
+        :param row: style 적용을 위한 row indx (optional)
+        :param heigth: 적용 하려는 height 값 (optional)
+        """
+        self.active_worksheet[cell_idx] = value
+
+        # 해당 row에 style이 필요하면 style 추가하여 사용
+        if row is not None:
+            alignment_style = Alignment(wrap_text=True)
+
+            self.active_worksheet[cell_idx].alignment = alignment_style
+            self.active_worksheet.row_dimensions[row].height = heigth
+
+    @staticmethod
+    def _set_cell_format(cell, fmt):
+        """
+        cell format 적용 함수
+        :param cell: 적용하려는 cell
+        :param fmt: 적용하려는 숫자 포맷
+        """
+        cell.number_format = fmt

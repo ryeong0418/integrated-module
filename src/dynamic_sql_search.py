@@ -168,7 +168,8 @@ class DynamicSqlSearch(cm.CommonModule):
         self.export_parquet_root_path = f'{self.config["home"]}/{SystemConstants.EXPORT_PARQUET_PATH}'
 
         self.dynamic_sql_parquet_file_name = (
-            f"{SystemConstants.DB_SQL_TEXT_FOR_DYNAMIC_FILE_NAME}{SystemConstants.PARQUET_FILE_EXT}"
+            f"{SystemConstants.DB_SQL_TEXT_FOR_DYNAMIC_FILE_NAME}_{DateUtils.get_now_timestamp()}"
+            f"{SystemConstants.PARQUET_FILE_EXT}"
         )
 
         if self.config["args"]["proc"] == "p":
@@ -228,7 +229,7 @@ class DynamicSqlSearch(cm.CommonModule):
 
             dynamic_source_sql.valid_sql_df = pd.merge(dynamic_source_sql.valid_sql_df, df, on="sql_uid", how="left")
             dynamic_source_sql.valid_sql_df[fillna_col_names] = (
-                dynamic_source_sql.valid_sql_df[fillna_col_names].fillna(0).round(2)
+                dynamic_source_sql.valid_sql_df[fillna_col_names].fillna(0).round(1)
             )
 
             dynamic_source_sql.valid_sql_df["sql_id"].fillna("", inplace=True)
@@ -239,7 +240,7 @@ class DynamicSqlSearch(cm.CommonModule):
                 .astype(str)
             )
 
-            self._calc_ratio_each_metric(dynamic_source_sql, sum_metrics)
+            DynamicSqlSearch.calc_ratio_each_metric(dynamic_source_sql, sum_metrics)
 
             tmp_df = dynamic_source_sql.valid_sql_df.copy()
             # tmp_df["where"] = tmp_df["where"].apply(lambda x: sorted(x))
@@ -275,28 +276,6 @@ class DynamicSqlSearch(cm.CommonModule):
             dynamic_source_sql.tmp_df = tmp_df
             self.st.upsert_data(tmp_df, TableConstants.AE_DYNAMIC_SQL_SEARCH_RESULT)
 
-    @staticmethod
-    def _calc_ratio_each_metric(dynamic_source_sql, sum_metrics):
-        """
-        sum_metric으로 ratio_metric 구하기
-        :param dynamic_source_sql: source sql object
-        :param sum_metrics: sum_ 으로 시작되는 metrics
-        """
-        ratio_metrics = []
-        for sum_metric in sum_metrics:
-            ratio_metric = sum_metric.replace("sum", "ratio")
-            dynamic_source_sql.valid_sql_df[ratio_metric] = (
-                dynamic_source_sql.valid_sql_df[sum_metric].div(
-                    dynamic_source_sql.valid_sql_df[sum_metric].sum(), fill_value=0
-                )
-                * 100
-            )
-
-            ratio_metrics.append(ratio_metric)
-
-        dynamic_source_sql.valid_sql_df[ratio_metrics] = dynamic_source_sql.valid_sql_df[ratio_metrics].fillna(0)
-        dynamic_source_sql.valid_sql_df[ratio_metrics] = dynamic_source_sql.valid_sql_df[ratio_metrics].round(2)
-
     def _make_excel(self):
         """
         분석 후 유효한 데이터 엑셀 저장 기능.
@@ -329,11 +308,13 @@ class DynamicSqlSearch(cm.CommonModule):
 
             # 하단 target sql
             if dynamic_source_sql_obj.tmp_df is not None and len(dynamic_source_sql_obj.tmp_df) > 0:
-                export_excel_data_df = self._make_export_excel_target_data_by_df(dynamic_source_sql_obj.tmp_df)
+                export_excel_data_df = DynamicSqlSearch.make_export_excel_target_data_by_df(
+                    dynamic_source_sql_obj.tmp_df,
+                )
 
-                target_columns = self._extract_ratio_metric_column_idx(export_excel_data_df, ratio_metrics)
+                target_columns = DynamicSqlSearch.extract_ratio_metric_column_idx(export_excel_data_df, ratio_metrics)
 
-                export_excel_data_df = self._rename_export_excel_data_df(export_excel_data_df)
+                export_excel_data_df = DynamicSqlSearch.rename_export_excel_data_df(export_excel_data_df)
 
                 next_row_index = len(source_df) + start_row_index + 1
 
@@ -348,6 +329,24 @@ class DynamicSqlSearch(cm.CommonModule):
                 for idx in range(len(export_excel_data_df)):
                     eww.set_height_row(row=next_row_index + 1 + idx + 1, height=DynamicSqlSearch.DEFAULT_CELL_HEIGHT)
 
+                last_content_index = next_row_index + len(export_excel_data_df) + 2
+
+                target_sql_uids = DynamicSqlSearch.make_debug_value_by_df(export_excel_data_df, "target_sql_uid")
+                target_sql_ids = DynamicSqlSearch.make_debug_value_by_df(export_excel_data_df, "target_sql_id")
+
+                eww.set_value_to_target(
+                    ",\n".join(target_sql_uids),
+                    f"A{last_content_index}",
+                    last_content_index,
+                    DynamicSqlSearch.DEFAULT_CELL_HEIGHT,
+                )
+                eww.set_value_to_target(
+                    ",\n".join(target_sql_ids),
+                    f"B{last_content_index}",
+                    last_content_index,
+                    DynamicSqlSearch.DEFAULT_CELL_HEIGHT,
+                )
+
             else:
                 self.logger.info(f"{dynamic_source_sql_obj.sql_id} sql_id not exists valid data")
                 export_excel_file_name = "nodata"
@@ -357,47 +356,6 @@ class DynamicSqlSearch(cm.CommonModule):
                 f"{export_excel_file_name}.xlsx"
                 # f"{export_excel_file_name}_{datetime.now().strftime(DateFmtConstants.DATE_YMDHMS)}.xlsx"
             )
-
-    @staticmethod
-    def _extract_ratio_metric_column_idx(df, ratio_metrics):
-        """
-        비율을 구하는 지표들의 컬럼 인덱스를 추출하는 함수
-        :param df: 대상 데이터프레임
-        :param ratio_metrics: 비율을 구하려는 지표
-        :return: 추출된 컬럼 인덱스
-        """
-        target_columns = []
-
-        for ratio_metric in ratio_metrics:
-            target_columns.append(df.columns.get_loc(ratio_metric) + 1)
-
-        return target_columns
-
-    @staticmethod
-    def _rename_export_excel_data_df(export_excel_data_df):
-        """
-        엑셀 추출시 표시되는 컬럼명 변경을 위한 함수
-        :param export_excel_data_df: 엑셀 추출 데이터 프레임
-        :return: 변경된 데이터 프레임
-        """
-        export_excel_data_df = export_excel_data_df.rename(
-            columns={
-                "ratio_elapsed_time": "Elapsed Time (%)",
-                "ratio_cpu_time": "CPU Time (%)",
-                "ratio_lio": "Logical Reads (%)",
-                "ratio_pio": "Physical Reads (%)",
-                "exec": "Executions",
-                "sum_elapsed_time": "Elapsed Time (Sec)",
-                "sum_cpu_time": "CPU Time (Sec)",
-                "sum_lio": "Logical Reads (blocks)",
-                "sum_pio": "Physical Reads (blocks)",
-                "avg_elapsed_time": "Elapsed Time/exec (Sec)",
-                "avg_cpu_time": "CPU Time/exec (Sec)",
-                "avg_lio": "Logical Reads/exec (blocks)",
-                "avg_pio": "Physical Reads/exec (blocks)",
-            },
-        )
-        return export_excel_data_df
 
     def _make_export_excel_source_data_by_obj(self, dynamic_source_sql_obj):
         """
@@ -432,163 +390,151 @@ class DynamicSqlSearch(cm.CommonModule):
 
         return source_df
 
-    @staticmethod
-    def _make_export_excel_target_data_by_df(tmp_df):
-        """
-        target sql 데이터 엑셀 추출을 위한 변환 함수
-        :param tmp_df: DB에 저장한 유효한 target sql 데이터 프레임
-        :return: 추출된 데이터 프레임
-        """
-        export_excel_data_df = tmp_df[
-            [
-                "target_sql_uid",
-                "target_sql_id",
-                "target_where_cols",
-                "dynamic_pattern",
-                "ratio_elapsed_time",
-                "ratio_cpu_time",
-                "ratio_lio",
-                "ratio_pio",
-                "exec",
-                "sum_elapsed_time",
-                "sum_cpu_time",
-                "sum_lio",
-                "sum_pio",
-                "avg_elapsed_time",
-                "avg_cpu_time",
-                "avg_lio",
-                "avg_pio",
-            ]
-        ]
-
-        export_excel_data_df.sort_values(by=["ratio_elapsed_time"], axis=0, ascending=False, inplace=True)
-
-        return export_excel_data_df
-
     def _search_dynamic_sql_text(self):
         """
         미리 분석된 MaxGauge sql text와 dynamic sql search 기능.
         """
-        pre_proc_file = pq.ParquetFile(f"{self.export_parquet_root_path}/{self.dynamic_sql_parquet_file_name}")
+        dynamic_sql_parquet_files = SystemUtils.get_filenames_from_path(
+            self.export_parquet_root_path, prefix=SystemConstants.DB_SQL_TEXT_FOR_DYNAMIC_FILE_NAME
+        )
+
+        if dynamic_sql_parquet_files:
+            analyzed_sql_uid_df = self._get_df_by_parquet(dynamic_sql_parquet_files, "sql_uid")
+            self.logger.info(f"Analyzed sql text total data : {len(analyzed_sql_uid_df)} rows")
+            del analyzed_sql_uid_df
+        else:
+            raise ModuleException("E010")
+
         loop_cnt = 0
+        for dynamic_sql_parquet_file in dynamic_sql_parquet_files:
+            pre_proc_file = pq.ParquetFile(f"{self.export_parquet_root_path}/{dynamic_sql_parquet_file}")
 
-        for batch in pre_proc_file.iter_batches(batch_size=self.chunk_size):
-            df = batch.to_pandas()
+            for batch in pre_proc_file.iter_batches(batch_size=self.chunk_size):
+                df = batch.to_pandas()
 
-            # df = df[df["sql_uid"].isin(filted_sql_uids)]
-            # if len(df) == 0:
-            #     continue
+                # df = df[df["sql_uid"].isin(filted_sql_uids)]
+                # if len(df) == 0:
+                #     continue
 
-            for dynamic_source_sql in self.dynamic_source_sql_list:
-                valid_sql_df = df[
-                    (df.first_fixed_sel_depth == dynamic_source_sql.first_fixed_sel_depth)
-                    & (df.first_fixed_sel_col == dynamic_source_sql.first_fixed_sel_col)
-                    & (df.first_fixed_table_depth == dynamic_source_sql.first_fixed_table_depth)
-                    & (df.first_fixed_table_name == dynamic_source_sql.first_fixed_table_name)
-                ]
+                for dynamic_source_sql in self.dynamic_source_sql_list:
+                    valid_sql_df = df[
+                        (df.first_fixed_sel_depth == dynamic_source_sql.first_fixed_sel_depth)
+                        & (df.first_fixed_sel_col == dynamic_source_sql.first_fixed_sel_col)
+                        & (df.first_fixed_table_depth == dynamic_source_sql.first_fixed_table_depth)
+                        & (df.first_fixed_table_name == dynamic_source_sql.first_fixed_table_name)
+                    ]
 
-                # where keyword index가 작은것들 제거
-                valid_sql_df = valid_sql_df[
-                    ~valid_sql_df["where_token_len"].apply(
-                        lambda x: int(x) < int(dynamic_source_sql.dynamic_where_index)
+                    # where keyword index가 작은것들 제거
+                    valid_sql_df = valid_sql_df[
+                        ~valid_sql_df["where_token_len"].apply(
+                            lambda x: int(x) < int(dynamic_source_sql.dynamic_where_index)
+                        )
+                    ]
+
+                    if len(valid_sql_df) == 0:
+                        continue
+
+                    valid_sql_df.drop(
+                        columns=[
+                            "where_token_len",
+                            "first_fixed_sel_depth",
+                            "first_fixed_sel_col",
+                            "first_fixed_table_name",
+                            "first_fixed_table_depth",
+                        ],
+                        inplace=True,
                     )
-                ]
 
-                if len(valid_sql_df) == 0:
-                    continue
+                    valid_sql_df["sql_fixed_parts"] = valid_sql_df["sql_fixed_parts"].apply(lambda x: literal_eval(x))
 
-                valid_sql_df.drop(
-                    columns=[
-                        "where_token_len",
-                        "first_fixed_sel_depth",
-                        "first_fixed_sel_col",
-                        "first_fixed_table_name",
-                        "first_fixed_table_depth",
-                    ],
-                    inplace=True,
-                )
+                    # 파싱된 fixed parts의 지정된 index 값 추출 , where가 없을것 고려 해야함, where_token_idx의 range
+                    valid_sql_df["sql_fixed_part_by_idx"] = valid_sql_df["sql_fixed_parts"].apply(
+                        lambda x: x.get(f"{int(dynamic_source_sql.dynamic_where_index) - 1}", {})
+                    )
+                    valid_sql_df.drop(columns="sql_fixed_parts", inplace=True)
 
-                valid_sql_df["sql_fixed_parts"] = valid_sql_df["sql_fixed_parts"].apply(lambda x: literal_eval(x))
+                    # fixed parts 비교
+                    valid_sql_df = valid_sql_df[
+                        valid_sql_df["sql_fixed_part_by_idx"].apply(
+                            lambda x: self.compare_dicts(
+                                x.get("select_col_list", {}),
+                                dynamic_source_sql.sql_fixed_part.get("select_col_list", {}),
+                            )
+                        )
+                        & valid_sql_df["sql_fixed_part_by_idx"].apply(
+                            lambda x: self.compare_dicts(
+                                x.get("table_name_list", {}),
+                                dynamic_source_sql.sql_fixed_part.get("table_name_list", {}),
+                            )
+                        )
+                        & valid_sql_df["sql_fixed_part_by_idx"].apply(
+                            lambda x: self.compare_dicts(
+                                x.get("join_col_list", {}), dynamic_source_sql.sql_fixed_part.get("join_col_list", {})
+                            )
+                        )
+                        & valid_sql_df["sql_fixed_part_by_idx"].apply(
+                            lambda x: self.compare_dicts(
+                                x.get("where_col_list", {}), dynamic_source_sql.sql_fixed_part.get("where_col_list", {})
+                            )
+                        )
+                    ]
 
-                # 파싱된 fixed parts의 지정된 index 값 추출 , where가 없을것 고려 해야함, where_token_idx의 range
-                valid_sql_df["sql_fixed_part_by_idx"] = valid_sql_df["sql_fixed_parts"].apply(
-                    lambda x: x.get(f"{int(dynamic_source_sql.dynamic_where_index) - 1}", {})
-                )
-                valid_sql_df.drop(columns="sql_fixed_parts", inplace=True)
+                    if len(valid_sql_df) == 0:
+                        continue
 
-                # fixed parts 비교
-                valid_sql_df = valid_sql_df[
-                    valid_sql_df["sql_fixed_part_by_idx"].apply(
-                        lambda x: self.compare_dicts(
-                            x.get("select_col_list", {}), dynamic_source_sql.sql_fixed_part.get("select_col_list", {})
+                    valid_sql_df["sql_dynamic_parts"] = valid_sql_df["sql_dynamic_parts"].apply(
+                        lambda x: literal_eval(x)
+                    )
+
+                    # 파싱된 dynamic parts의 지정된 index 값 추출
+                    valid_sql_df["sql_dynamic_part_by_idx"] = valid_sql_df["sql_dynamic_parts"].apply(
+                        lambda x: x.get(f"{int(dynamic_source_sql.dynamic_where_index) - 1}", "")
+                    )
+                    valid_sql_df.drop(columns="sql_dynamic_parts", inplace=True)
+
+                    valid_sql_df = valid_sql_df[
+                        valid_sql_df["sql_dynamic_part_by_idx"].apply(
+                            lambda x: DynamicSqlSearch.check_contains_where_col(
+                                x.get("select_col_list", {}),
+                                dynamic_source_sql.sql_dynamic_part.get("select_col_list", {}),
+                            )
+                        )
+                        & valid_sql_df["sql_dynamic_part_by_idx"].apply(
+                            lambda x: DynamicSqlSearch.check_contains_where_col(
+                                x.get("table_name_list", {}),
+                                dynamic_source_sql.sql_dynamic_part.get("table_name_list", {}),
+                            )
+                        )
+                        & valid_sql_df["sql_dynamic_part_by_idx"].apply(
+                            lambda x: DynamicSqlSearch.check_contains_where_col(
+                                x.get("join_col_list", {}), dynamic_source_sql.sql_dynamic_part.get("join_col_list", {})
+                            )
+                        )
+                        & valid_sql_df["sql_dynamic_part_by_idx"].apply(
+                            lambda x: DynamicSqlSearch.check_contains_where_col(
+                                x.get("where_col_list", {}),
+                                dynamic_source_sql.sql_dynamic_part.get("where_col_list", {}),
+                            )
+                        )
+                    ]
+
+                    if len(valid_sql_df) == 0:
+                        continue
+
+                    valid_sql_df["dynamic_pattern"] = valid_sql_df["sql_text"].apply(
+                        lambda x: DynamicSqlSearch.make_from_where_pattern(
+                            x, int(dynamic_source_sql.dynamic_where_index) - 1
                         )
                     )
-                    & valid_sql_df["sql_fixed_part_by_idx"].apply(
-                        lambda x: self.compare_dicts(
-                            x.get("table_name_list", {}), dynamic_source_sql.sql_fixed_part.get("table_name_list", {})
-                        )
-                    )
-                    & valid_sql_df["sql_fixed_part_by_idx"].apply(
-                        lambda x: self.compare_dicts(
-                            x.get("join_col_list", {}), dynamic_source_sql.sql_fixed_part.get("join_col_list", {})
-                        )
-                    )
-                    & valid_sql_df["sql_fixed_part_by_idx"].apply(
-                        lambda x: self.compare_dicts(
-                            x.get("where_col_list", {}), dynamic_source_sql.sql_fixed_part.get("where_col_list", {})
-                        )
-                    )
-                ]
 
-                if len(valid_sql_df) == 0:
-                    continue
+                    dynamic_source_sql.valid_sql_df = pd.concat([dynamic_source_sql.valid_sql_df, valid_sql_df])
 
-                valid_sql_df["sql_dynamic_parts"] = valid_sql_df["sql_dynamic_parts"].apply(lambda x: literal_eval(x))
+                loop_cnt += len(df)
 
-                # 파싱된 dynamic parts의 지정된 index 값 추출
-                valid_sql_df["sql_dynamic_part_by_idx"] = valid_sql_df["sql_dynamic_parts"].apply(
-                    lambda x: x.get(f"{int(dynamic_source_sql.dynamic_where_index) - 1}", "")
-                )
-                valid_sql_df.drop(columns="sql_dynamic_parts", inplace=True)
+                # if loop_cnt >= 10000:
+                #     break
 
-                valid_sql_df = valid_sql_df[
-                    valid_sql_df["sql_dynamic_part_by_idx"].apply(
-                        lambda x: self._check_contains_where_col(
-                            x.get("select_col_list", {}), dynamic_source_sql.sql_dynamic_part.get("select_col_list", {})
-                        )
-                    )
-                    & valid_sql_df["sql_dynamic_part_by_idx"].apply(
-                        lambda x: self._check_contains_where_col(
-                            x.get("table_name_list", {}), dynamic_source_sql.sql_dynamic_part.get("table_name_list", {})
-                        )
-                    )
-                    & valid_sql_df["sql_dynamic_part_by_idx"].apply(
-                        lambda x: self._check_contains_where_col(
-                            x.get("join_col_list", {}), dynamic_source_sql.sql_dynamic_part.get("join_col_list", {})
-                        )
-                    )
-                    & valid_sql_df["sql_dynamic_part_by_idx"].apply(
-                        lambda x: self._check_contains_where_col(
-                            x.get("where_col_list", {}), dynamic_source_sql.sql_dynamic_part.get("where_col_list", {})
-                        )
-                    )
-                ]
-
-                if len(valid_sql_df) == 0:
-                    continue
-
-                valid_sql_df["dynamic_pattern"] = valid_sql_df["sql_text"].apply(
-                    lambda x: self._make_from_where_pattern(x, int(dynamic_source_sql.dynamic_where_index) - 1)
-                )
-
-                dynamic_source_sql.valid_sql_df = pd.concat([dynamic_source_sql.valid_sql_df, valid_sql_df])
-
-            loop_cnt += len(df)
-
-            # if loop_cnt >= 10000:
-            #     break
-
-            self.logger.info(f"{loop_cnt} rows processing..")
+                self.logger.info(f"{loop_cnt} rows processing..")
 
     def _set_dynamic_source_query(self):
         """
@@ -690,21 +636,6 @@ class DynamicSqlSearch(cm.CommonModule):
         ] = df.apply(self._parsing_sql_each_parts, axis=1)
         return df
 
-    @staticmethod
-    def get_sql_metadata_obj(sql_text):
-        """
-        sql_metadata 라이브러리 Parser obj 생성 함수
-        :param sql_text: 파싱하려는 sql text
-        :return: Parser 객체
-        :exception: False (bool)
-        """
-        try:
-            parser = Parser(sql_text)
-            parser.columns
-        except Exception:
-            return False
-        return parser
-
     def _parsing_sql_each_parts(self, row):
         """
         sql의 고정 부분과 다이나믹 부분을 각각 파싱하는 함수
@@ -737,7 +668,7 @@ class DynamicSqlSearch(cm.CommonModule):
         where_token_idxs = self.get_where_token_idx(parser)
 
         [
-            self._analyze_each_idx(idx, sql_fixed_parts, sql_dynamic_parts, parser, where_token_idxs)
+            DynamicSqlSearch.analyze_each_idx(idx, sql_fixed_parts, sql_dynamic_parts, parser, where_token_idxs)
             for idx in range(len(where_token_idxs))
         ]
 
@@ -761,22 +692,6 @@ class DynamicSqlSearch(cm.CommonModule):
             ]
         )
 
-    @staticmethod
-    def _analyze_each_idx(idx, sql_fixed_parts, sql_dynamic_parts, parser, where_token_idxs):
-        query_part_obj = AnalyzedQueryPartObj()
-
-        sql_fixed_part = query_part_obj.sql_fixed_part
-        sql_dynamic_part = query_part_obj.sql_dynamic_part
-
-        for token in parser.tokens:
-            if len(where_token_idxs) == 0 or token.position < where_token_idxs[idx]:
-                DynamicSqlSearch.analyze_token_type(token, sql_fixed_part, parser.columns_aliases)
-            else:
-                DynamicSqlSearch.analyze_token_type(token, sql_dynamic_part, parser.columns_aliases)
-
-        sql_fixed_parts[f"{idx}"] = sql_fixed_part
-        sql_dynamic_parts[f"{idx}"] = sql_dynamic_part
-
     def _export_db_sql_text(self):
         """
         db sql text 재조합 및 parquet 파일 추출 함수
@@ -792,21 +707,17 @@ class DynamicSqlSearch(cm.CommonModule):
             self.config["args"]["s_date"], self.config["args"]["interval"], return_fmt="%y%m%d"
         )
 
-        dynamic_sql_parquet_file = f"{self.export_parquet_root_path}/{self.dynamic_sql_parquet_file_name}"
-        is_exist_parquet_data = False
+        dynamic_sql_parquet_files = SystemUtils.get_filenames_from_path(
+            self.export_parquet_root_path, prefix=SystemConstants.DB_SQL_TEXT_FOR_DYNAMIC_FILE_NAME
+        )
 
-        if os.path.isfile(dynamic_sql_parquet_file):
-            analyzed_sql_uid_df = pq.read_pandas(
-                dynamic_sql_parquet_file,
-                columns=[
-                    "sql_uid",
-                ],
-            ).to_pandas()
-            is_exist_parquet_data = True
+        if dynamic_sql_parquet_files:
+            analyzed_sql_uid_df = self._get_df_by_parquet(dynamic_sql_parquet_files, "sql_uid")
+
         else:
             analyzed_sql_uid_df = pd.DataFrame({"sql_uid": []})
 
-        self.logger.info(f"is_exist_parquet_data : {is_exist_parquet_data}, {len(analyzed_sql_uid_df)} rows")
+        self.logger.info(f"Already analyzed sql parquet data : {len(analyzed_sql_uid_df)} rows")
 
         pq_writer = None
 
@@ -819,10 +730,6 @@ class DynamicSqlSearch(cm.CommonModule):
                 with TimeLogger(f"Make_parquet_file_ae_db_sql_text (date:{date}, db_id:{db_id}),elapsed ", self.logger):
                     for df in self.st.get_ae_db_sql_text_by_1seq_orderby(partition_key, chunksize=self.chunk_size):
                         # df = df[df["sql_uid"].isin(filted_sql_uids)]
-
-                        if len(df) == 0:
-                            break
-
                         total_row_cnt += len(df)
 
                         df = df[~df["sql_uid"].isin(analyzed_sql_uid_df["sql_uid"])]
@@ -837,7 +744,7 @@ class DynamicSqlSearch(cm.CommonModule):
                         results = self.st.get_all_ae_db_sql_text_by_1seq(df, chunksize=self.chunk_size)
 
                         grouping_df = MaxGaugeUtils.reconstruct_by_grouping(results)
-                        grouping_df = self._preprocessing(grouping_df)
+                        grouping_df = DynamicSqlSearch.preprocessing(grouping_df)
 
                         if len(grouping_df) == 0:
                             continue
@@ -857,10 +764,6 @@ class DynamicSqlSearch(cm.CommonModule):
                         self._init_sa_target()
 
                         if pq_writer is None:
-                            if is_exist_parquet_data:
-                                # 기존파일이 커서 메모리 오류 발생하면 tmp 파일 변경 후 batch로 읽어들이면서 재생성 하도록 변경
-                                grouping_df = pd.concat([pd.read_parquet(dynamic_sql_parquet_file), grouping_df])
-
                             pq_writer = pf.get_pqwriter(
                                 self.export_parquet_root_path, self.dynamic_sql_parquet_file_name, grouping_df
                             )
@@ -875,6 +778,20 @@ class DynamicSqlSearch(cm.CommonModule):
 
         if pq_writer:
             pq_writer.close()
+
+    def _get_df_by_parquet(self, parquet_files, column):
+        result_df = None
+        for parquet_file in parquet_files:
+            df = pq.read_pandas(
+                f"{self.export_parquet_root_path}/{parquet_file}",
+                columns=[
+                    column,
+                ],
+            ).to_pandas()
+
+            result_df = pd.concat([result_df, df], ignore_index=True)
+
+        return result_df
 
     @staticmethod
     def parallelize_dataframe(df, func, n_cores=4):
@@ -897,7 +814,7 @@ class DynamicSqlSearch(cm.CommonModule):
         return df
 
     @staticmethod
-    def _preprocessing(grouping_df):
+    def preprocessing(grouping_df):
         """
         전처리 함수
         :param grouping_df: grouping된 db sql text 데이터 프레임
@@ -928,7 +845,7 @@ class DynamicSqlSearch(cm.CommonModule):
         return grouping_df
 
     @staticmethod
-    def _check_contains_where_col(parquet_data_dict: dict, obj_dict: dict):
+    def check_contains_where_col(parquet_data_dict: dict, obj_dict: dict):
         """
         where 절 컬럼을 포함 여부 확인 함수
         :param parquet_data_dict: 대상 where 컬럼 dict
@@ -942,17 +859,7 @@ class DynamicSqlSearch(cm.CommonModule):
         return True
 
     @staticmethod
-    def _list_to_str(target_list, sep=","):
-        """
-        리스트를 문자열로 변환하는 함수
-        :param l: 대상 리스트
-        :param sep: 구분자
-        :return: 변환된 문자열
-        """
-        return sep.join(target_list)
-
-    @staticmethod
-    def _make_from_where_pattern(sql_text, where_idx):
+    def make_from_where_pattern(sql_text, where_idx):
         """
         from ~ where patter str 생성 함수
         :param sql_text: 주석 제거 sql text
@@ -969,7 +876,15 @@ class DynamicSqlSearch(cm.CommonModule):
 
         sql_str_list_by_from_position = [
             f"\n{str(token)}"
-            if token.is_keyword and (token.normalized == "WHERE" or token.normalized == "AND")
+            if token.is_keyword
+            and (
+                token.normalized == "WHERE"
+                or token.normalized == "AND"
+                or token.normalized == "SELECT"
+                or token.normalized == "FROM"
+                or token.normalized == "ORDERBY"
+                or token.normalized == "GROUPBY"
+            )
             else str(token)
             for token in sql_str_list_by_from_position_tokens
         ]
@@ -998,7 +913,7 @@ class DynamicSqlSearch(cm.CommonModule):
         if token.token_type is TokenType.TABLE:
             part_obj_key = "table_name_list"
 
-        elif token.token_type is TokenType.COLUMN:
+        elif token.token_type is TokenType.COLUMN and not token.value.strip().startswith(":"):
             if token.last_keyword == "SELECT":
                 part_obj_key = "select_col_list"
 
@@ -1094,3 +1009,157 @@ class DynamicSqlSearch(cm.CommonModule):
                 value = sql_fixed_part.get(part_key, {}).get(key)[0]
 
         return key, value
+
+    @staticmethod
+    def analyze_each_idx(idx, sql_fixed_parts, sql_dynamic_parts, parser, where_token_idxs):
+        """
+        각 where idx 별로 분석하려는 함수
+        :param idx: where idx
+        :param sql_fixed_parts: sql fixed 부분
+        :param sql_dynamic_parts: sql dynamic 부분
+        :param parser: parser obj
+        :param where_token_idxs: where token idx list
+        """
+        query_part_obj = AnalyzedQueryPartObj()
+
+        sql_fixed_part = query_part_obj.sql_fixed_part
+        sql_dynamic_part = query_part_obj.sql_dynamic_part
+
+        for token in parser.tokens:
+            if len(where_token_idxs) == 0 or token.position < where_token_idxs[idx]:
+                DynamicSqlSearch.analyze_token_type(token, sql_fixed_part, parser.columns_aliases)
+            else:
+                DynamicSqlSearch.analyze_token_type(token, sql_dynamic_part, parser.columns_aliases)
+
+        sql_fixed_parts[f"{idx}"] = sql_fixed_part
+        sql_dynamic_parts[f"{idx}"] = sql_dynamic_part
+
+    @staticmethod
+    def extract_ratio_metric_column_idx(df, ratio_metrics):
+        """
+        비율을 구하는 지표들의 컬럼 인덱스를 추출하는 함수
+        :param df: 대상 데이터프레임
+        :param ratio_metrics: 비율을 구하려는 지표
+        :return: 추출된 컬럼 인덱스
+        """
+        target_columns = []
+
+        for ratio_metric in ratio_metrics:
+            target_columns.append(df.columns.get_loc(ratio_metric) + 1)
+
+        return target_columns
+
+    @staticmethod
+    def rename_export_excel_data_df(export_excel_data_df):
+        """
+        엑셀 추출시 표시되는 컬럼명 변경을 위한 함수
+        :param export_excel_data_df: 엑셀 추출 데이터 프레임
+        :return: 변경된 데이터 프레임
+        """
+        export_excel_data_df = export_excel_data_df.rename(
+            columns={
+                "ratio_elapsed_time": "Elapsed Time (%)",
+                "ratio_cpu_time": "CPU Time (%)",
+                "ratio_lio": "Logical Reads (%)",
+                "ratio_pio": "Physical Reads (%)",
+                "exec": "Executions",
+                "sum_elapsed_time": "Elapsed Time (Sec)",
+                "sum_cpu_time": "CPU Time (Sec)",
+                "sum_lio": "Logical Reads (blocks)",
+                "sum_pio": "Physical Reads (blocks)",
+                "avg_elapsed_time": "Elapsed Time/exec (Sec)",
+                "avg_cpu_time": "CPU Time/exec (Sec)",
+                "avg_lio": "Logical Reads/exec (blocks)",
+                "avg_pio": "Physical Reads/exec (blocks)",
+            },
+        )
+        return export_excel_data_df
+
+    @staticmethod
+    def calc_ratio_each_metric(dynamic_source_sql, sum_metrics):
+        """
+        sum_metric으로 ratio_metric 구하기
+        :param dynamic_source_sql: source sql object
+        :param sum_metrics: sum_ 으로 시작되는 metrics
+        """
+        ratio_metrics = []
+        for sum_metric in sum_metrics:
+            ratio_metric = sum_metric.replace("sum", "ratio")
+            dynamic_source_sql.valid_sql_df[ratio_metric] = dynamic_source_sql.valid_sql_df[sum_metric].div(
+                dynamic_source_sql.valid_sql_df[sum_metric].sum(), fill_value=0
+            )
+
+            ratio_metrics.append(ratio_metric)
+
+        dynamic_source_sql.valid_sql_df[ratio_metrics] = dynamic_source_sql.valid_sql_df[ratio_metrics].fillna(0)
+        dynamic_source_sql.valid_sql_df[ratio_metrics] = dynamic_source_sql.valid_sql_df[ratio_metrics].round(3)
+
+    @staticmethod
+    def make_export_excel_target_data_by_df(tmp_df):
+        """
+        target sql 데이터 엑셀 추출을 위한 변환 함수
+        :param tmp_df: DB에 저장한 유효한 target sql 데이터 프레임
+        :return: 추출된 데이터 프레임
+        """
+        export_excel_data_df = tmp_df[
+            [
+                "target_sql_uid",
+                "target_sql_id",
+                "target_where_cols",
+                "dynamic_pattern",
+                "ratio_elapsed_time",
+                "ratio_cpu_time",
+                "ratio_lio",
+                "ratio_pio",
+                "exec",
+                "sum_elapsed_time",
+                "sum_cpu_time",
+                "sum_lio",
+                "sum_pio",
+                "avg_elapsed_time",
+                "avg_cpu_time",
+                "avg_lio",
+                "avg_pio",
+            ]
+        ]
+
+        export_excel_data_df.sort_values(by=["ratio_elapsed_time"], axis=0, ascending=False, inplace=True)
+        return export_excel_data_df
+
+    @staticmethod
+    def get_sql_metadata_obj(sql_text):
+        """
+        sql_metadata 라이브러리 Parser obj 생성 함수
+        :param sql_text: 파싱하려는 sql text
+        :return: Parser 객체
+        :exception: False (bool)
+        """
+        try:
+            parser = Parser(sql_text)
+            parser.columns
+            parser.tables
+        except Exception:
+            return False
+        return parser
+
+    @staticmethod
+    def make_debug_value_by_df(df, target_column):
+        """
+        데이터 프레임 target_column에 "" 값을 제거 하기 위한 함수
+        :param df: 변환하려는 데이터 프레임
+        :param target_column: 타겟 컬럼
+        :return: 제거된 값 리스트
+        """
+        value_list = df[target_column].apply(DynamicSqlSearch.make_debug_value).values.tolist()
+        return [value for value in value_list if value != ""]
+
+    @staticmethod
+    def make_debug_value(x):
+        """
+        sql 조회 debug용 값을 만들어 주기 위한 함수
+        :param x: sql where 절 str value
+        :return: 변환된 str
+        """
+        if x != "":
+            x = "'" + x + "'"
+        return x

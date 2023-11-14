@@ -1,4 +1,5 @@
 import pandas as pd
+import os
 
 from drain3 import TemplateMiner
 from drain3.template_miner_config import TemplateMinerConfig
@@ -33,7 +34,7 @@ class DrainWorker:
     Drain 알고리즘을 실제 수행하는 worker Class
     """
 
-    def __init__(self, config, drain_logger, target):
+    def __init__(self, config, drain_logger, target, seq):
         self.config = config
         self.drain_logger = drain_logger
         self.model_file_name = None
@@ -42,6 +43,7 @@ class DrainWorker:
         self.template_miner = None
         self.sql_text_template_tree = None
         self.line_count = 0
+        self.seq = seq
         self._init_config_by_target(target)
 
     def _init_config_by_target(self, target):
@@ -57,9 +59,9 @@ class DrainWorker:
         else:
             raise ModuleException("E005")
 
-        self.model_file_name = target_config.MODEL_FILE_NAME
-        self.template_tree_file_name = target_config.TEMPLATE_TREE_FILE_NAME
-        self.custom_tag = target_config.CUSTOM_TAG
+        self.model_file_name = target_config.MODEL_FILE_NAME.replace("#(seq)", self.seq)
+        self.template_tree_file_name = target_config.TEMPLATE_TREE_FILE_NAME.replace("#(seq)", self.seq)
+        self.custom_tag = target_config.CUSTOM_TAG.replace("#(seq)", self.seq)
 
     def init_drain(self):
         """
@@ -71,10 +73,17 @@ class DrainWorker:
             f"{self.config['home']}" f"{SystemConstants.DRAIN_CONF_PATH}" f"{DrainConstants.DRAIN_INI_FILE_NAME}"
         )
 
+        drain_config.drain_depth = self.config["drain_config_depth"]
+
         self.template_miner = self._create_template_miner(drain_config)
-        self.sql_text_template_tree = (
-            f"{self.config['home']}" f"{SystemConstants.DRAIN_CONF_PATH}" f"{self.template_tree_file_name}"
+        sql_text_template_tree_path = (
+            f"{self.config['home']}" f"{SystemConstants.DRAIN_CONF_PATH}" f"{SystemConstants.DRAIN_TREE_PATH}"
         )
+
+        if not os.path.exists(sql_text_template_tree_path):
+            os.makedirs(sql_text_template_tree_path)
+
+        self.sql_text_template_tree = f"{sql_text_template_tree_path}" f"{self.template_tree_file_name}"
 
     def _create_template_miner(self, drain_config):
         """
@@ -82,9 +91,14 @@ class DrainWorker:
         :param drain_config: drain config
         :return: 생성한 인스턴스 객체
         """
-        persistence = FilePersistence(
-            f"{self.config['home']}" f"{SystemConstants.DRAIN_CONF_PATH}" f"{self.model_file_name}"
+        sql_text_template_model_path = (
+            f"{self.config['home']}" f"{SystemConstants.DRAIN_CONF_PATH}" f"{SystemConstants.DRAIN_MODEL_PATH}"
         )
+
+        if not os.path.exists(sql_text_template_model_path):
+            os.makedirs(sql_text_template_model_path)
+
+        persistence = FilePersistence(f"{sql_text_template_model_path}" f"{self.model_file_name}")
 
         return TemplateMiner(persistence, drain_config)
 

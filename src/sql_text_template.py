@@ -1,6 +1,8 @@
 import time
 import pandas as pd
 import inspect
+import os
+import pyarrow.parquet as pq
 
 from src import common_module as cm
 from src.common.module_exception import ModuleException
@@ -10,6 +12,7 @@ from src.common.timelogger import TimeLogger
 from src.common.constants import SystemConstants
 from src.common.utils import MaxGaugeUtils, SqlUtils, DateUtils
 from src.drain.drain_worker import DrainWorker
+from src.common.file_export import ParquetFile
 from resources.logger_manager import Logger
 
 
@@ -27,9 +30,10 @@ class SqlTextTemplate(cm.CommonModule):
         self.sql_template_select_only = False
         self.chd_threads = []
         self.wait_times_cnt = 0
-        self.sel_worker = None
-        self.etc_worker = None
         self.extract_cnt = 1000
+        self.drain_obj_dict = {}
+        self.analyzed_sql_uid_file_path = None
+        self.analyzed_sql_uid_file_name = None
 
     def main_process(self):
         """
@@ -41,16 +45,15 @@ class SqlTextTemplate(cm.CommonModule):
             raise ModuleException(error_code)
 
         self.chunk_size = self.config.get("data_handling_chunksize", 10_000) * 10
+        # self.chunk_size = 100
         self.sql_template_select_only = self.config.get("sql_template_select_only", False)
+        self.analyzed_sql_uid_file_path = f"{self.config['home']}" f"{SystemConstants.DRAIN_CONF_PATH}"
+        self.analyzed_sql_uid_file_name = (
+            f"{SystemConstants.ANALYZED_SQL_UID_FILE_NAME_PREFIX}" f"{SystemConstants.PARQUET_FILE_EXT}"
+        )
 
         self._add_sql_text_template_logger()
         self._init_sa_target()
-
-        self.sel_worker = DrainWorker(self.config, self.sql_text_template_logger, "select")
-        self.sel_worker.init_drain()
-
-        self.etc_worker = DrainWorker(self.config, self.sql_text_template_logger, "etc")
-        self.etc_worker.init_drain()
 
         if self.config["maxgauge_repo"]["use"]:
             self._db_sql_text_template()
@@ -96,7 +99,7 @@ class SqlTextTemplate(cm.CommonModule):
         start_time = time.time()
 
         for df in self.st.get_ae_was_sql_text_by_no_cluster(chunk_size=self.chunk_size):
-            with TimeLogger(inspect.currentframe().f_code.co_name, self.sql_text_template_logger):
+            with TimeLogger(f"{inspect.currentframe().f_code.co_name}, _preprocessing", self.sql_text_template_logger):
                 sel_df, etc_df = self._preprocessing(df)
 
             self._drain_match_and_upt(sel_df, etc_df, "was", self.st.update_cluster_id_by_sql_id)
@@ -109,8 +112,8 @@ class SqlTextTemplate(cm.CommonModule):
         :param df: 전처리 전 데이터 프레임
         :return: 전처리 후 select, ~select 데이터 프레임
         """
-        sel_list = ["select"]
-        etc_list = ["insert", "update", "delete"]
+        sel_list = ["select "]
+        etc_list = ["insert ", "update ", "delete "]
 
         filter_list = []
         filter_list.extend(sel_list)
@@ -123,6 +126,10 @@ class SqlTextTemplate(cm.CommonModule):
 
         df = SqlUtils.remove_unnecess_char(df, "sql_text", contains_comma=True)
         df["sql_text"] = df["sql_text"].str.lower().str.replace(r"\s+", " ", regex=True)
+        df["token_cnt"] = df["sql_text"].str.count(r"\s+")
+        df = df[df.token_cnt >= self.config.get("drain_config_depth", 15) - 1]
+
+        df = self._sql_filter_by_start_str(df)
 
         sel_df = df[df["sql_text"].str.contains("|".join(sel_list), na=False, case=False)]
         etc_df = df[~df["sql_text"].str.contains("|".join(sel_list), na=False, case=False)]
@@ -132,22 +139,54 @@ class SqlTextTemplate(cm.CommonModule):
 
         return sel_df, etc_df
 
+    @staticmethod
+    def _sql_filter_by_start_str(df):
+        sql_filter = (
+            "begin",
+            "declare",
+            "merge",
+            "call",
+            "set",
+            "with",
+            "grant",
+            "analyze",
+            "alter",
+            "lock",
+            "create",
+            "explain",
+            "truncate",
+        )
+
+        df["sql_text"] = df["sql_text"].str.strip()
+        df = df[~df["sql_text"].str.startswith(sql_filter)]
+        return df
+
     def _print_drain_tree(self):
         """
         Drain에서 분석한 분석 tree를 출력하기 위한 함수
         """
-        self.sel_worker.print_drain_tree()
-        self.etc_worker.print_drain_tree()
+        for sel_worker in self.drain_obj_dict.values():
+            sel_worker.print_drain_tree()
+
+        # self.etc_worker.print_drain_tree()
 
     def _save_top_cluster_template(self, extract_cnt=1000):
         """
         Top cluster의 갯수 및 template 저장하기 위한 함수
         :param extract_cnt: 저장하려는 cluster 갯수
         """
-        sel_cluster_df = self.sel_worker.get_top_cluster_template()
-        etc_cluster_df = self.etc_worker.get_top_cluster_template()
+        sel_cluster_df = None
 
-        cluster_df = pd.concat([sel_cluster_df, etc_cluster_df])
+        for sel_worker in self.drain_obj_dict.values():
+            df = sel_worker.get_top_cluster_template()
+            sel_cluster_df = pd.concat([sel_cluster_df, df])
+        # etc_cluster_df = self.etc_worker.get_top_cluster_template()
+
+        cluster_df = pd.concat(
+            [
+                sel_cluster_df,
+            ]
+        )
 
         return_df = self.st.get_cluster_cnt_by_grouping(extract_cnt)
 
@@ -170,6 +209,7 @@ class SqlTextTemplate(cm.CommonModule):
         """
         DB sql text 전처리 및 drain 알고리즘으로 cluster 분석 하는 함수
         """
+        pf = ParquetFile(self.logger, self.config)
         start_time = time.time()
 
         ae_db_info_df = self.st.get_ae_db_info()
@@ -179,19 +219,67 @@ class SqlTextTemplate(cm.CommonModule):
             self.config["args"]["s_date"], self.config["args"]["interval"], return_fmt="%y%m%d"
         )
 
+        if os.path.isfile(f"{self.analyzed_sql_uid_file_path}{self.analyzed_sql_uid_file_name}"):
+            analyzed_sql_uid_df = pq.read_pandas(
+                f"{self.analyzed_sql_uid_file_path}{self.analyzed_sql_uid_file_name}",
+                columns=[
+                    "sql_uid",
+                ],
+            ).to_pandas()
+        else:
+            analyzed_sql_uid_df = pd.DataFrame({"sql_uid": []})
+
+        pq_writer = None
+
+        total_cnt = 0
         for partition_key in [f"{date}{db_info}" for db_info in ae_db_infos for date in date_conditions]:
             for df in self.st.get_ae_db_sql_text_by_1seq(partition_key, chunksize=self.chunk_size):
+                total_cnt += len(df)
+                df = df[~df["sql_uid"].isin(analyzed_sql_uid_df["sql_uid"])]
+
                 if len(df) == 0:
-                    break
+                    continue
 
                 results = self.st.get_all_ae_db_sql_text_by_1seq(df, chunksize=self.chunk_size)
 
-                grouping_df = MaxGaugeUtils.reconstruct_by_grouping(results)
+                grouping_df = MaxGaugeUtils.reconstruct_by_grouping(results, with_max_seq=True)
 
-                with TimeLogger(inspect.currentframe().f_code.co_name, self.sql_text_template_logger):
+                with TimeLogger(
+                    f"{inspect.currentframe().f_code.co_name}, _preprocessing", self.sql_text_template_logger
+                ):
                     sel_df, etc_df = self._preprocessing(grouping_df)
 
-                self._drain_match_and_upt(sel_df, etc_df, "db", self.st.update_cluster_id_by_sql_id)
+                seq_list = sel_df.seq.unique()
+
+                for seq in seq_list:
+                    if str(seq) in self.drain_obj_dict.keys():
+                        sel_worker = self.drain_obj_dict[str(seq)]
+                    else:
+                        sel_worker = DrainWorker(self.config, self.sql_text_template_logger, "select", str(seq))
+                        sel_worker.init_drain()
+                        self.drain_obj_dict[str(seq)] = sel_worker
+
+                    df_by_seq = sel_df[sel_df.seq == seq]
+
+                    self._drain_match_and_upt(
+                        sel_worker, df_by_seq, etc_df, "db", str(seq), self.st.update_cluster_id_by_sql_id
+                    )
+
+                analyzed_sql_uid_df = pd.concat([analyzed_sql_uid_df, df], axis=0, ignore_index=True).drop(
+                    columns="partition_key"
+                )
+
+                if total_cnt >= 100:
+                    break
+            if total_cnt >= 100:
+                break
+
+        if pq_writer is None:
+            pq_writer = pf.get_pqwriter(
+                self.analyzed_sql_uid_file_path, self.analyzed_sql_uid_file_name, analyzed_sql_uid_df
+            )
+
+        pf.make_parquet_by_df(analyzed_sql_uid_df, pq_writer)
 
         self._after_drain_finished(start_time)
 
@@ -200,7 +288,11 @@ class SqlTextTemplate(cm.CommonModule):
         Drain 분석 종료 후 결과를 로깅하기 위한 함수
         :param start_time: Drain 분석 시작 시간
         """
-        total_match_cnt = self.sel_worker.line_count + self.etc_worker.line_count
+        # total_match_cnt = self.sel_worker.line_count + self.etc_worker.line_count
+        total_match_cnt = 0
+
+        for sel_worker in self.drain_obj_dict.values():
+            total_match_cnt += sel_worker.line_count
 
         time_took = time.time() - start_time
         rate = total_match_cnt / time_took
@@ -209,17 +301,21 @@ class SqlTextTemplate(cm.CommonModule):
             f"Total of {total_match_cnt} lines, rate {rate:.1f} lines/sec"
         )
 
-    def _drain_match_and_upt(self, sel_df, etc_df, target, upt_func=None):
+    def _drain_match_and_upt(self, sel_worker, sel_df, etc_df, target, seq, upt_func=None):
         """
         Drain 분석 후 결과를 저장 하기 위한 함수
         :param sel_df: select가 포함된 sql text를 분석한 데이터 프레임
         :param etc_df: select가 포함되지 않은 sql text를 분석한 데이터 프레임
         :param upt_func: 분석한 결과 데이터 프레임을 update 하는 함수 (Background 실행 : Max thread = 1)
         """
-        sel_df = self.sel_worker.match(sel_df, "sql_text")
-        etc_df = self.etc_worker.match(etc_df, "sql_text")
+        sel_df = sel_worker.match(sel_df, "sql_text")
+        # etc_df = etc_worker.match(etc_df, "sql_text")
 
-        result_df = pd.concat([sel_df, etc_df])
+        result_df = pd.concat(
+            [
+                sel_df,
+            ]
+        )
 
         if upt_func is not None:
             self._wait_end_of_threads()
@@ -229,5 +325,7 @@ class SqlTextTemplate(cm.CommonModule):
 
             self.chd_threads.append(bgt)
 
-        self.logger.info(f"select drain match processed line_count {self.sel_worker.line_count}")
-        self.logger.info(f"etc drain match processed line_count {self.etc_worker.line_count}")
+        # upt_func(result_df, target)
+
+        self.logger.info(f"select drain match processed {seq} seq, line_count {sel_worker.line_count}")
+        # self.logger.info(f"etc drain match processed line_count {self.etc_worker.line_count}")

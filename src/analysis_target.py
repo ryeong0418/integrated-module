@@ -542,13 +542,13 @@ class SaTarget(CommonTarget):
         :param extract_cnt: 추출 건수
         :return: 조회한 결과
         """
-        if self.config["intermax_repo"]["use"]:
-            query = AeWasSqlTextSql.SELECT_CLUSTER_CNT_BY_GROUPING
-            table_name = TableConstants.AE_WAS_SQL_TEXT
-
-        elif self.config["maxgauge_repo"]["use"]:
+        if self.config["maxgauge_repo"]["use"]:
             query = AeDbSqlTemplateMapSql.SELECT_CLUSTER_CNT_BY_GROUPING
             table_name = TableConstants.AE_DB_SQL_TEMPLATE_MAP
+
+        elif self.config["intermax_repo"]["use"]:
+            query = AeWasSqlTextSql.SELECT_CLUSTER_CNT_BY_GROUPING
+            table_name = TableConstants.AE_WAS_SQL_TEXT
 
         if extract_cnt > 0:
             query += f"limit {extract_cnt}"

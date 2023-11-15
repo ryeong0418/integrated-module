@@ -73,8 +73,6 @@ class DrainWorker:
             f"{self.config['home']}" f"{SystemConstants.DRAIN_CONF_PATH}" f"{DrainConstants.DRAIN_INI_FILE_NAME}"
         )
 
-        drain_config.drain_depth = self.config["drain_config_depth"]
-
         self.template_miner = self._create_template_miner(drain_config)
         sql_text_template_tree_path = (
             f"{self.config['home']}" f"{SystemConstants.DRAIN_CONF_PATH}" f"{SystemConstants.DRAIN_TREE_PATH}"

@@ -63,5 +63,5 @@
 	"extract_bind_value": true,
 	"sql_template_select_only": false,
 	"valid_sql_text_similarity": 0.7,
-	"drain_config_depth": 15
+	"drain_analysis_min_token": 15
 }

@@ -6,8 +6,6 @@ import pyarrow.parquet as pq
 
 from src import common_module as cm
 from src.common.module_exception import ModuleException
-from src.common.enum_module import MessageEnum
-from src.common.background_task import BackgroundTask
 from src.common.timelogger import TimeLogger
 from src.common.constants import SystemConstants
 from src.common.utils import MaxGaugeUtils, SqlUtils, DateUtils
@@ -40,9 +38,7 @@ class SqlTextTemplate(cm.CommonModule):
         Main process 함수
         """
         if not self.config["intermax_repo"]["use"] and not self.config["maxgauge_repo"]["use"]:
-            error_code = "E004"
-            self.logger.error(MessageEnum[error_code].value)
-            raise ModuleException(error_code)
+            raise ModuleException("E004", self.logger)
 
         self.chunk_size = self.config.get("data_handling_chunksize", 10_000) * 10
         # self.chunk_size = 100
@@ -124,10 +120,13 @@ class SqlTextTemplate(cm.CommonModule):
         df = df[df["sql_text"].str.contains("|".join(filter_list), na=False, case=False)]
         df = df[~df["sql_text"].str.contains("sql is too big", na=False, case=False)]
 
+        df["lf_cnt"] = df["sql_text"].str.count(r"\n")
+        df["cr_cnt"] = df["sql_text"].str.count(r"\r")
+
         df = SqlUtils.remove_unnecess_char(df, "sql_text", contains_comma=True)
         df["sql_text"] = df["sql_text"].str.lower().str.replace(r"\s+", " ", regex=True)
         df["token_cnt"] = df["sql_text"].str.count(r"\s+")
-        df = df[df.token_cnt >= self.config.get("drain_config_depth", 15) - 1]
+        df = df[df.token_cnt >= self.config.get("drain_analysis_min_token", 15) - 1]
 
         df = self._sql_filter_by_start_str(df)
 
@@ -155,6 +154,9 @@ class SqlTextTemplate(cm.CommonModule):
             "create",
             "explain",
             "truncate",
+            "insert",
+            "update",
+            "delete",
         )
 
         df["sql_text"] = df["sql_text"].str.strip()
@@ -181,6 +183,9 @@ class SqlTextTemplate(cm.CommonModule):
             df = sel_worker.get_top_cluster_template()
             sel_cluster_df = pd.concat([sel_cluster_df, df])
         # etc_cluster_df = self.etc_worker.get_top_cluster_template()
+
+        if sel_cluster_df is None:
+            raise ModuleException("W004", self.logger)
 
         cluster_df = pd.concat(
             [
@@ -249,30 +254,30 @@ class SqlTextTemplate(cm.CommonModule):
                 ):
                     sel_df, etc_df = self._preprocessing(grouping_df)
 
-                seq_list = sel_df.seq.unique()
+                sel_df["partition_seq"] = sel_df.apply(lambda x: self._partition_seq(x.seq, x.cr_cnt, x.lf_cnt), axis=1)
 
-                for seq in seq_list:
-                    if str(seq) in self.drain_obj_dict.keys():
-                        sel_worker = self.drain_obj_dict[str(seq)]
+                partition_seq_list = sel_df.partition_seq.unique()
+
+                for partition_seq in partition_seq_list:
+                    if partition_seq in self.drain_obj_dict.keys():
+                        sel_worker = self.drain_obj_dict[partition_seq]
                     else:
-                        sel_worker = DrainWorker(self.config, self.sql_text_template_logger, "select", str(seq))
+                        sel_worker = DrainWorker(self.config, self.sql_text_template_logger, "select", partition_seq)
                         sel_worker.init_drain()
-                        self.drain_obj_dict[str(seq)] = sel_worker
+                        self.drain_obj_dict[partition_seq] = sel_worker
 
-                    df_by_seq = sel_df[sel_df.seq == seq]
+                    df_by_seq = sel_df[sel_df.partition_seq == partition_seq]
 
                     self._drain_match_and_upt(
-                        sel_worker, df_by_seq, etc_df, "db", str(seq), self.st.update_cluster_id_by_sql_id
+                        sel_worker, df_by_seq, etc_df, "db", partition_seq, self.st.update_cluster_id_by_sql_id
                     )
 
                 analyzed_sql_uid_df = pd.concat([analyzed_sql_uid_df, df], axis=0, ignore_index=True).drop(
                     columns="partition_key"
                 )
 
-                if total_cnt >= 100:
-                    break
-            if total_cnt >= 100:
-                break
+                self._teardown_sa_target()
+                self._init_sa_target()
 
         if pq_writer is None:
             pq_writer = pf.get_pqwriter(
@@ -282,6 +287,14 @@ class SqlTextTemplate(cm.CommonModule):
         pf.make_parquet_by_df(analyzed_sql_uid_df, pq_writer)
 
         self._after_drain_finished(start_time)
+
+    @staticmethod
+    def _partition_seq(seq, cr, lf):
+        if seq == 1:
+            crlf = cr if cr >= lf else lf
+            partition_key = crlf // 10
+            return f"{seq}_{partition_key}"
+        return str(seq)
 
     def _after_drain_finished(self, start_time):
         """
@@ -317,15 +330,15 @@ class SqlTextTemplate(cm.CommonModule):
             ]
         )
 
-        if upt_func is not None:
-            self._wait_end_of_threads()
+        # if upt_func is not None:
+        #     self._wait_end_of_threads()
+        #
+        #     bgt = BackgroundTask(self.logger, upt_func, df=result_df, target=target)
+        #     bgt.start()
+        #
+        #     self.chd_threads.append(bgt)
 
-            bgt = BackgroundTask(self.logger, upt_func, df=result_df, target=target)
-            bgt.start()
-
-            self.chd_threads.append(bgt)
-
-        # upt_func(result_df, target)
+        upt_func(result_df, target)
 
         self.logger.info(f"select drain match processed {seq} seq, line_count {sel_worker.line_count}")
         # self.logger.info(f"etc drain match processed line_count {self.etc_worker.line_count}")

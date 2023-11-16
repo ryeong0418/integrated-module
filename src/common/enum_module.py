@@ -31,6 +31,7 @@ class MessageEnum(Enum):
     W001 = "진행중"
     W002 = "tuning_sql 경로에 tuning sql text가 존재하지 않습니다."
     W003 = "Dynamic sql이 존재 하지 않습니다."
+    W004 = "분석된 대상이 없습니다"
 
     # 에러 메세지 E
     E001 = "비정상종료"

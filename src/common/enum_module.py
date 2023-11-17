@@ -43,3 +43,4 @@ class MessageEnum(Enum):
     E008 = "지원하지 않는 DB type 입니다. invalid collector_db_type (check config.json collector_db_type key)"
     E009 = "oracle 접속 service_name / sid 정보가 없습니다."
     E010 = "다이나믹 SQL 분석을 위한 사전 처리된 데이터가 없습니다."
+    E011 = "DynamicSqlParse 중 오류가 발생했습니다. master.log를 확인해주세요."

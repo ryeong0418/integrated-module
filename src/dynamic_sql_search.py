@@ -6,21 +6,20 @@ import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 
-from ast import literal_eval
 from pathlib import Path
 from sql_metadata.parser import Parser
 from sql_metadata.keywords_lists import TokenType
 from pathos import multiprocessing
 from pprint import pformat
+from datetime import datetime
 
 from src import common_module as cm
 from src.common.timelogger import TimeLogger
-from src.common.constants import SystemConstants, TableConstants
+from src.common.constants import SystemConstants, TableConstants, DateFmtConstants
 from src.common.file_export import ParquetFile
 from src.common.utils import SystemUtils, MaxGaugeUtils, DateUtils
 from src.common.module_exception import ModuleException
 from src.excel.excel_writer import ExcelWriter, ExcelAlignment
-from src.common.stack import Stack
 
 
 class AnalyzedQueryPartObj:
@@ -89,7 +88,8 @@ class DynamicSourceQuery(AnalyzedQueryPartObj):
         """
         sql_text = sql_text.lower().strip()
         sql_text = re.sub(r"\( *\+ *\)", "", sql_text)
-        stack = Stack()
+        sql_text = re.sub(r"--.*\n", "", sql_text)
+        sql_text = re.sub(r"--.*\r", "", sql_text)
 
         parser = DynamicSqlSearch.get_sql_metadata_obj(sql_text)
 
@@ -98,9 +98,6 @@ class DynamicSourceQuery(AnalyzedQueryPartObj):
 
         index = 1
         for token in parser.tokens:
-            if index == 1:
-                stack.push("SELECT")
-
             # # 같은 depth 에서 키워드가 변경될때, select from where 에서만
             # if token.next_token is not None and token.next_token.last_keyword != stack.peek():
             #     stack.pop()
@@ -166,7 +163,6 @@ class DynamicSqlSearch(cm.CommonModule):
         self.chunk_size = int(self.config.get("data_handling_chunksize", 10000))
         self.chunk_size = int(self.chunk_size / 2)
         self.export_parquet_root_path = f'{self.config["home"]}/{SystemConstants.EXPORT_PARQUET_PATH}'
-
         self.dynamic_sql_parquet_file_name = (
             f"{SystemConstants.DB_SQL_TEXT_FOR_DYNAMIC_FILE_NAME}_{DateUtils.get_now_timestamp()}"
             f"{SystemConstants.PARQUET_FILE_EXT}"
@@ -205,6 +201,10 @@ class DynamicSqlSearch(cm.CommonModule):
         date_conditions = DateUtils.set_date_conditions_by_interval(
             self.config["args"]["s_date"], self.config["args"]["interval"], return_fmt="%y%m%d"
         )
+
+        self.logger.debug(f"ae_db_infos : {ae_db_infos}")
+        self.logger.debug(f"request date_conditions : {date_conditions}")
+
         partition_key_list = [f"{date}{db_info}" for db_info in ae_db_infos for date in date_conditions]
         fillna_col_names = [
             "avg_lio",
@@ -221,6 +221,7 @@ class DynamicSqlSearch(cm.CommonModule):
 
         for dynamic_source_sql in self.dynamic_source_sql_list:
             if dynamic_source_sql.valid_sql_df is None:
+                self.logger.info(f"{dynamic_source_sql.sql_id} is no valid sql data.. continue...")
                 continue
 
             sql_uid_list = dynamic_source_sql.valid_sql_df["sql_uid"].to_list()
@@ -263,8 +264,6 @@ class DynamicSqlSearch(cm.CommonModule):
             tmp_df["source_dynamic_join_cols"] = str(dynamic_source_sql.sql_dynamic_part.get("join_col_list", {}))
             tmp_df["source_dynamic_table_names"] = str(dynamic_source_sql.sql_dynamic_part.get("table_name_list", {}))
             tmp_df["source_dynamic_where_cols"] = str(dynamic_source_sql.sql_dynamic_part.get("where_col_list", {}))
-
-            # tmp_df[list_type_col_names] = tmp_df[list_type_col_names].applymap(self._list_to_str)
 
             tmp_df.rename(
                 columns={
@@ -353,8 +352,9 @@ class DynamicSqlSearch(cm.CommonModule):
 
             eww.save_workbook(
                 f"{self.dynamic_sql_path}/{dynamic_source_sql_obj.sql_id}",
-                f"{export_excel_file_name}.xlsx"
-                # f"{export_excel_file_name}_{datetime.now().strftime(DateFmtConstants.DATE_YMDHMS)}.xlsx"
+                f"{export_excel_file_name}_{datetime.now().strftime(DateFmtConstants.DATE_YMDHMS)}.xlsx"
+                if self.config["env"] == "prod"
+                else f"{export_excel_file_name}.xlsx",
             )
 
     def _make_export_excel_source_data_by_obj(self, dynamic_source_sql_obj):
@@ -412,10 +412,6 @@ class DynamicSqlSearch(cm.CommonModule):
             for batch in pre_proc_file.iter_batches(batch_size=self.chunk_size):
                 df = batch.to_pandas()
 
-                # df = df[df["sql_uid"].isin(filted_sql_uids)]
-                # if len(df) == 0:
-                #     continue
-
                 for dynamic_source_sql in self.dynamic_source_sql_list:
                     valid_sql_df = df[
                         (df.first_fixed_sel_depth == dynamic_source_sql.first_fixed_sel_depth)
@@ -434,24 +430,9 @@ class DynamicSqlSearch(cm.CommonModule):
                     if len(valid_sql_df) == 0:
                         continue
 
-                    valid_sql_df.drop(
-                        columns=[
-                            "where_token_len",
-                            "first_fixed_sel_depth",
-                            "first_fixed_sel_col",
-                            "first_fixed_table_name",
-                            "first_fixed_table_depth",
-                        ],
-                        inplace=True,
+                    valid_sql_df = self._valid_sql_parse_by_where_index(
+                        valid_sql_df, dynamic_source_sql.dynamic_where_index
                     )
-
-                    valid_sql_df["sql_fixed_parts"] = valid_sql_df["sql_fixed_parts"].apply(lambda x: literal_eval(x))
-
-                    # 파싱된 fixed parts의 지정된 index 값 추출 , where가 없을것 고려 해야함, where_token_idx의 range
-                    valid_sql_df["sql_fixed_part_by_idx"] = valid_sql_df["sql_fixed_parts"].apply(
-                        lambda x: x.get(f"{int(dynamic_source_sql.dynamic_where_index) - 1}", {})
-                    )
-                    valid_sql_df.drop(columns="sql_fixed_parts", inplace=True)
 
                     # fixed parts 비교
                     valid_sql_df = valid_sql_df[
@@ -482,16 +463,6 @@ class DynamicSqlSearch(cm.CommonModule):
                     if len(valid_sql_df) == 0:
                         continue
 
-                    valid_sql_df["sql_dynamic_parts"] = valid_sql_df["sql_dynamic_parts"].apply(
-                        lambda x: literal_eval(x)
-                    )
-
-                    # 파싱된 dynamic parts의 지정된 index 값 추출
-                    valid_sql_df["sql_dynamic_part_by_idx"] = valid_sql_df["sql_dynamic_parts"].apply(
-                        lambda x: x.get(f"{int(dynamic_source_sql.dynamic_where_index) - 1}", "")
-                    )
-                    valid_sql_df.drop(columns="sql_dynamic_parts", inplace=True)
-
                     valid_sql_df = valid_sql_df[
                         valid_sql_df["sql_dynamic_part_by_idx"].apply(
                             lambda x: DynamicSqlSearch.check_contains_where_col(
@@ -521,6 +492,19 @@ class DynamicSqlSearch(cm.CommonModule):
                     if len(valid_sql_df) == 0:
                         continue
 
+                    valid_sql_df.drop(
+                        columns=[
+                            "where_token_len",
+                            "first_fixed_sel_depth",
+                            "first_fixed_sel_col",
+                            "first_fixed_table_name",
+                            "first_fixed_table_depth",
+                            "parser",
+                            "where_token_index",
+                        ],
+                        inplace=True,
+                    )
+
                     valid_sql_df["dynamic_pattern"] = valid_sql_df["sql_text"].apply(
                         lambda x: DynamicSqlSearch.make_from_where_pattern(
                             x, int(dynamic_source_sql.dynamic_where_index) - 1
@@ -531,10 +515,34 @@ class DynamicSqlSearch(cm.CommonModule):
 
                 loop_cnt += len(df)
 
-                # if loop_cnt >= 10000:
-                #     break
-
                 self.logger.info(f"{loop_cnt} rows processing..")
+
+    def _valid_sql_parse_by_where_index(self, valid_df, where_index):
+        valid_df["parser"] = valid_df["sql_text"].apply(lambda x: self.get_sql_metadata_obj(x))
+        valid_df["where_token_index"] = valid_df["parser"].apply(lambda x: DynamicSqlSearch.get_where_token_idx(x))
+
+        valid_df[["sql_fixed_part_by_idx", "sql_dynamic_part_by_idx"]] = valid_df.apply(
+            lambda x: self._extract_part_by_where_idx(x, where_index), axis=1
+        )
+        return valid_df
+
+    @staticmethod
+    def _extract_part_by_where_idx(row, where_index):
+        query_part_obj = AnalyzedQueryPartObj()
+
+        sql_fixed_part = query_part_obj.sql_fixed_part
+        sql_dynamic_part = query_part_obj.sql_dynamic_part
+
+        parser = row["parser"]
+        where_token_index = row["where_token_index"]
+
+        for token in parser.tokens:
+            if len(where_token_index) == 0 or token.position < where_token_index[int(where_index) - 1]:
+                DynamicSqlSearch.analyze_token_type(token, sql_fixed_part, parser.columns_aliases)
+            else:
+                DynamicSqlSearch.analyze_token_type(token, sql_dynamic_part, parser.columns_aliases)
+
+        return pd.Series([sql_fixed_part, sql_dynamic_part])
 
     def _set_dynamic_source_query(self):
         """
@@ -561,11 +569,15 @@ class DynamicSqlSearch(cm.CommonModule):
         """
         sql_id 로 ae_session_stat_10min 테이블에서 sql_uid 조회하여 세팅하는 함수
         """
+        self.logger.info("set dynamic sql matching sql_uid start..")
+
         for dynamic_source_sql in self.dynamic_source_sql_list:
             result_df = self.st.get_ae_session_stat_10min_by_sql_id(dynamic_source_sql.sql_id)
 
             if len(result_df) >= 1:
                 dynamic_source_sql.sql_uid = result_df.at[0, "sql_uid"]
+
+        self.logger.info("set dynamic sql matching sql_uid end..")
 
     def _set_dynamic_sql_text_in_txt(self, dynamic_sql_list):
         """
@@ -625,8 +637,6 @@ class DynamicSqlSearch(cm.CommonModule):
         """
         df[
             [
-                "sql_fixed_parts",
-                "sql_dynamic_parts",
                 "where_token_len",
                 "first_fixed_sel_depth",
                 "first_fixed_sel_col",
@@ -655,8 +665,6 @@ class DynamicSqlSearch(cm.CommonModule):
         if not parser:
             return pd.Series(
                 [
-                    sql_fixed_parts,
-                    sql_dynamic_parts,
                     -1,
                     first_fixed_sel_depth,
                     first_fixed_sel_col,
@@ -670,6 +678,7 @@ class DynamicSqlSearch(cm.CommonModule):
         [
             DynamicSqlSearch.analyze_each_idx(idx, sql_fixed_parts, sql_dynamic_parts, parser, where_token_idxs)
             for idx in range(len(where_token_idxs))
+            if idx < 1
         ]
 
         if len(where_token_idxs) > 0:
@@ -682,8 +691,6 @@ class DynamicSqlSearch(cm.CommonModule):
 
         return pd.Series(
             [
-                sql_fixed_parts,
-                sql_dynamic_parts,
                 len(where_token_idxs),
                 first_fixed_sel_depth,
                 first_fixed_sel_col,
@@ -707,6 +714,9 @@ class DynamicSqlSearch(cm.CommonModule):
             self.config["args"]["s_date"], self.config["args"]["interval"], return_fmt="%y%m%d"
         )
 
+        self.logger.debug(f"ae_db_infos : {ae_db_infos}")
+        self.logger.debug(f"request date_conditions : {date_conditions}")
+
         dynamic_sql_parquet_files = SystemUtils.get_filenames_from_path(
             self.export_parquet_root_path, prefix=SystemConstants.DB_SQL_TEXT_FOR_DYNAMIC_FILE_NAME
         )
@@ -721,65 +731,84 @@ class DynamicSqlSearch(cm.CommonModule):
 
         pq_writer = None
 
-        for date in date_conditions:
-            for db_id in ae_db_infos:
-                total_row_cnt = 0
-                real_row_cnt = 0
-                partition_key = f"{date}{db_id}"
+        try:
+            for date in date_conditions:
+                for db_id in ae_db_infos:
+                    total_row_cnt = 0
+                    real_row_cnt = 0
+                    partition_key = f"{date}{db_id}"
 
-                with TimeLogger(f"Make_parquet_file_ae_db_sql_text (date:{date}, db_id:{db_id}),elapsed ", self.logger):
-                    for df in self.st.get_ae_db_sql_text_by_1seq_orderby(partition_key, chunksize=self.chunk_size):
-                        # df = df[df["sql_uid"].isin(filted_sql_uids)]
-                        total_row_cnt += len(df)
+                    with TimeLogger(
+                        f"Make_parquet_file_ae_db_sql_text (date:{date}, db_id:{db_id}),elapsed ", self.logger
+                    ):
+                        for df in self.st.get_ae_db_sql_text_by_1seq_orderby(partition_key, chunksize=self.chunk_size):
+                            # df = df[df["sql_uid"].isin(filted_sql_uids)]
+                            total_row_cnt += len(df)
 
-                        df = df[~df["sql_uid"].isin(analyzed_sql_uid_df["sql_uid"])]
+                            df = df[~df["sql_uid"].isin(analyzed_sql_uid_df["sql_uid"])]
 
-                        if len(df) == 0:
-                            continue
+                            if len(df) == 0:
+                                continue
 
-                        analyzed_sql_uid_df = pd.concat([analyzed_sql_uid_df, df], axis=0, ignore_index=True).drop(
-                            columns="partition_key"
-                        )
-
-                        results = self.st.get_all_ae_db_sql_text_by_1seq(df, chunksize=self.chunk_size)
-
-                        grouping_df = MaxGaugeUtils.reconstruct_by_grouping(results)
-                        grouping_df = DynamicSqlSearch.preprocessing(grouping_df)
-
-                        if len(grouping_df) == 0:
-                            continue
-
-                        self._teardown_sa_target()
-
-                        grouping_df = self.parallelize_dataframe(
-                            grouping_df, self._sql_metadata_parsing_by_df, n_cores=self.n_cores
-                        )
-
-                        # grouping_df = self._sql_metadata_parsing_by_df(grouping_df)
-
-                        grouping_df = grouping_df[grouping_df["where_token_len"] >= 0]
-
-                        grouping_df = grouping_df.astype({"sql_fixed_parts": "str", "sql_dynamic_parts": "str"})
-
-                        self._init_sa_target()
-
-                        if pq_writer is None:
-                            pq_writer = pf.get_pqwriter(
-                                self.export_parquet_root_path, self.dynamic_sql_parquet_file_name, grouping_df
+                            analyzed_sql_uid_df = pd.concat([analyzed_sql_uid_df, df], axis=0, ignore_index=True).drop(
+                                columns="partition_key"
                             )
 
-                        pf.make_parquet_by_df(grouping_df, pq_writer)
-                        real_row_cnt += len(grouping_df)
+                            results = self.st.get_all_ae_db_sql_text_by_1seq(df, chunksize=self.chunk_size)
 
-                    self.logger.info(
-                        f"Total export data count (date:{date}, db_id:{db_id}): "
-                        f"{total_row_cnt} total rows / {real_row_cnt} analysis real rows"
-                    )
+                            grouping_df = MaxGaugeUtils.reconstruct_by_grouping(results)
+                            grouping_df = DynamicSqlSearch.preprocessing(grouping_df)
 
-        if pq_writer:
-            pq_writer.close()
+                            if len(grouping_df) == 0:
+                                continue
+
+                            self._teardown_sa_target()
+
+                            self.logger.info(f"Sql parsing Start... {self.n_cores} cpu cores")
+                            grouping_df = self.parallelize_dataframe(
+                                grouping_df, self._sql_metadata_parsing_by_df, n_cores=self.n_cores
+                            )
+                            # grouping_df = self._sql_metadata_parsing_by_df(grouping_df)
+                            self.logger.info("Sql parsing End...")
+
+                            grouping_df = grouping_df[grouping_df["where_token_len"] >= 0]
+                            self._init_sa_target()
+
+                            if len(grouping_df) == 0:
+                                continue
+
+                            if pq_writer is None:
+                                pq_writer = pf.get_pqwriter(
+                                    self.export_parquet_root_path, self.dynamic_sql_parquet_file_name, grouping_df
+                                )
+
+                            pf.make_parquet_by_df(grouping_df, pq_writer)
+                            real_row_cnt += len(grouping_df)
+
+                        self.logger.info(
+                            f"Total export data count (date:{date}, db_id:{db_id}): "
+                            f"{total_row_cnt} total rows / {real_row_cnt} analysis real rows"
+                        )
+
+        except Exception as e:
+            self.logger.exception(e)
+
+            if os.path.isfile(f"{self.export_parquet_root_path} {self.dynamic_sql_parquet_file_name}"):
+                os.remove(f"{self.export_parquet_root_path} {self.dynamic_sql_parquet_file_name}")
+
+            raise ModuleException("E011")
+
+        finally:
+            if pq_writer:
+                pq_writer.close()
 
     def _get_df_by_parquet(self, parquet_files, column):
+        """
+        parquet files에서 df으로 변환하는 함수
+        :param parquet_files: parquet files
+        :param column: 추출하려는 컬럼
+        :return: 추출된 데이터 프레임
+        """
         result_df = None
         for parquet_file in parquet_files:
             df = pq.read_pandas(
@@ -841,6 +870,8 @@ class DynamicSqlSearch(cm.CommonModule):
 
         grouping_df["sql_text"] = grouping_df["sql_text"].str.lower().str.strip()
         grouping_df["sql_text"] = grouping_df["sql_text"].str.replace(r"\( *\+ *\)", "", regex=True)
+        grouping_df["sql_text"] = grouping_df["sql_text"].str.replace(r"--.*\n", r"\n", regex=True)
+        grouping_df["sql_text"] = grouping_df["sql_text"].str.replace(r"--.*\r", r"\r", regex=True)
         grouping_df = grouping_df[~grouping_df["sql_text"].str.startswith(sql_filter)]
         return grouping_df
 
@@ -927,11 +958,7 @@ class DynamicSqlSearch(cm.CommonModule):
                 part_obj_key = "etc_col_list"
 
         elif token.is_potential_column_name and "row" in token.value:
-            if token.last_keyword == "SELECT":
-                part_obj_key = "select_col_list"
-
-            elif token.last_keyword == "WHERE":
-                part_obj_key = "where_col_list"
+            part_obj_key = DynamicSqlSearch.get_part_obj_by_keyword(token)
 
         elif (
             columns_aliases is not None
@@ -939,28 +966,31 @@ class DynamicSqlSearch(cm.CommonModule):
             and token.is_potential_column_name
             and token.value in columns_aliases.keys()
         ):
-            if token.last_keyword == "SELECT":
-                part_obj_key = "select_col_list"
-
-            elif token.last_keyword == "WHERE":
-                part_obj_key = "where_col_list"
+            part_obj_key = DynamicSqlSearch.get_part_obj_by_keyword(token)
 
         elif token.is_potential_column_name and token.is_wildcard:
-            if token.last_keyword == "SELECT":
-                part_obj_key = "select_col_list"
-
-            elif token.last_keyword == "WHERE":
-                part_obj_key = "where_col_list"
+            part_obj_key = DynamicSqlSearch.get_part_obj_by_keyword(token)
 
         elif token.token_type is TokenType.COLUMN_ALIAS:
-            if token.last_keyword == "SELECT":
-                part_obj_key = "select_col_list"
-
-            elif token.last_keyword == "WHERE":
-                part_obj_key = "where_col_list"
+            part_obj_key = DynamicSqlSearch.get_part_obj_by_keyword(token)
 
         if part_obj_key is not None:
             DynamicSqlSearch.set_token_value_by_part(token, obj, part_obj_key)
+
+    @staticmethod
+    def get_part_obj_key_by_keyword(token):
+        """
+        token last_keyword로 part_obj_key를 정하는 함수
+        :param token: 분석된 token
+        :return: part_obj_key
+        """
+        if token.last_keyword == "SELECT":
+            part_obj_key = "select_col_list"
+
+        elif token.last_keyword == "WHERE":
+            part_obj_key = "where_col_list"
+
+        return part_obj_key
 
     @staticmethod
     def set_token_value_by_part(token, part_obj, part_obj_key):
@@ -1006,7 +1036,8 @@ class DynamicSqlSearch(cm.CommonModule):
             key = next(iter(sql_fixed_part.get(part_key, {})))
 
             if sql_fixed_part.get(part_key, {}).get(key):
-                value = sql_fixed_part.get(part_key, {}).get(key)[0]
+                value = sql_fixed_part.get(part_key, {}).get(key, [])[0]
+                # value_cnt = len(sql_fixed_part.get(part_key, {}).get(key))
 
         return key, value
 

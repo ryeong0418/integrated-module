@@ -958,7 +958,7 @@ class DynamicSqlSearch(cm.CommonModule):
                 part_obj_key = "etc_col_list"
 
         elif token.is_potential_column_name and "row" in token.value:
-            part_obj_key = DynamicSqlSearch.get_part_obj_by_keyword(token)
+            part_obj_key = DynamicSqlSearch.get_part_obj_key_by_keyword(token)
 
         elif (
             columns_aliases is not None
@@ -966,13 +966,13 @@ class DynamicSqlSearch(cm.CommonModule):
             and token.is_potential_column_name
             and token.value in columns_aliases.keys()
         ):
-            part_obj_key = DynamicSqlSearch.get_part_obj_by_keyword(token)
+            part_obj_key = DynamicSqlSearch.get_part_obj_key_by_keyword(token)
 
         elif token.is_potential_column_name and token.is_wildcard:
-            part_obj_key = DynamicSqlSearch.get_part_obj_by_keyword(token)
+            part_obj_key = DynamicSqlSearch.get_part_obj_key_by_keyword(token)
 
         elif token.token_type is TokenType.COLUMN_ALIAS:
-            part_obj_key = DynamicSqlSearch.get_part_obj_by_keyword(token)
+            part_obj_key = DynamicSqlSearch.get_part_obj_key_by_keyword(token)
 
         if part_obj_key is not None:
             DynamicSqlSearch.set_token_value_by_part(token, obj, part_obj_key)
@@ -984,6 +984,7 @@ class DynamicSqlSearch(cm.CommonModule):
         :param token: 분석된 token
         :return: part_obj_key
         """
+        part_obj_key = None
         if token.last_keyword == "SELECT":
             part_obj_key = "select_col_list"
 

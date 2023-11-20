@@ -254,5 +254,5 @@ tmp/
 *.bin
 
 *.tree
-
+*.parquet
 # End of https://www.toptal.com/developers/gitignore/api/windows,pycharm,python

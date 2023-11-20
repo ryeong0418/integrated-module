@@ -6,7 +6,10 @@ class ModuleException(Exception):
     ModuleException class
     """
 
-    def __init__(self, exception_code):
+    def __init__(self, exception_code, logger=None):
+        if logger is not None:
+            logger.exception(MessageEnum[exception_code].value)
+
         self.error_code = exception_code
         self.error_msg = MessageEnum[exception_code].value
 

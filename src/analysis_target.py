@@ -116,26 +116,6 @@ class CommonTarget:
             df.to_sql(name=table_name, con=engine, schema="public", if_exists="append", index=False)
         return df
 
-    def _default_execute_query(self, conn, query):
-        """
-        분석 모듈 DB 기본 sql 실행 쿼리
-        :param conn: sql 실행하려는 타겟 DB Connection Object
-        :param query: 실행 하려는 쿼리
-        :return:
-        """
-        try:
-            cursor = conn.cursor()
-            cursor.execute(query)
-
-        except errors.lookup(DUPLICATE_TABLE):
-            self.logger.warn("This DDL Query DUPLICATE_TABLE.. SKIP")
-
-        except Exception as e:
-            self.logger.exception(e)
-        finally:
-            conn.commit()
-            cursor.close()
-
     def _psql_upsert_by_df(self, table, engine, df):
         """
         pg sql upsert 공통 함수
@@ -251,12 +231,34 @@ class SaTarget(CommonTarget):
         self.sa_conn = self.analysis_engine.raw_connection()
         self.sa_cursor = self.sa_conn.cursor()
 
+    def _default_execute_query(self, query):
+        """
+        분석 모듈 DB 기본 sql 실행 쿼리
+        :param conn: sql 실행하려는 타겟 DB Connection Object
+        :param query: 실행 하려는 쿼리
+        :return:
+        """
+        try:
+            if self.sa_conn.closed:
+                self.init_process()
+
+            self.sa_cursor.execute(query)
+
+        except errors.lookup(DUPLICATE_TABLE):
+            self.logger.warn("This DDL Query DUPLICATE_TABLE.. SKIP")
+
+        except Exception as e:
+            self.logger.exception(e)
+        # finally:
+        #     self.conn.commit()
+
     def create_table(self, ddl):
         """
         table 생성 함수.
         :param ddl: create table ddl 구문.
         """
-        self._default_execute_query(self.sa_conn, ddl)
+        self._default_execute_query(ddl)
+        self.sa_conn.commit()
 
     def insert_table_by_df(self, df, table_name):
         """
@@ -274,7 +276,8 @@ class SaTarget(CommonTarget):
         """
         delete_table_query = SqlUtils.sql_replace_to_dict(delete_query, delete_dict)
         self.logger.info(f"delete query execute : {delete_table_query}")
-        self._default_execute_query(self.sa_conn, delete_table_query)
+        self._default_execute_query(delete_table_query)
+        self.sa_conn.commit()
 
     def upsert_data(self, df, target_table_name):
         """
@@ -484,6 +487,8 @@ class SaTarget(CommonTarget):
         self.update_cluster_cnt = 0
 
         [self._update_cluster_id_by_sql_id(row, target) for _, row in df.iterrows()]
+        self.sa_conn.commit()
+
         self.logger.info(f"Execute update_cluster_id_by_sql_id query end : {self.update_cluster_cnt}")
 
     def _update_cluster_id_by_sql_id(self, row, target):
@@ -510,7 +515,7 @@ class SaTarget(CommonTarget):
             sql_id = row["sql_uid"]
             target_table = "ae_db_sql_template_map"
         try:
-            self._default_execute_query(self.sa_conn, exec_query)
+            self._default_execute_query(exec_query)
             self.update_cluster_cnt += 1
         except IntegrityError as ie:
             self.logger.exception(
@@ -533,7 +538,8 @@ class SaTarget(CommonTarget):
         truncate_query = SqlUtils.sql_replace_to_dict(
             CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY, {"table_name": table_name}
         )
-        self._default_execute_query(self.sa_conn, truncate_query)
+        self._default_execute_query(truncate_query)
+        self.sa_conn.commit()
         self._insert_table_by_df(self.analysis_engine, table_name, df)
 
     def get_cluster_cnt_by_grouping(self, extract_cnt):
@@ -542,13 +548,13 @@ class SaTarget(CommonTarget):
         :param extract_cnt: 추출 건수
         :return: 조회한 결과
         """
-        if self.config["intermax_repo"]["use"]:
-            query = AeWasSqlTextSql.SELECT_CLUSTER_CNT_BY_GROUPING
-            table_name = TableConstants.AE_WAS_SQL_TEXT
-
-        elif self.config["maxgauge_repo"]["use"]:
+        if self.config["maxgauge_repo"]["use"]:
             query = AeDbSqlTemplateMapSql.SELECT_CLUSTER_CNT_BY_GROUPING
             table_name = TableConstants.AE_DB_SQL_TEMPLATE_MAP
+
+        elif self.config["intermax_repo"]["use"]:
+            query = AeWasSqlTextSql.SELECT_CLUSTER_CNT_BY_GROUPING
+            table_name = TableConstants.AE_WAS_SQL_TEXT
 
         if extract_cnt > 0:
             query += f"limit {extract_cnt}"
@@ -578,7 +584,8 @@ class SaTarget(CommonTarget):
         :return:
         """
         update_query = AeWasSqlTextSql.UPDATE_BY_NO_ANALYZED_TARGET
-        self._default_execute_query(self.sa_conn, update_query)
+        self._default_execute_query(update_query)
+        self.sa_conn.commit()
 
     def insert_ae_txn_sql_similarity(self, result_valid_df):
         """

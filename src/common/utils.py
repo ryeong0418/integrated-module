@@ -132,6 +132,9 @@ class SystemUtils:
         if not os.path.exists(path):
             os.makedirs(path)
 
+        if not os.path.isdir(path):
+            return
+
         return [x for x in os.listdir(path) if str(x).startswith(prefix) and str(x).endswith(suffix)]
 
     @staticmethod
@@ -197,6 +200,22 @@ class SystemUtils:
         """
         for col in range(ws.min_column, ws.max_column + 1):
             ws.column_dimensions[get_column_letter(col)].width = width_num
+
+    @staticmethod
+    def get_folder_to_path(path):
+        """
+        path에서 folder만 추출 하는 함수
+        :param path: path
+        :return: folder 리스트
+        """
+        folder_list = []
+        for folder in os.listdir(path):
+            sub_folder = os.path.join(path, folder)
+
+            if os.path.isdir(sub_folder):
+                folder_list.append(folder)
+
+        return folder_list
 
 
 class TargetUtils:

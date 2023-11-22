@@ -6,6 +6,6 @@ CREATE TABLE AE_DB_SQL_TEXT (
     SQL_TEXT VARCHAR(4000) NULL,
     create_dt timestamp with time zone default current_timestamp,
     create_id varchar(20) default 'system' not NULL
-)
+);
 create index if not exists ae_db_sql_text_index1 on ae_db_sql_text (partition_key, db_id, sql_uid, seq);
 create index if not exists ae_db_sql_text_index2 on ae_db_sql_text (partition_key, sql_uid);

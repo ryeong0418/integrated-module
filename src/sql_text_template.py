@@ -277,7 +277,7 @@ class SqlTextTemplate(cm.CommonModule):
                     columns="partition_key"
                 )
 
-                if len(result_df) == 0:
+                if result_df is None or len(result_df) == 0:
                     continue
 
                 self._upsert_drain_result(result_df, "db", self.st.update_cluster_id_by_sql_id)

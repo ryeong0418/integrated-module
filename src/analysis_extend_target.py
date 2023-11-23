@@ -64,7 +64,7 @@ class OracleTarget(CommonTarget):
         """
         extend target object close
         """
-        if self.oracle_engine:
-            self.oracle_engine.dispose()
         if self.oracle_conn:
             self.oracle_conn.close()
+        if self.oracle_engine:
+            self.oracle_engine.dispose()

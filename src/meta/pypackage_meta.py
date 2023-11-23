@@ -1,7 +1,7 @@
 """Define meta information about module package."""
 
 __title__ = "Smart_analyzer"
-__version__ = "1.3.0"
+__version__ = "1.4.0"
 __copyright__ = "Copyright 2023 Exem Corp. All rights reserved."
 __project_name__ = "ESPA"
 __author__ = "AE_GROUP"

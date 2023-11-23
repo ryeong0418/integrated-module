@@ -1,6 +1,5 @@
 from src import common_module as cm
-from src.common.constants import TableConstants, SystemConstants, DbTypeConstants
-
+from src.common.constants import TableConstants, SystemConstants
 from src.common.utils import SystemUtils, InterMaxUtils, SqlUtils, DateUtils
 from sql.common_sql import CommonSql, AeWasDevMapSql, AeDbInfoSql
 from src.analysis_extend_target import OracleTarget
@@ -37,44 +36,6 @@ class Extractor(cm.CommonModule):
             self._insert_meta_data(SystemConstants.DB_PATH, self.mgt)
             self._insert_maxgauge_detail_data()
             self._teardown_mg_target()
-
-    def _insert_oracle_extend_target_data(self):
-        """
-        oracle 확장 타겟별 데이터 저장 함수
-        """
-        s_date, e_date = DateUtils.get_each_date_by_interval(
-            self.config["args"]["s_date"],
-            self.config["args"]["interval"],
-        )
-
-        delete_query = CommonSql.DELETE_EXTEND_TABLE_BY_DATE_QUERY
-
-        analysis_target_type_path = f"{self.config['maxgauge_repo']['analysis_target_type']}/"
-        extend_ext_file_path = (
-            f"{self.sql_file_root_path}"
-            f"{SystemConstants.DB_PATH}"
-            f"{analysis_target_type_path}"
-            f"{SystemConstants.EXTEND_PATH}"
-        )
-        extend_ext_file_list = SystemUtils.get_filenames_from_path(extend_ext_file_path, "", "txt")
-
-        for ext_file in extend_ext_file_list:
-            query = SystemUtils.get_file_content_in_path(extend_ext_file_path, ext_file)
-            table_name = SystemUtils.extract_tablename_in_filename(ext_file)
-
-            replace_query_dict = {
-                "table_name": table_name,
-                "StartDate": str(s_date.strftime("%Y-%m-%d")),
-                "EndDate": str(e_date.strftime("%Y-%m-%d")),
-                "identifier": self.ot.identifier,
-            }
-            self.st.delete_data(delete_query, replace_query_dict)
-
-            rep_query = SqlUtils.sql_replace_to_dict(query, replace_query_dict)
-
-            for df in self.ot.get_data_by_query(rep_query):
-                df["identifier"] = self.ot.identifier
-                self.st.insert_table_by_df(df, table_name)
 
     def _insert_meta_data(self, target, target_instance):
         """

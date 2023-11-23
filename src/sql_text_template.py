@@ -41,7 +41,6 @@ class SqlTextTemplate(cm.CommonModule):
             raise ModuleException("E004", self.logger)
 
         self.chunk_size = self.config.get("data_handling_chunksize", 10_000) * 10
-        # self.chunk_size = 100
         self.sql_template_select_only = self.config.get("sql_template_select_only", False)
         self.analyzed_sql_uid_file_path = f"{self.config['home']}" f"{SystemConstants.DRAIN_CONF_PATH}"
         self.analyzed_sql_uid_file_name = (
@@ -56,10 +55,11 @@ class SqlTextTemplate(cm.CommonModule):
             self._wait_end_of_threads()
 
         elif self.config["intermax_repo"]["use"]:
-            self._was_sql_text_template()
-
-            self._wait_end_of_threads()
-            self._update_unanalyzed_was_sql_text()
+            self.logger.info("No Use")
+            # self._was_sql_text_template()
+            #
+            # self._wait_end_of_threads()
+            # self._update_unanalyzed_was_sql_text()
 
         self._save_top_cluster_template(self.extract_cnt)
 
@@ -98,7 +98,7 @@ class SqlTextTemplate(cm.CommonModule):
             with TimeLogger(f"{inspect.currentframe().f_code.co_name}, _preprocessing", self.sql_text_template_logger):
                 sel_df, etc_df = self._preprocessing(df)
 
-            self._drain_match_and_upt(sel_df, etc_df, "was", self.st.update_cluster_id_by_sql_id)
+            self._drain_match(sel_df, etc_df, "was", self.st.update_cluster_id_by_sql_id)
 
         self._after_drain_finished(start_time)
 
@@ -258,6 +258,8 @@ class SqlTextTemplate(cm.CommonModule):
 
                 partition_seq_list = sel_df.partition_seq.unique()
 
+                result_df = None
+
                 for partition_seq in partition_seq_list:
                     if partition_seq in self.drain_obj_dict.keys():
                         sel_worker = self.drain_obj_dict[partition_seq]
@@ -268,16 +270,14 @@ class SqlTextTemplate(cm.CommonModule):
 
                     df_by_seq = sel_df[sel_df.partition_seq == partition_seq]
 
-                    self._drain_match_and_upt(
-                        sel_worker, df_by_seq, etc_df, "db", partition_seq, self.st.update_cluster_id_by_sql_id
-                    )
+                    matched_df = self._drain_match(sel_worker, df_by_seq, etc_df, partition_seq)
+                    result_df = pd.concat([result_df, matched_df])
+
+                self._upsert_drain_result(result_df, "db", self.st.update_cluster_id_by_sql_id)
 
                 analyzed_sql_uid_df = pd.concat([analyzed_sql_uid_df, df], axis=0, ignore_index=True).drop(
                     columns="partition_key"
                 )
-
-                self._teardown_sa_target()
-                self._init_sa_target()
 
         if pq_writer is None:
             pq_writer = pf.get_pqwriter(
@@ -314,12 +314,13 @@ class SqlTextTemplate(cm.CommonModule):
             f"Total of {total_match_cnt} lines, rate {rate:.1f} lines/sec"
         )
 
-    def _drain_match_and_upt(self, sel_worker, sel_df, etc_df, target, seq, upt_func=None):
+    def _drain_match(self, sel_worker, sel_df, etc_df, seq):
         """
         Drain 분석 후 결과를 저장 하기 위한 함수
+        :param sel_worker: select 분석 drain obj
         :param sel_df: select가 포함된 sql text를 분석한 데이터 프레임
         :param etc_df: select가 포함되지 않은 sql text를 분석한 데이터 프레임
-        :param upt_func: 분석한 결과 데이터 프레임을 update 하는 함수 (Background 실행 : Max thread = 1)
+        :param seq: sql text patition된 seq
         """
         sel_df = sel_worker.match(sel_df, "sql_text")
         # etc_df = etc_worker.match(etc_df, "sql_text")
@@ -329,7 +330,17 @@ class SqlTextTemplate(cm.CommonModule):
                 sel_df,
             ]
         )
+        self.logger.info(f"select drain match processed {seq} seq, line_count {sel_worker.line_count}")
+        return result_df
 
+    @staticmethod
+    def _upsert_drain_result(result_df, target, upt_func):
+        """
+        drain match 결과를 저장하기 위한 함수
+        :param result_df: 저장 대상 데이터프레임
+        :param target: drain 분석된 인스턴스 타겟
+        :param upt_func: 분석한 결과 데이터 프레임을 update 하는 함수 (Background 실행 : Max thread = 1)
+        """
         # if upt_func is not None:
         #     self._wait_end_of_threads()
         #
@@ -339,6 +350,3 @@ class SqlTextTemplate(cm.CommonModule):
         #     self.chd_threads.append(bgt)
 
         upt_func(result_df, target)
-
-        self.logger.info(f"select drain match processed {seq} seq, line_count {sel_worker.line_count}")
-        # self.logger.info(f"etc drain match processed line_count {self.etc_worker.line_count}")

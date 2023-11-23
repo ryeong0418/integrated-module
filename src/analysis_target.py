@@ -7,8 +7,9 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import Table, MetaData
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import ProgrammingError
 from psycopg2 import errors
-from psycopg2.errorcodes import DUPLICATE_TABLE
+from psycopg2.errorcodes import DUPLICATE_TABLE, UNDEFINED_TABLE
 
 from src.decoder.intermax_decryption import Decoding
 from src.common.utils import TargetUtils, SqlUtils
@@ -36,9 +37,9 @@ class CommonTarget:
         self.analysis_engine = None
         self.im_engine = None
         self.mg_engine = None
+        self.analysis_stream_engine = None
 
         self.im_conn = None
-        self.mg_conn = None
         self.sa_conn = None
 
         self.sa_cursor = None
@@ -58,8 +59,6 @@ class CommonTarget:
             self.im_conn.close()
         if self.sa_conn:
             self.sa_conn.close()
-        if self.mg_conn:
-            self.mg_conn.close()
         if self.analysis_engine:
             self.analysis_engine.dispose()
         if self.im_engine:
@@ -142,7 +141,7 @@ class CommonTarget:
                     connection.execute(upsert_values)
                     connection.commit()
 
-    def _get_df_by_chunk_size(self, engine: create_engine, query: str, chunk_size: int = 0, coerce=True):
+    def _get_df_by_chunk_size(self, engine, query: str, chunk_size: int = 0, coerce=True):
         """
         chunk size 만큼 테이블 데이터를 읽어 오는 함수
         :param engine: 각 target engine object
@@ -153,8 +152,22 @@ class CommonTarget:
         """
         if chunk_size == 0:
             chunk_size = self.extract_chunksize
+
         conn = engine.connect().execution_options(stream_results=True)
-        return pd.read_sql_query(text(query), conn, chunksize=chunk_size, coerce_float=coerce)
+        try:
+            df = pd.read_sql_query(text(query), conn, chunksize=chunk_size, coerce_float=coerce)
+        except ProgrammingError as pe:
+            self.logger.error(pe.orig.pgerror)
+
+            if pe.orig.pgcode == UNDEFINED_TABLE:
+                conn.rollback()
+
+            return pd.DataFrame()
+
+        finally:
+            engine.dispose()
+
+        return df
 
     def get_data_by_query(self, query):
         """
@@ -207,7 +220,6 @@ class MaxGaugeTarget(CommonTarget):
         MaxGauge target db init 함수
         """
         self.mg_engine = self._create_engine(self.mg_url_object, self.mg_conn_args)
-        self.mg_conn = self.mg_engine.raw_connection()
 
     def get_data_by_query(self, query):
         """
@@ -230,8 +242,9 @@ class SaTarget(CommonTarget):
         self.analysis_engine = self._create_engine(self.analysis_url_object, self.analysis_conn_args)
         self.sa_conn = self.analysis_engine.raw_connection()
         self.sa_cursor = self.sa_conn.cursor()
+        self.analysis_stream_engine = self._create_engine(self.analysis_url_object, self.analysis_conn_args)
 
-    def _default_execute_query(self, query):
+    def _default_execute_query(self, query, args=None):
         """
         분석 모듈 DB 기본 sql 실행 쿼리
         :param conn: sql 실행하려는 타겟 DB Connection Object
@@ -239,18 +252,17 @@ class SaTarget(CommonTarget):
         :return:
         """
         try:
-            if self.sa_conn.closed:
-                self.init_process()
-
-            self.sa_cursor.execute(query)
+            with self.analysis_engine.begin() as conn:
+                if args is None:
+                    conn.execute(text(query))
+                else:
+                    conn.execute(text(query), args)
 
         except errors.lookup(DUPLICATE_TABLE):
             self.logger.warn("This DDL Query DUPLICATE_TABLE.. SKIP")
 
         except Exception as e:
             self.logger.exception(e)
-        # finally:
-        #     self.conn.commit()
 
     def create_table(self, ddl):
         """
@@ -258,7 +270,6 @@ class SaTarget(CommonTarget):
         :param ddl: create table ddl 구문.
         """
         self._default_execute_query(ddl)
-        self.sa_conn.commit()
 
     def insert_table_by_df(self, df, table_name):
         """
@@ -277,7 +288,6 @@ class SaTarget(CommonTarget):
         delete_table_query = SqlUtils.sql_replace_to_dict(delete_query, delete_dict)
         self.logger.info(f"delete query execute : {delete_table_query}")
         self._default_execute_query(delete_table_query)
-        self.sa_conn.commit()
 
     def upsert_data(self, df, target_table_name):
         """
@@ -320,7 +330,7 @@ class SaTarget(CommonTarget):
         :param coerce: float 데이터 처리 flag
         :return: chunksize 만큼 조회된 데이터 데이터 프레임
         """
-        return self._get_df_by_chunk_size(self.analysis_engine, query, chunk_size=chunksize, coerce=coerce)
+        return self._get_df_by_chunk_size(self.analysis_stream_engine, query, chunk_size=chunksize, coerce=coerce)
 
     def get_data_by_query_and_once(self, query, table_name="UNKNOWN TABLE"):
         """
@@ -359,7 +369,7 @@ class SaTarget(CommonTarget):
         replace_dict = {"partition_key": partition_key}
         query = SqlUtils.sql_replace_to_dict(AeDbSqlTextSql.SELECT_AE_DB_SQL_TEXT_1SEQ, replace_dict)
 
-        return self._get_df_by_chunk_size(self.analysis_engine, query, chunk_size=chunksize)
+        return self._get_df_by_chunk_size(self.analysis_stream_engine, query, chunk_size=chunksize)
         # return pd.read_sql_query(query, self.sa_conn, chunksize=chunksize)
 
     def get_ae_db_sql_text_by_1seq_orderby(self, partition_key, chunksize):
@@ -372,7 +382,7 @@ class SaTarget(CommonTarget):
         replace_dict = {"partition_key": partition_key}
         query = SqlUtils.sql_replace_to_dict(AeDbSqlTextSql.SELECT_AE_DB_SQL_TEXT_1SEQ_ORDERBY, replace_dict)
 
-        return self._get_df_by_chunk_size(self.analysis_engine, query, chunk_size=chunksize)
+        return self._get_df_by_chunk_size(self.analysis_stream_engine, query, chunk_size=chunksize)
 
     def get_all_ae_db_sql_text_by_1seq(self, df, chunksize):
         """
@@ -468,11 +478,7 @@ class SaTarget(CommonTarget):
         query = AeWasSqlTextSql.SELECT_SQL_ID_AND_SQL_TEXT
         replaced_query = SqlUtils.sql_replace_to_dict(query, date_dict)
 
-        return self._get_df_by_chunk_size(
-            self.analysis_engine,
-            replaced_query,
-            chunksize,
-        )
+        return self._get_df_by_chunk_size(self.analysis_stream_engine, replaced_query, chunksize)
 
     def update_cluster_id_by_sql_id(self, df, target):
         """
@@ -484,49 +490,25 @@ class SaTarget(CommonTarget):
         :return:
         """
         self.logger.info(f"Execute update_cluster_id_by_sql_id query total : {len(df)}")
-        self.update_cluster_cnt = 0
+        self._update_cluster_id_by_sql_id(df, target)
+        self.logger.info(f"Execute update_cluster_id_by_sql_id query end : {len(df)}")
 
-        [self._update_cluster_id_by_sql_id(row, target) for _, row in df.iterrows()]
-        self.sa_conn.commit()
-
-        self.logger.info(f"Execute update_cluster_id_by_sql_id query end : {self.update_cluster_cnt}")
-
-    def _update_cluster_id_by_sql_id(self, row, target):
+    def _update_cluster_id_by_sql_id(self, df, target):
         """
         sql_text_template 수행 후 sql_id별 cluster_id를 업데이트 하는 실제 함수
         :param row: sql_text_template 결과 데이터 프레임 row
         :param target: 대상 타겟 (was / db)
         :return:
         """
-        sql_id = ""
-        target_table = ""
-
         if target == "was":
-            exec_query = SqlUtils.sql_replace_to_dict(
-                AeWasSqlTextSql.UPDATE_CLUSTER_ID_BY_SQL_ID, {"cluster_id": row["cluster_id"], "sql_id": row["sql_id"]}
+            self._default_execute_query(
+                AeWasSqlTextSql.UPDATE_CLUSTER_ID_BY_SQL_ID, df[["sql_id", "cluster_id"]].to_dict(orient="records")
             )
-            sql_id = row["sql_id"]
-            target_table = "ae_was_sql_text"
         elif target == "db":
-            exec_query = SqlUtils.sql_replace_to_dict(
+            self._default_execute_query(
                 AeDbSqlTemplateMapSql.UPSERT_CLUSTER_ID_BY_SQL_UID,
-                {"cluster_id": row["cluster_id"], "sql_uid": row["sql_uid"]},
+                df[["sql_uid", "cluster_id"]].to_dict(orient="records"),
             )
-            sql_id = row["sql_uid"]
-            target_table = "ae_db_sql_template_map"
-        try:
-            self._default_execute_query(exec_query)
-            self.update_cluster_cnt += 1
-        except IntegrityError as ie:
-            self.logger.exception(
-                f"_update_cluster_id_by_sql_id(), update execute error. check {target_table} table, sql_id {sql_id}"
-            )
-            self.logger.exception(ie)
-        except Exception as e:
-            self.logger.exception(
-                f"_update_cluster_id_by_sql_id(), update execute error. check {target_table} table, sql_id {sql_id}"
-            )
-            self.logger.exception(e)
 
     def insert_ae_sql_template(self, df):
         """
@@ -539,7 +521,6 @@ class SaTarget(CommonTarget):
             CommonSql.TRUNCATE_TABLE_DEFAULT_QUERY, {"table_name": table_name}
         )
         self._default_execute_query(truncate_query)
-        self.sa_conn.commit()
         self._insert_table_by_df(self.analysis_engine, table_name, df)
 
     def get_cluster_cnt_by_grouping(self, extract_cnt):
@@ -572,11 +553,7 @@ class SaTarget(CommonTarget):
         :return: 조회한 결과
         """
         query = AeWasSqlTextSql.SELECT_BY_NO_CLUSTER_ID
-        return self._get_df_by_chunk_size(
-            self.analysis_engine,
-            query,
-            chunk_size,
-        )
+        return self._get_df_by_chunk_size(self.analysis_stream_engine, query, chunk_size)
 
     def update_unanalyzed_was_sql_text(self):
         """
@@ -585,7 +562,6 @@ class SaTarget(CommonTarget):
         """
         update_query = AeWasSqlTextSql.UPDATE_BY_NO_ANALYZED_TARGET
         self._default_execute_query(update_query)
-        self.sa_conn.commit()
 
     def insert_ae_txn_sql_similarity(self, result_valid_df):
         """

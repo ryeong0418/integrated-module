@@ -161,7 +161,6 @@ class DynamicSqlSearch(cm.CommonModule):
         self.n_cores = int(os.cpu_count() * 0.5)
 
         self.chunk_size = int(self.config.get("data_handling_chunksize", 10000))
-        self.chunk_size = int(self.chunk_size / 2)
         self.export_parquet_root_path = f'{self.config["home"]}/{SystemConstants.EXPORT_PARQUET_PATH}'
         self.dynamic_sql_parquet_file_name = (
             f"{SystemConstants.DB_SQL_TEXT_FOR_DYNAMIC_FILE_NAME}_{DateUtils.get_now_timestamp()}"
@@ -765,14 +764,16 @@ class DynamicSqlSearch(cm.CommonModule):
                             self._teardown_sa_target()
 
                             self.logger.info(f"Sql parsing Start... {self.n_cores} cpu cores")
+
                             grouping_df = self.parallelize_dataframe(
                                 grouping_df, self._sql_metadata_parsing_by_df, n_cores=self.n_cores
                             )
                             # grouping_df = self._sql_metadata_parsing_by_df(grouping_df)
+
                             self.logger.info("Sql parsing End...")
+                            self._init_sa_target()
 
                             grouping_df = grouping_df[grouping_df["where_token_len"] >= 0]
-                            self._init_sa_target()
 
                             if len(grouping_df) == 0:
                                 continue

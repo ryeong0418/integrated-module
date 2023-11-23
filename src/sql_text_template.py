@@ -273,11 +273,14 @@ class SqlTextTemplate(cm.CommonModule):
                     matched_df = self._drain_match(sel_worker, df_by_seq, etc_df, partition_seq)
                     result_df = pd.concat([result_df, matched_df])
 
-                self._upsert_drain_result(result_df, "db", self.st.update_cluster_id_by_sql_id)
-
                 analyzed_sql_uid_df = pd.concat([analyzed_sql_uid_df, df], axis=0, ignore_index=True).drop(
                     columns="partition_key"
                 )
+
+                if len(result_df) == 0:
+                    continue
+
+                self._upsert_drain_result(result_df, "db", self.st.update_cluster_id_by_sql_id)
 
         if pq_writer is None:
             pq_writer = pf.get_pqwriter(

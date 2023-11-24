@@ -77,8 +77,8 @@ class AeWasSqlTextSql:
 
     UPDATE_CLUSTER_ID_BY_SQL_ID = """
         UPDATE ae_was_sql_text
-        set cluster_id = '#(cluster_id)'
-        where sql_id = '#(sql_id)'
+        set cluster_id = :cluster_id
+        where sql_id = :sql_id
     """
 
     SELECT_SQL_ID_AND_SQL_TEXT = """
@@ -107,7 +107,7 @@ class AeDbSqlTemplateMapSql:
 
     UPSERT_CLUSTER_ID_BY_SQL_UID = """
         INSERT INTO ae_db_sql_template_map (sql_uid, cluster_id)
-        VALUES ('#(sql_uid)', '#(cluster_id)')
+        VALUES (:sql_uid, :cluster_id)
         ON CONFLICT (sql_uid)
         DO UPDATE
         SET cluster_id = EXCLUDED.cluster_id
@@ -195,23 +195,36 @@ class AeSqlStat10min:
         select
             a.sql_uid,
             a.sql_id,
-            case when sum(a.execution_count) != 0
-                 then sum(a.logical_reads) / sum(a.execution_count)
-                 else 0 end as avg_lio,
-            case when sum(a.execution_count) != 0
-                 then sum(a.physical_reads) / sum(a.execution_count)
-                 else 0 end as avg_pio,
+            sum(a.execution_count) as exec,
+            sum(a.elapsed_time) as "sum_elapsed_time",
+            sum(a.cpu_time) as "sum_cpu_time",
+            sum(a.logical_reads) as "sum_lio",
+            sum(a.physical_reads) as "sum_pio",
             case when sum(a.execution_count) != 0
                  then sum(a.elapsed_time) / sum(a.execution_count)
-                 else 0 end as avg_elapsed_time,
-            sum(a.execution_count) as exec
+                 else 0 end as "avg_elapsed_time",
+            case when sum(a.execution_count) != 0
+                 then sum(a.cpu_time) / sum(a.execution_count)
+                 else 0 end as "avg_cpu_time",
+            case when sum(a.execution_count) != 0
+                 then sum(a.logical_reads) / sum(a.execution_count)
+                 else 0 end as "avg_lio",
+            case when sum(a.execution_count) != 0
+                 then sum(a.physical_reads) / sum(a.execution_count)
+                 else 0 end as "avg_pio"
         from (
-            select sql_uid, sql_id, elapsed_time , logical_reads , physical_reads, execution_count
+            select sql_uid, sql_id, elapsed_time , logical_reads , physical_reads, execution_count, cpu_time
             from ae_sql_stat_10min assm
             where sql_uid in (#(sql_uids))
             and partition_key in (#(partition_keys))
         ) as a
         group by a.sql_uid, a.sql_id
+    """
+
+    SELECT_AE_SESSION_STAT_10MIN_BY_SQL_ID = """
+        select distinct sql_uid, sql_id
+        from ae_sql_stat_10min assm
+        where sql_id = '#(sql_id)'
     """
 
 

@@ -54,6 +54,9 @@ class SystemConstants:
 
     # sql_text_template 관련 파일 경로
     DRAIN_CONF_PATH = "/resources/drain/"
+    DRAIN_TREE_PATH = "tree/"
+    DRAIN_MODEL_PATH = "model/"
+    ANALYZED_SQL_UID_FILE_NAME_PREFIX = "analyzed_sql_uid"
 
     # decoding jar 파일
     DECODING_JAR_FILE_PATH = "/resources/intermax_decoding"
@@ -136,16 +139,16 @@ class DrainConstants:
     DRAIN_INI_FILE_NAME = "drain3.ini"
 
     # sql_text_template model 파일 이름
-    DRAIN_SELECT_MODEL_FILE_NAME = "select_sql_text_template.bin"
-    DRAIN_ETC_MODEL_FILE_NAME = "etc_sql_text_template.bin"
+    DRAIN_SELECT_MODEL_FILE_NAME = "select_sql_text_template_#(seq).bin"
+    DRAIN_ETC_MODEL_FILE_NAME = "etc_sql_text_template_#(seq).bin"
 
     # sql_text_template tree 파일 이름 debug용
-    DRAIN_SELECT_TEMPLATE_TREE_FILE_NAME = "select_sql_text_template.tree"
-    DRAIN_ETC_TEMPLATE_TREE_FILE_NAME = "etc_sql_text_template.tree"
+    DRAIN_SELECT_TEMPLATE_TREE_FILE_NAME = "select_sql_text_template_#(seq).tree"
+    DRAIN_ETC_TEMPLATE_TREE_FILE_NAME = "etc_sql_text_template_#(seq).tree"
 
     # cluster_id custom tag
-    SELECT_TEMPLATE_CLUSTER_ID_PREFIX = "S_"
-    ETC_TEMPLATE_CLUSTER_ID_PREFIX = "E_"
+    SELECT_TEMPLATE_CLUSTER_ID_PREFIX = "S#(seq)_"
+    ETC_TEMPLATE_CLUSTER_ID_PREFIX = "E#(seq)_"
 
 
 class DateFmtConstants:

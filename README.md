@@ -64,9 +64,18 @@ Exem Was/DB 통합 데이터 분석 모듈
 ```shell
 /6_sqltexttemplate.bat {시작날짜} {기간} (Windows)
 /bin/6_sqltexttemplate.sh {시작날짜} {기간} (UNIX)
+
+7. DynamicSqlParsing (다이나믹 sql 파싱)
+```shell
+/7_dynamicsqlparsing.bat {시작날짜} {기간} (Windows)
 ```
 
-7. Scheduler (분석 데이터 추출/취합/Sql Text Match 동작, 튜닝 sql text 트랜잭션 추적 기능 스케쥴러 (하루전 데이터))
+8. DynamicSqlAnalyze (다이나믹 sql 분석)
+```shell
+/8_dynamicsqlanalyze.bat {시작날짜} {기간} (Windows)
+```
+
+99. Scheduler (분석 데이터 추출/취합/Sql Text Match 동작, 튜닝 sql text 트랜잭션 추적 기능 스케쥴러 (하루전 데이터))
 ```shell
 /99_batch.bat (Windows) - windows service 등록 후 사용
 /bin/99_batch.sh (UNIX)

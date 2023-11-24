@@ -132,6 +132,9 @@ class SystemUtils:
         if not os.path.exists(path):
             os.makedirs(path)
 
+        if not os.path.isdir(path):
+            return
+
         return [x for x in os.listdir(path) if str(x).startswith(prefix) and str(x).endswith(suffix)]
 
     @staticmethod
@@ -197,6 +200,22 @@ class SystemUtils:
         """
         for col in range(ws.min_column, ws.max_column + 1):
             ws.column_dimensions[get_column_letter(col)].width = width_num
+
+    @staticmethod
+    def get_folder_to_path(path):
+        """
+        path에서 folder만 추출 하는 함수
+        :param path: path
+        :return: folder 리스트
+        """
+        folder_list = []
+        for folder in os.listdir(path):
+            sub_folder = os.path.join(path, folder)
+
+            if os.path.isdir(sub_folder):
+                folder_list.append(folder)
+
+        return folder_list
 
 
 class TargetUtils:
@@ -289,14 +308,19 @@ class MaxGaugeUtils:
     """
 
     @staticmethod
-    def reconstruct_by_grouping(results):
+    def reconstruct_by_grouping(results, with_max_seq=False):
         """
         db sql text 재조합을 위한 함수
         :param results: seq가 동일한 데이터들의 전체 리스트
+        :param with_max_seq: seq의 max값까지 추출하기 위한 flag
         :return: 재조합된 데이터프레임
         """
+        agg_arg = {"sql_text": "".join}
+        if with_max_seq:
+            agg_arg["seq"] = "max"
+
         results_df = pd.DataFrame(results, columns=["sql_text", "partition_key", "sql_uid", "seq"])
-        results_df = results_df.groupby(["sql_uid", "partition_key"], as_index=False).agg({"sql_text": "".join})
+        results_df = results_df.groupby(["sql_uid", "partition_key"], as_index=False).agg(agg_arg)
         results_df.drop(columns="partition_key", inplace=True)
         return results_df
 
@@ -339,15 +363,16 @@ class SqlUtils:
         :param df: 정규식 처리를 위한 DataFrame, 해당 컬럼은 sql_text
         :return: 정규식 변환 처리된 DataFrame
         """
-        df["sql_text"] = df["sql_text"].str.replace(r"\s+in\s?\([^)]*\)", " in(<:args:>)", regex=True)
-        df["sql_text"] = df["sql_text"].str.replace(r"\s+values\s?\([^)]*\)", " values(<:args:>)", regex=True)
+        df["sql_text"] = df["sql_text"].str.replace(r"\s+in\s?\([^)]*\)", " in(:args:)", regex=True)
+        df["sql_text"] = df["sql_text"].str.replace(r"\s+values\s?\([^)]*\)", " values(:args:)", regex=True)
         df["sql_text"] = df["sql_text"].str.replace(
-            r"\d{2,4}\-\d{2}\-\d{2} \d{2}:\d{2}:\d{2}\.?\d{0,3}", "<DATETIME>", regex=True
+            r"\d{2,4}\-\d{2}\-\d{2} \d{2}:\d{2}:\d{2}\.?\d{0,3}", ":DATETIME:", regex=True
         )
         df["sql_text"] = df["sql_text"].str.replace(
-            r"\d{2,4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}\.?\d{0,3}", "<DATETIME>", regex=True
+            r"\d{2,4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}\.?\d{0,3}", ":DATETIME:", regex=True
         )
-        df["sql_text"] = df["sql_text"].str.replace(r"\d{4}\-\d{2}\-\d{2}", "<DATE>", regex=True)
+        df["sql_text"] = df["sql_text"].str.replace(r"\d{4}\-\d{2}\-\d{2}", ":DATE:", regex=True)
+        df["sql_text"] = df["sql_text"].str.replace(r"[\uAC00-\uD7A3]+", ":HAN:", regex=True)
         return df
 
     @staticmethod

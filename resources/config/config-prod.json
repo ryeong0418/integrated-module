@@ -2,43 +2,31 @@
 	"intermax_repo": {
 		"analysis_target_type": "",
 		"collector_db_type": "postgres",
-		"host": "10.10.48.173",
-		"port": 5432,
-		"sid": "intermax",
-		"user": "intermax",
-		"password": "intermax",
+		"host": "",
+		"port": 0,
+		"sid": "",
+		"user": "",
+		"password": "",
 		"use": true
 	},
 	"maxgauge_repo": {
 		"analysis_target_type": "oracle",
 		"collector_db_type": "postgres",
-		"host": "10.20.132.206",
-		"port": 5430,
-		"sid": "MFO",
-		"user": "postgres",
-		"password": "intermax",
-		"use": true,
-		"extend_mode": true,
-		"extend_target_repo": [
-			{
-				"host": "10.10.48.36",
-				"port": 1918,
-				"user": "sys",
-				"password": "oracle",
-				"role": "sysdba",
-				"service_name": "ORCLCDB",
-				"sid": ""
-			}
-		]
+		"host": "",
+		"port": 0,
+		"sid": "",
+		"user": "",
+		"password": "",
+		"use": true
 	},
 	"analysis_repo": {
 		"analysis_target_type": "oracle",
 		"collector_db_type": "postgres",
-		"host": "10.10.47.241",
-		"port": 15432,
-		"sid": "sr_dev",
-		"user": "sr_dev",
-		"password": "dmddyd2307!"
+		"host": "127.0.0.1",
+		"port": 5432,
+		"sid": "aeproject",
+		"user": "aeproject",
+		"password": "7WRPw6hnKS5KJpUcZF8F"
 	},
 	"scheduler": {
 		"is_alive_sched": {
@@ -47,14 +35,14 @@
 			"use": true
 		},
 		"main_sched": {
-			"hour": "1",
+			"hour": "3",
 			"minute": "5",
 			"use": true
 		},
 		"sql_text_similarity_sched": {
 			"hour": "*",
 			"minute": "3, 13, 23, 33, 43, 53",
-			"use": true
+			"use": false
 		}
 	},
 	"sql_debug_flag": false,

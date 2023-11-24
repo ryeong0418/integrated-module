@@ -299,7 +299,10 @@ class PerformanceAnalyzer(cm.CommonModule):
 
         column_width_inches = [Inches(i) for i in self.position["db_system"]["column_width_inches"]]
         tp = SlideManager.convert_inches_to_data(self.position["db_system"]["table_position"])
+        pd.set_option("display.max_columns", None)
+        pd.set_option("display.max_rows", None)
         df = self._convert_sql_to_df(self.sql_path, "DB_SYSTEM")
+
         slide_num, target_slide = SlideManager.read_slide(self.presentation.slides, PerformanceAnalyzer.DB_SYSTEM)
 
         for i in range(len(self.instance_number)):
@@ -317,7 +320,6 @@ class PerformanceAnalyzer(cm.CommonModule):
             inst_df = df[df["INSTANCE_NUMBER"] == inst_num]
             list_df.append(inst_df)
         preprocessed_df = self._arrange_db_system(list_df, i)
-
         SlideManager.create_text_box(
             slide,
             self.position["top_menu"]["left_top_text_position"],

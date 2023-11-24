@@ -5,6 +5,7 @@ from pptx.enum.shapes import MSO_CONNECTOR_TYPE
 from pptx.enum.dml import MSO_LINE_DASH_STYLE
 from pptx.chart.data import CategoryChartData
 from pptx.enum.chart import XL_CHART_TYPE
+from pptx.enum.text import PP_PARAGRAPH_ALIGNMENT
 from pptx.util import Inches
 import re
 
@@ -148,6 +149,7 @@ class SlideManager:
             cell = row.cells[0]
             cell.fill.solid()
             cell.fill.fore_color.rgb = RGBColor(242, 242, 242)
+
         # 컬럼 (0행) 파란색으로
         for cell in shape.table.rows[0].cells:
             cell.fill.solid()
@@ -161,12 +163,6 @@ class SlideManager:
             for paragraph in cell.text_frame.paragraphs:
                 for run in paragraph.runs:
                     run.font.size = Pt(8)
-
-        # if row_height_inches is not None:
-        # if row_height_exist is not None:
-        #     for idx, row in enumerate(shape.table.rows):
-        #         row.height = row_height_exist
-        #         print(row.height)
 
     @staticmethod
     def insert_chart(df, category_col, value_col, instance_name):
@@ -209,7 +205,6 @@ class SlideManager:
         gridline_format.fill.fore_color.rgb = RGBColor(191, 191, 191)
 
         # y축 색상 - 흰색
-
         value_axis_line_format = value_axis.format.line
         value_axis_line_format.fill.solid()
         value_axis_line_format.fill.fore_color.rgb = RGBColor(255, 255, 255)
@@ -251,7 +246,10 @@ class SlideManager:
 
         chart.has_title = True
         chart.chart_title.text_frame.text = "Response Time in Seconds"
-        chart.chart_title.text_frame.clear()
+        chart.chart_title.text_frame.paragraphs[0].font.size = Pt(9)
+        chart.chart_title.text_frame.paragraphs[0].alignment = PP_PARAGRAPH_ALIGNMENT.LEFT
+
+        # chart.chart_title.text_frame.clear()
 
         chart_value_axis = chart.value_axis
         chart_value_axis.minimum_scale = 0

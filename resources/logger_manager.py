@@ -8,6 +8,8 @@ from concurrent_log_handler import ConcurrentTimedRotatingFileHandler
 
 
 class Logger(ConcurrentTimedRotatingFileHandler):
+    """logger"""
+
     def __init__(self, env="prod"):
         self.resources_path = os.path.dirname(os.path.abspath(__file__))
         self.env = env
@@ -20,7 +22,6 @@ class Logger(ConcurrentTimedRotatingFileHandler):
         :param error_log_dict: 해당 로그에서 에러 레벨 이상만 추출하기 위한 dict (optional)
         :return: logger
         """
-
         Path(log_dir).mkdir(exist_ok=True, parents=True)
 
         logger_path = [self.resources_path, sc.LOGGER_FILE_PATH]

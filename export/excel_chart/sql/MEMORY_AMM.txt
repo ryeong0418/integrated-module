@@ -1,0 +1,15 @@
+SELECT NAME, VALUE
+FROM (select INSTANCE_NUMBER AS "INST_ID",
+			'Physical memory' AS "NAME",
+			round((max(value) keep (DENSE_RANK LAST ORDER BY SNAP_ID))/1024/1024/1024,1) || ' GB' AS "VALUE"
+	   from dba_hist_osstat
+	  GROUP BY INSTANCE_NUMBER, 'Physical memory'
+	  UNION ALL
+	  select inst_id,
+			 name,
+			 case when NAME = 'db_block_size' then to_number(value)/1024 || ' KB'
+				  else round(to_number(value)/1024/1024/1024,1) || ' GB'
+			 END value
+		from gv$parameter
+	   where name in ('sga_target','pga_aggregate_target','db_block_size'))
+WHERE INST_ID = 1

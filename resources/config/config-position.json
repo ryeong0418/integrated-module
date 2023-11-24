@@ -1,0 +1,88 @@
+{
+	"top_menu": {
+		"left_top_text_position": {"left": 433317, "top": 183492, "width": 5107033, "height": 461665}
+
+	},
+	"bottom_menu": {
+		"straight_position" :{"left": 1052596, "top":5895499 , "width": 10884224, "height": 5895499},
+        "right_triangle_position" :{"left": 1120075, "top": 5996286, "width": 145391, "height": 145391},
+        "bottom_findings_position" : {"left": 1258357, "top": 5957581, "width": 2310667, "height": 277897},
+        "bottom_text_position" : {"left": 1192770, "top": 6180382, "width": 9165228, "height": 531812}
+
+	},
+	"time_model": {
+		"left_rectangle_position": {"left": 497567,"top": 983127,"width": 143792,"height": 143792},
+		"right_rectangle_position": {"left": 6371305,"top": 983127,"width": 143792,"height": 143792},
+		"left_position": {"left": 690925, "top": 921877, "width": 2148698, "height": 261610},
+		"right_position": {"left": 6564663, "top": 921877, "width": 2148698, "height": 261610},
+		"left_table": {"left":0.63, "top": 1.38, "width":5.69, "height":5.70},
+		"right_table": {"left":7.01 , "top":1.38 , "width":5.69 , "height":5.70 },
+		"column_width_inches": [2.47, 1.02, 1.02, 1.55]
+	},
+	"db_system": {
+		"column_width_inches": [2.41, 3.96, 3.96],
+		"table_position": {"left": 1.65,"top": 1.94,"width": 9.45,"height": 4.31}
+	},
+	"metric": {
+		"avg_rectangle_position": {"left": 1205185,"top": 1074071,"width": 143792,"height": 143792},
+        "max_rectangle_position": {"left": 1205185,"top": 3162505,"width": 143792,"height": 143792},
+        "avg_text_position": {"left": 1398543,"top": 1012821,"width": 1047750,"height": 261610},
+        "max_text_position": {"left": 1398543,"top": 3105916,"width": 1047750,"height": 261610},
+		"avg_coordinate": {"x": 1153635,"y": 1317322,"cx": 9831628,"cy": 1727932},
+		"max_coordinate": {"x": 1153635,"y": 3341708,"cx": 9831628,"cy": 1727932}
+	},
+
+	"top_n": {
+		"left_rectangle_position": {"left": 497567,"top": 1297757,"width": 143792,"height": 143792},
+		"right_rectangle_position": {"left": 6169923,"top": 1297757,"width": 143792,"height": 143792},
+		"left_position": {"left": 690925, "top": 1236507, "width": 2148698, "height": 261610},
+		"right_position": {"left": 6363281, "top": 1236507, "width": 2148698, "height": 261610},
+		"left_table":{"top": 1.793, "left": 0.587, "width": 5.991, "height": 3.577},
+		"right_table":{"top": 1.793, "left": 6.790, "width": 5.991, "height": 3.577},
+		"column_width_inches": [1.77, 1.02, 0.66, 0.944, 0.80, 0.79]
+	},
+	"top_3": {
+		"upper_table": {"left": 1.26, "top":3.53, "width":10.65 , "height":0.61 },
+		"down_table": {"left":1.26 , "top":4.26 , "width":10.65 , "height":1.262 },
+		"chart_position": {"x":1154503, "y":1100097, "cx":9831628, "cy":2019521},
+		"ora_rectangle_position": {"left": 1205185, "top": 1150271, "width": 143792, "height": 143792},
+		"ora_position": {"left": 1398543, "top": 1089021, "width": 2148698, "height": 261610}
+	},
+	"top_schema_sql": {
+		"upper_table": {"left": 1.29, "top":1.43, "width":11.19, "height":1.5 },
+		"down_table": {"left": 1.29, "top":3.0 , "width":11.22, "height":1.5 },
+		"table1_column_inches": [1.06, 1.06, 1.06, 1.06, 1.06, 1.06, 1.06, 1.06, 1.06, 1.06, 1.06],
+		"table2_column_inches": [1.06, 1.15, 1.01, 1, 1, 0.97, 1.09, 4.37],
+		"rectangle_position": {"left": 1205185, "top": 1022694, "width": 143792, "height": 143792},
+		"oracle_num_position": {"left": 1398543, "top": 961444, "width": 1047750, "height": 261610}
+	},
+	"rac": {
+		"sent_position": {"left": 1398542, "top": 1012821, "width": 1516107, "height": 430887},
+		"received_position": {"left": 1398542, "top": 3105916, "width": 1859007, "height": 430887},
+		"rec1_position": {"left": 1205185, "top": 1074071, "width": 143792, "height": 143792},
+		"rec2_position": {"left": 1205185, "top": 3162505, "width": 143792, "height": 143792},
+		"sent_coordinate": {"x":1153635,"y":1317322,"cx":9831628,"cy":1727932},
+		"received_coordinate": {"x":1153635,"y":3341708,"cx":9831628,"cy":1727932}
+	},
+	"memory": {
+		"left_table": {"top": 1.793, "left": 0.587, "width": 5.991, "height": 1.5},
+		"right_table": {"top": 1.793, "left": 6.790, "width": 5.991, "height": 1.5},
+		"column_width_inches":[1.89, 1.13, 0.90, 0.90],
+		"ora1_rectangle_position": {"left": 497567,"top": 1297757,"width": 143792,"height": 143792},
+		"ora2_rectangle_position": {"left": 6169923,"top": 1297757,"width": 143792,"height": 143792},
+		"oracle_1_position": {"left": 690925, "top": 1236507, "width": 2148698, "height": 261610},
+		"oracle_2_position": {"left": 6363281, "top": 1236507, "width": 2148698, "height": 261610},
+		"rectangle_position": {"left": 3745334, "top": 4414174, "width": 4413748, "height": 1793201},
+		"rectangle2_position": {"left": 4067336, "top": 4589253, "width": 3769743, "height": 258792}
+	},
+	"literal_sql": {
+		"table_position": {"left": 1.17, "top": 1.17, "width": 10.93, "height": 4.9},
+		"ora_position": {"left": 991591, "top": 756949, "width": 1047750, "height": 307777},
+		"ora_rectangle_position": {"left": 847799, "top": 789328, "width":143792 , "height": 143792},
+		"right_triangle_position" :{"left": 1072253, "top": 5924598, "width": 145391, "height": 145391},
+		"straight_position" :{"left":1072253 , "top": 5780708, "width":9831628 , "height": 0},
+        "bottom_findings_position" : {"left": 1215537, "top": 5859349, "width": 2310667, "height": 277897},
+        "bottom_text_position" : {"left": 1072253, "top": 5924598, "width": 145391, "height": 145391},
+		"column_width_inches": [1.21, 1.21, 2.76, 1.05, 1.19, 0.99, 0.86, 0.96, 0.69]
+	}
+}

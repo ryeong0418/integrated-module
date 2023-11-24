@@ -1,5 +1,5 @@
 from src import common_module as cm
-from src.common.constants import TableConstants, SystemConstants, DbTypeConstants
+from src.common.constants import TableConstants, SystemConstants
 
 from src.common.utils import SystemUtils, InterMaxUtils, SqlUtils, DateUtils
 from sql.common_sql import CommonSql, AeWasDevMapSql, AeDbInfoSql

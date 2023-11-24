@@ -17,6 +17,8 @@ class ModuleFactoryEnum(Enum):
     c = "metric_performance_report"
     d = "dynamic_sql_search"
     p = "dynamic_sql_search"
+    o = "report_ppt"
+    a = "performance_analyzer"
 
 
 class MessageEnum(Enum):

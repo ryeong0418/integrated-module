@@ -232,3 +232,14 @@ class XapmTxnSqlDetailSql:
         join xapm_sql_text xst
         on xts.sql_id = xst.sql_id
     """
+
+
+class PptSql:
+    """ppt sql"""
+
+    SELECT_INSTANCE_NUMBER = """
+            SELECT INSTANCE_NUMBER,
+                   INSTANCE_NAME,
+                   COUNT(INSTANCE_NUMBER) OVER () INST_TOT_COUNT
+            FROM GV$INSTANCE
+            """

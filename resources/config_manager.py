@@ -5,6 +5,8 @@ from src.common.constants import SystemConstants as sc
 
 
 class Config:
+    """config"""
+
     def __init__(self, env="dev"):
         self.resources_path = os.path.dirname(os.path.abspath(__file__))
         self.env = env

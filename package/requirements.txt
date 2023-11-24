@@ -31,3 +31,5 @@ sqlglot==17.15.0
 sql-metadata==2.8.0
 sqlparse==0.4.4
 pathos==0.3.1
+python-pptx==0.6.22
+python-pptx-templater==1.1.15

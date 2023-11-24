@@ -26,9 +26,8 @@ class MetricPerformanceReport(cm.CommonModule):
         """
         metric performance report 모듈을 실행하기 위한 main processd
         """
-
         self.logger.info("metric performance report")
-        warnings.filterwarnings(action='ignore')
+        warnings.filterwarnings(action="ignore")
         self._insert_extend_target_data()
         self._insert_datatable_or_chartgraph()
 
@@ -144,13 +143,13 @@ class MetricPerformanceReport(cm.CommonModule):
         excel 파일이 없으면 새로 생성하여 데이터 insert 한다.
         """
         if os.path.isfile(excel_file_path):
-            #self.logger.info(f"{filename}: filename OVERWRITE")
+            # self.logger.info(f"{filename}: filename OVERWRITE")
             self._check_sheet_name_list(excel_file_path, sql_path, filename)
             self._apply_excel_style(excel_file_path, sql_path, filename)
             self._insert_linechart_from_data(excel_file_path)
 
         else:
-            #self.logger.info(f"{filename}: filename INSERT")
+            # self.logger.info(f"{filename}: filename INSERT")
             self._make_excel_sheet_data(excel_file_path, sql_path, filename)
             self._apply_excel_style(excel_file_path, sql_path, filename)
             self._insert_linechart_from_data(excel_file_path)
@@ -186,10 +185,10 @@ class MetricPerformanceReport(cm.CommonModule):
         wb.close()
 
         if len(not_exist_sheet_list) != 0:
-            #self.logger.info(f"{filename}: filename, {sheet_name} : not_exist_sheet")
+            # self.logger.info(f"{filename}: filename, {sheet_name} : not_exist_sheet")
             self._insert_df_into_excel(excel_file_path, df, not_exist_sheet_list)
 
-        #self.logger.info(f"{filename} overwrite START!")
+        # self.logger.info(f"{filename} overwrite START!")
         self._overwrite_excel_sheet(exist_sheet_list, excel_file_path, df)
 
     def _overwrite_excel_sheet(self, sheet_name_list, excel_file_path, df):

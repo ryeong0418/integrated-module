@@ -70,8 +70,8 @@ class PerformanceAnalyzer(cm.CommonModule):
         self.ot: OracleTarget = None
         self.sql_path = None
         self.position = None
-        self.presentiton_path = "template.pptx"
-        self.presentation = Presentation(self.presentiton_path)
+        self.presentiton_path = None
+
         self.instance_number = None
         self.instance_name = None
 
@@ -80,6 +80,8 @@ class PerformanceAnalyzer(cm.CommonModule):
         self.logger.info("performance_analyzer.pptx")
         self._insert_extend_target_data()
 
+        self.presentiton_path = f"{self.config['home']}/{SystemConstants.EXPORT_DIR}/template.pptx"
+        self.presentation = Presentation(self.presentiton_path)
         self.instance_number = self._extract_instance_info("instance_number")
         self.instance_name = self._extract_instance_info("instance_name")
 
@@ -96,7 +98,7 @@ class PerformanceAnalyzer(cm.CommonModule):
         self._execute_memory()
         self._execute_literal_sql()
         SlideManager.delete_slide(self.presentation)
-        self.presentation.save(f"{self.config['home']}/analyzer_report.pptx")
+        self.presentation.save(f"{self.config['home']}/{SystemConstants.EXPORT_DIR}/analyzer_report.pptx")
 
     def _execute_delete_slide(self):
         """

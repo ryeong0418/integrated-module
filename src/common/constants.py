@@ -41,6 +41,7 @@ class SystemConstants:
     # chart 폴더명
     CHART_EXCEL = "export/excel_chart/excel"
     CHART_SQL = "export/excel_chart/sql"
+    EXPORT_DIR = "export"
 
     # batch_pid_tmp
     TMP_PATH = "tmp"

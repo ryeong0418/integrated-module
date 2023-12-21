@@ -1,0 +1,62 @@
+with INSTANCE as (SELECT INST_ID,
+	                     INSTANCE_NUMBER,
+                         HOST_NAME,
+	                     INSTANCE_NAME
+                    FROM GV$INSTANCE),
+DATABASE as (SELECT INSTANCE.INSTANCE_NUMBER,
+                    A.PLATFORM_NAME
+               FROM GV$DATABASE A, INSTANCE
+              WHERE A.INST_ID = INSTANCE.INST_ID),
+VERSION AS (SELECT INSTANCE.INSTANCE_NUMBER,
+                   B.BANNER
+              FROM GV$VERSION B, INSTANCE
+              WHERE B.INST_ID = INSTANCE.INST_ID),
+OSSTAT AS (SELECT INSTANCE.INSTANCE_NUMBER,
+                  C.STAT_NAME,
+                  decode(C.STAT_NAME, 'PHYSICAL_MEMORY_BYTES', ROUND(C.VALUE/1024/1024/1024) || ' GB', 'NUM_CPUS', C.VALUE || ' Core', C.VALUE) VALUE
+             FROM GV$OSSTAT C, INSTANCE
+            WHERE STAT_NAME IN ('NUM_CPUS','PHYSICAL_MEMORY_BYTES')
+              AND C.INST_ID = INSTANCE.INST_ID),
+SGAINFO AS (SELECT INSTANCE.INSTANCE_NUMBER,
+                   D.NAME,
+                   CASE WHEN D.BYTES >= 1073741824 THEN ROUND(D.BYTES/1024/1024/1024,1) || ' GB'
+                        WHEN D.BYTES >= 1048576 THEN ROUND(D.BYTES/1024/1024,1) || ' MB'
+						WHEN D.BYTES = 0 THEN TO_CHAR(0)
+						ELSE TO_CHAR(ROUND(D.BYTES/1024,1),'FM9990.0') || ' KB'
+				   END VALUE
+              FROM GV$SGAINFO D, INSTANCE
+             WHERE D.NAME IN ('Buffer Cache Size', 'Shared Pool Size', 'Java Pool Size', 'Large Pool Size', 'Streams Pool Size', 'pga_aggregate_limit')
+               AND D.INST_ID = INSTANCE.INST_ID),
+PARAMETER AS (SELECT INSTANCE.INSTANCE_NUMBER,
+                     E.NAME,
+                     CASE WHEN E.VALUE >= 1073741824 THEN ROUND(E.VALUE/1024/1024/1024,1) || ' GB'
+                        WHEN E.VALUE >= 1048576 THEN ROUND(E.VALUE/1024/1024,1) || ' MB'
+						WHEN E.VALUE = 0 THEN TO_CHAR(0)
+						ELSE TO_CHAR(ROUND(E.VALUE/1024,1),'FM9990.0') || ' KB'
+				   END VALUE
+                FROM GV$PARAMETER E, INSTANCE
+               WHERE E.NAME IN ('pga_aggregate_limit')
+                 AND E.INST_ID = INSTANCE.INST_ID)
+select INSTANCE_NUMBER,
+       category,
+       value
+  from (select * from INSTANCE)
+UNPIVOT (value FOR category IN (HOST_NAME, INSTANCE_NAME))
+UNION ALL
+select INSTANCE_NUMBER,
+       category,
+       value
+  from (select * from DATABASE)
+UNPIVOT (value FOR category IN (PLATFORM_NAME))
+UNION ALL
+select INSTANCE_NUMBER,
+       category,
+       value
+  from (select * from VERSION)
+UNPIVOT (value FOR category IN (BANNER))
+UNION ALL
+SELECT * FROM OSSTAT
+UNION ALL
+SELECT * FROM SGAINFO
+UNION ALL
+SELECT * FROM PARAMETER

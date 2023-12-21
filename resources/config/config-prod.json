@@ -17,7 +17,19 @@
 		"sid": "",
 		"user": "",
 		"password": "",
-		"use": true
+		"use": true,
+		"extend_mode": true,
+		"extend_target_repo": [
+			{
+				"host": "",
+				"port": ,
+				"user": "",
+				"password": "",
+				"role": "",
+				"service_name": "",
+				"sid": ""
+			}
+		]
 	},
 	"analysis_repo": {
 		"analysis_target_type": "oracle",

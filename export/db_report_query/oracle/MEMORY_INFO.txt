@@ -1,0 +1,2 @@
+select INST_ID, COMPONENT, CURRENT_SIZE, MIN_SIZE, MAX_SIZE from GV$SGA_DYNAMIC_COMPONENTS
+where component in ('shared pool','shared pool','large pool','java pool','streams pool','DEFAULT buffer cache')

@@ -1,0 +1,32 @@
+WITH recommend AS (SELECT category, name, recommend_val, comm FROM (
+SELECT 'Administration'	AS category, 'undo_retention'							AS name, '3600'		AS recommend_val, 'expired 된 rollback segment 유지 시간, 값이 작을수록 ora-1555 발생 가능성 높음.' AS comm FROM dual UNION ALL
+SELECT 'Administration'	AS category, '_undo_autotune'							AS name, 'FALSE'	AS recommend_val, 'undo_retention의 자동 조정기능을 설정, undo 테이블스페이스 사용률 증가 가능성 높음.' AS comm FROM dual UNION ALL
+SELECT 'Administration'	AS category, '_add_col_optim_enabled'					AS name, 'FALSE'	AS recommend_val, 'UNDO 테이블스페이스 autoextensible=yes 설정 필요.' AS comm FROM dual UNION ALL
+SELECT 'Administration'	AS category, 'deferred_segment_creation'				AS name, 'FALSE'	AS recommend_val, 'column add 시 dictionary만 update 하고 이후 insert시 해당 컬럼이 생성.' AS comm FROM dual UNION ALL
+SELECT 'Administration'	AS category, '_partition_large_extents'					AS name, 'FALSE'	AS recommend_val, '잘못된 결과 값 리턴 가능성 있음.' AS comm FROM dual UNION ALL
+SELECT 'Administration'	AS category, 'resource_manager_plan'					AS name, 'FORCE:'	AS recommend_val, 'create table수행 시 즉시 table을 생성할 지를 결정' AS comm FROM dual UNION ALL
+SELECT 'Administration'	AS category, 'processes'								AS name, '500'		AS recommend_val, 'create 명령수행 직후 table은 dictionary에만 등록되고 segment는 만들어 지지 않고 insert시에 segment생성 됨.' AS comm FROM dual UNION ALL
+SELECT 'Performance'	AS category, '_b_tree_bitmap_plans'						AS name, 'FALSE'	AS recommend_val, 'b*tree 인덱스를 bitmap 연산으로 plan 변경시 SQL 성능저하 발생할 확률 높음.' AS comm FROM dual UNION ALL
+SELECT 'Performance'	AS category, '_optim_peek_user_binds'					AS name, 'FLASE'	AS recommend_val, '바인드 변수에 따라 실행계획을 생성 할지를 설정. Sql plan 변경될 위험 있음.' AS comm FROM dual UNION ALL
+SELECT 'Performance'	AS category, '_optimizer_use_feedback'					AS name, 'FALSE'	AS recommend_val, '잘못된 optimizer 판단으로 sql plan 변경될 위험 있음.' AS comm FROM dual UNION ALL
+SELECT 'Performance'	AS category, '_optimizer_adaptive_cursor_sharing'		AS name, 'FALSE'	AS recommend_val, 'bind 값에 따라 cardinality의 변동이 클경우 cursor sharing을 사용할 지를 결정. 과도한 mutex 이벤트로 false 설정.' AS comm FROM dual UNION ALL
+SELECT 'Performance'	AS category, '_optimizer_extended_cursor_sharing_rel'	AS name, 'NONE'		AS recommend_val, 'SIMPLE설정 시 과도한 mutex wait 발생. 대량 child cursor,high version count, ora-7445발생으로 none권고.' AS comm FROM dual UNION ALL
+SELECT 'Performance'	AS category, '_optimizer_null_aware_antijoin'			AS name, 'FALSE'	AS recommend_val, 'anti join시 null조건 허용여부, 잘못 된 결과값 리턴 이슈로 제거(false)를 권고.' AS comm FROM dual UNION ALL
+SELECT 'Performance'	AS category, '_PX_use_large_pool'						AS name, 'TRUE'		AS recommend_val, 'parallel query수행 시 large pool을 사용하도록 설정. false 일경우 shared pool 메모리를 사용하므로 ORA-4031 발생 가능성 있음.' AS comm FROM dual UNION ALL
+SELECT 'Performance'	AS category, '_optimizer_join_factorization'			AS name, 'FALSE'	AS recommend_val, 'UNION ALL 사용시 query concatetnation 사용여부를 결정. TRUE 일경우 검색 조건이 FILTER 로 사용되어 SQL 성능저하 발생할 확률 높음.' AS comm FROM dual UNION ALL
+SELECT 'Performance'	AS category, '_query_execution_cache_max_size'			AS name, '10485760'	AS recommend_val, 'Scalar subquery 사용시 결과값을 캐시하는 buffer 의 크기 10Mb 이상 권장.' AS comm FROM dual UNION ALL
+SELECT 'Performance'	AS category, '_use_adaptive_log_file_sync'				AS name, 'FALSE'	AS recommend_val, 'LGWR 이 온라인 리두로그 기록시 polling/posting 방식으로 실시간 스위치 할지 선택. True 일경우 실시간 스위치 사용, 이때 log file sync 이벤트 증가 할 수 있음.' AS comm FROM dual UNION ALL
+SELECT 'Performance'	AS category, 'session_cached_cursors'					AS name, '100'		AS recommend_val, '세션 PGA에 캐시될 3번이상 수행된 커서의 개수. Soft 파싱시 library cache 이벤트 줄임.' AS comm FROM dual UNION ALL
+SELECT 'Performance'	AS category, 'large_pool_size'							AS name, '67108864'	AS recommend_val, 'large pool size 값을 64Mb로 설정.' AS comm FROM dual UNION ALL
+SELECT 'Performance'	AS category, '_cleanup_rollback_entries'				AS name, '300'		AS recommend_val, 'serial transaction rollback시 1회에 수행하는 entry 개수. 좀 더 빠른 프로세스 정리를 위해 큰 값으로 권고.' AS comm FROM dual))
+SELECT z.category,
+	   z.name ,
+	   y.KSPPSTDFL default_val,
+	   y.ksppstvl VALUE,
+       z.recommend_val,
+	   z.comm
+FROM   sys.xm$ksppi x,
+	   sys.xm$ksppsv y,
+	   recommend z
+WHERE  x.indx = y.indx
+and x.ksppinm = z.name

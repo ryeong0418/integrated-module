@@ -1,0 +1,24 @@
+WITH tot AS (SELECT SUM(elapsed_time) elap_time_tot,
+					SUM(cpu_time) cpu_time_tot,
+					SUM(sharable_mem) sharable_mem_tot
+			   FROM gv$sqlarea
+			  WHERE executions > 0
+				AND inst_id = (SELECT INST_ID FROM GV$INSTANCE WHERE INSTANCE_NUMBER = '#(INST_NUM)'))  --PARAMETER1
+SELECT 'SQLAREA' sql_id, NULL, NULL as sql_text, '=100%-SUM($D$3:$D$22)' as "SIZE" FROM DUAL
+UNION ALL
+SELECT b.sql_id,
+       NULL,
+	   REPLACE(REPLACE(b.sql_text, CHR(13), ' '), CHR(10), ' ') sql_text,
+	   (SELECT TO_CHAR(ROUND(b.shar_mem_sum/tot.sharable_mem_tot*100,1),'FM990.0') FROM TOT) || '%' AS "SIZE"
+  FROM (SELECT a.*
+		  FROM (SELECT sql_id,
+					   sql_text,
+					   SUM( sharable_mem ) OVER( PARTITION BY force_matching_signature ) shar_mem_sum,
+					   ROW_NUMBER() over (PARTITION BY force_matching_signature ORDER  BY EXECUTIONS DESC ) rn
+				  FROM gv$sqlarea
+				 WHERE executions > 0
+				   AND force_matching_signature <> 0
+				   AND inst_id = (SELECT INST_ID FROM GV$INSTANCE WHERE INSTANCE_NUMBER = '#(INST_NUM)')) a --PARAMETER1
+		 WHERE a.rn = 1
+		ORDER BY a.shar_mem_sum DESC) b
+WHERE ROWNUM <= 20

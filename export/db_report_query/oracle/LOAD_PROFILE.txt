@@ -1,0 +1,24 @@
+WITH SNAP_DATE AS (SELECT SNAP_ID, DBID, INSTANCE_NUMBER, BEGIN_INTERVAL_TIME, END_INTERVAL_TIME
+                     FROM DBA_HIST_SNAPSHOT
+                    WHERE BEGIN_INTERVAL_TIME >= TRUNC(TO_DATE( '#(StartDate)' , 'YYYYMMDD' ))		--PARAMETER 1 (시작일자)
+					  AND BEGIN_INTERVAL_TIME < TRUNC(TO_DATE( '#(EndDate)' , 'YYYYMMDD' ))	--PARAMETER 1 & PARAMETER 2 (시작일자 & INTERVAL)
+					  AND TO_NUMBER(TO_CHAR(BEGIN_INTERVAL_TIME, 'HH24')) >= '#(StartTime)'				--PARAMETER3 (시작시간)
+					  AND TO_NUMBER(TO_CHAR(BEGIN_INTERVAL_TIME, 'HH24')) < '#(EndTime)')				--PARAMETER3 & PARAMETER4 (시작시간 & INTERVAL)
+SELECT a.METRIC_NAME,
+	   DECODE(a.METRIC_NAME,'Logical Reads Per Sec','Block/sec','Physical Reads Per Sec','Block/sec','Per sec') unit,
+       (select INSTANCE_NAME FROM GV$INSTANCE x WHERE x.INSTANCE_NUMBER = a.INSTANCE_NUMBER) SID,
+	   TO_CHAR(a.BEGIN_TIME,'YYYY-MM-DD') MMDD,
+       ROUND(AVG(a.AVERAGE)) VALUE
+  FROM dba_hist_sysmetric_summary a,
+	   SNAP_DATE b
+ WHERE a.snap_id = b.snap_id
+   AND a.METRIC_NAME IN ('Host CPU Utilization (%)',
+                       'Average Active Sessions',
+					   'User Calls Per Sec',
+					   'Executions Per Sec',
+                       'User Transaction Per Sec',
+			           'Logical Reads Per Sec',
+					   'Physical Reads Per Sec',
+					   'Hard Parse Count Per Sec')
+GROUP BY a.INSTANCE_NUMBER,TO_CHAR(a.BEGIN_TIME,'YYYY-MM-DD'),a.METRIC_NAME
+ORDER BY DECODE(a.METRIC_NAME,'Host CPU Utilization (%)',1,'Average Active Sessions',2,'User Calls Per Sec',3,'Executions Per Sec',4,'User Transaction Per Sec',5,'Logical Reads Per Sec',6,'Physical Reads Per Sec',7,'Hard Parse Count Per Sec',8,9),a.INSTANCE_NUMBER,TO_CHAR(a.BEGIN_TIME,'YYYY-MM-DD')

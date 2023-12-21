@@ -1,0 +1,55 @@
+WITH recommend AS (SELECT category, name, recommend_val, comm FROM (
+SELECT 'Optimizer'  AS category, '_optim_peek_user_binds'				 		AS name, 'FALSE' AS recommend_val, 'Bind peeking 활셩화 여부(bind 변수에 따라 실행계획이 변경 되는 것을 방지)' AS comm FROM dual UNION ALL
+SELECT 'Optimizer'  AS category, '_optimizer_use_feedback'				 		AS name, 'FALSE' AS recommend_val, 'Cardinality feedback 기능 제어(plan변경 가능성 있어 사용 안함)' AS comm FROM dual UNION ALL
+SELECT 'Optimizer'  AS category, '_optimizer_adaptive_cursor_sharing'	 		AS name, 'FALSE' AS recommend_val, 'Bind 값을 참조하여 여러 plan생성(plan변경 가능성 있어 사용 안함)' AS comm FROM dual UNION ALL
+SELECT 'Optimizer'  AS category, '_optimizer_extended_cursor_sharing_rel' 		AS name, 'NONE ' AS recommend_val, 'Bind 값을 참조하여 여러 plan생성(plan변경 가능성 있어 사용 안함)' AS comm FROM dual UNION ALL
+SELECT 'Optimizer'  AS category, 'optimizer_dynamic_sampling'			 		AS name, '0'     AS recommend_val, '통계정보가 없는 테이블에 대해 SQL 수행 시 통계정보를 샘플링하여 생성(정확하지 않고, 시스템부하로 인해 사용 안함)' AS comm FROM dual UNION ALL
+SELECT 'Optimizer'  AS category, 'optimizer_adaptive_plans' 				 	AS name, 'FALSE' AS recommend_val, '옵티마이져가 여러 실행계획을 가지고 선택적으로 plan을 변경하는 기능(plan변경 가능성 있어 사용 안함)' AS comm FROM dual UNION ALL
+SELECT 'Optimizer'  AS category, 'optimizer_adaptive_statistics'			 	AS name, 'FALSE' AS recommend_val, 'Plan변경 가능성 있어 사용 안함' AS comm FROM dual UNION ALL
+SELECT 'Optimizer'  AS category, '_optimizer_batch_table_access_by_rowid' 		AS name, 'FALSE' AS recommend_val, 'Single block i/o 성능 개선을 위해 batch io 지원,정렬이 안되는 경우 있어 사용 안함' AS comm FROM dual UNION ALL
+SELECT 'Optimizer'  AS category, '_optimizer_gather_stats_on_load'		 		AS name, 'FALSE' AS recommend_val, 'CTAS 및 Direct path insert 시 자동으로 통계정보를 생성하는 기능(plan 변경 가능성 있어 사용 안함)' AS comm FROM dual UNION ALL
+SELECT 'Optimizer'  AS category, '_optimizer_gather_stats_on_load_index'	 	AS name, 'FALSE' AS recommend_val, 'CTAS 및 Direct path insert 시 자동으로 통계정보를 생성하는 기능(plan 변경 가능성 있어 사용 안함)' AS comm FROM dual UNION ALL
+SELECT 'Optimizer'  AS category, 'optimizer_adaptive_reporting_only'			AS name, 'TRUE'  AS recommend_val, 'Adaptive plan에 대한 필요한 정보 수집. Adaptive plan은 적용되지 않고 필요한 로그만 수집.' AS comm FROM dual UNION ALL
+SELECT 'Optimizer'  AS category, '_rowsets_enabled'								AS name, 'FALSE' AS recommend_val, '특정 sql operation에 대해 row source를 batch처리. 잘못된 결과 값을 반환하는 경우가 있어 사용 안함.' AS comm FROM dual UNION ALL
+SELECT 'Optimizer'  AS category, '_optimizer_unnest_scalar_sq'					AS name, 'FALSE' AS recommend_val, '스칼라 서브쿼리에서 집계성 쿼리가 수행될 경우 outer hash조인으로 변경되어 성능 지연 발생하므로 사용 안함.' AS comm FROM dual UNION ALL
+SELECT 'Optimizer'  AS category, '_optimizer_cbqt_or_expansion' 				AS name, 'OFF'   AS recommend_val, 'Or 구문을 union all로 변경하는 과정에서 파싱타임이 지연되는 사례 있어 사용 안함.' AS comm FROM dual UNION ALL
+SELECT 'Optimizer'  AS category, '_optimizer_join_factorization'				AS name, 'FALSE' AS recommend_val, 'Union all처리 시 각 쿼리 블록의 부분범위 처리를 방해하여 쿼리 성능 지연 유발하므로 사용 안함.' AS comm FROM dual UNION ALL
+SELECT 'Optimizer'  AS category, '_optimizer_gather_stats_on_conventional_dml'	AS name, 'FALSE' AS recommend_val, 'DML문에 대해서 통계정보 수집(PLAN 변경 가능성 있어 사용 안함)' AS comm FROM dual UNION ALL
+SELECT 'Optimizer'  AS category, '_optimizer_use_stats_on_conventional_dml' 	AS name, 'FALSE' AS recommend_val, 'DML문에 대해서 통계정보 수집(PLAN 변경 가능성 있어 사용 안함)' AS comm FROM dual UNION ALL
+SELECT 'Optimizer'  AS category, '_optimizer_null_aware_antijoin'				AS name, 'TRUE'  AS recommend_val, 'Subquery anti join 의 성능 개선을 위해 적용' AS comm FROM dual UNION ALL
+SELECT 'Optimizer'  AS category, '_optimizer_coalesce_subqueries' 				AS name, 'FALSE' AS recommend_val, '서브 쿼리 중복되는 부분을 하나의 쿼리로 인식하여 수행. 부분범위 처리 불가 경우 성능 지연 가능성 있어 사용 안함' AS comm FROM dual UNION ALL
+SELECT 'Optimizer'  AS category, '_in_memory_cdt'								AS name, 'ON'    AS recommend_val, 'With절 결과를 메모리에서 처리' AS comm FROM dual UNION ALL
+SELECT 'RAC' 		AS category, '_gc_policy_time'								AS name, '0'     AS recommend_val, 'Dynamic remastering기능 제어 (gc 이벤트 발생 가능성을 최소화 하기 위해 사용 안함)' AS comm FROM dual UNION ALL
+SELECT 'RAC' 		AS category, '_gc_undo_affinity' 							AS name, 'FALSE' AS recommend_val, 'Dynamic remastering기능 제어 (gc 이벤트 발생 가능성을 최소화 하기 위해 사용 안함)' AS comm FROM dual UNION ALL
+SELECT 'RAC' 		AS category, '_gc_bypass_readers'							AS name, 'FALSE' AS recommend_val, 'Read/write 가 빈번한 블록에 대해 성능 개선을 위한 기능PDML 수행 시 dead lock 발생 사례로 사용 안함.' AS comm FROM dual UNION ALL
+SELECT 'RAC' 		AS category, '_gc_read_mostly_locking'						AS name, 'FALSE' AS recommend_val, '인스턴스 crash, ora-0600 사례로 사용 안함.' AS comm FROM dual UNION ALL
+SELECT 'RAC' 		AS category, '_gc_dump_remote_lock'							AS name, 'FALSE' AS recommend_val, 'Block dump시 local, remote 로 수행할지 결정. Remote dump시 성능지연 사례 있어 사용 안함.' AS comm FROM dual UNION ALL
+SELECT 'RAC' 		AS category, '_dlm_stats_collect'							AS name, '0'     AS recommend_val, 'DLM 통계정보를 수행하여 DRM에 사용할지 결정. SCM프로세스 CPU 사용률이 증가하므로 사용 안함.' AS comm FROM dual UNION ALL
+SELECT 'RAC' 		AS category, 'parallel_force_local' 						AS name, 'TRUE'  AS recommend_val, 'PARALLEL 쿼리를 LOCAL에서만 수행.' AS comm FROM dual UNION ALL
+SELECT 'Normal' 	AS category, '_use_single_log_writer'						AS name, 'TRUE'  AS recommend_val, 'LGWR 백그라운드 프로세스의 scalable 기능제어. 오동작으로 인한 instance crash 사례로 사용.' AS comm FROM dual UNION ALL
+SELECT 'Normal' 	AS category, '_use_adaptive_log_file_sync'					AS name, 'FALSE' AS recommend_val, 'log file sync 시 post/wait 와 polling 방식 선택. 오동작으로 인한 성능 지연으로 사용 안함.' AS comm FROM dual UNION ALL
+SELECT 'Normal' 	AS category, '_cursor_obsolete_threshold'					AS name, '1024'  AS recommend_val, 'Child cursor 개수 제한.' AS comm FROM dual UNION ALL
+SELECT 'Normal' 	AS category, '_cursor_reload_failure_threshold'				AS name, '5'     AS recommend_val, 'Cursor reload failure 발생 시 retry 회수 제어, ddl수행으로 인한 library cache lock에 의한 성능 개선.' AS comm FROM dual UNION ALL
+SELECT 'Normal' 	AS category, '_kks_parse_error_warning'						AS name, '0'     AS recommend_val, 'Parse error 100번 발생 시 기록. 불필요한 로그가 많이 생성되어 필요시 이벤트 설정으로 대체.' AS comm FROM dual UNION ALL
+SELECT 'Normal' 	AS category, '_add_col_optim_enabled'						AS name, 'FALSE' AS recommend_val, '컬럼 추가 시 dictionary 먼저 update하고 추후 insert사 수행될 제어 , ora-7445 에러 발생으로 사용 안함.' AS comm FROM dual UNION ALL
+SELECT 'Normal' 	AS category, '_partition_large_extents'						AS name, 'FALSE' AS recommend_val, '파티션 테이블의 초기 익스턴스 사이즈가 8M 로 크게 생성되는 것을 방지 하기 위해 사용 안함.' AS comm FROM dual UNION ALL
+SELECT 'Normal' 	AS category, 'deferred_segment_creation'					AS name, 'FALSE' AS recommend_val, '테이블 생성시 dictionary 만 update 되고 inser가 수행되면 세그먼트 생성, ora-600 에러 발생으로 사용 안함.' AS comm FROM dual UNION ALL
+SELECT 'Normal' 	AS category, 'resource_manager_plan'						AS name, 'FORCE:'AS recommend_val, '비효율적 자원 사용으로 Resourcr manager 사용 안함.' AS comm FROM dual UNION ALL
+SELECT 'Normal' 	AS category, '_rollback_segment_count'						AS name, '1000'  AS recommend_val, '성능 향상을 위해 온라인 undo 세그먼트를 미리 생성.' AS comm FROM dual UNION ALL
+SELECT 'Normal' 	AS category, '_rollback_segment_count'						AS name, '1000'  AS recommend_val, '성능 향상을 위해 온라인 undo 세그먼트를 미리 생성.' AS comm FROM dual UNION ALL
+SELECT 'Normal' 	AS category, '_cleanup_rollback_entries'					AS name, '2000'  AS recommend_val, 'Transaction cleanup 처리 시 한번에 처리할 undo entries 개수.' AS comm FROM dual UNION ALL
+SELECT 'Normal' 	AS category, '_undo_autotune'								AS name, 'FALSE' AS recommend_val, 'Undo 세그먼트 auto tune 기능 제어. Long term 쿼리 수행시 undo 세그먼트 크기 증가로 사용 안함.' AS comm FROM dual UNION ALL
+SELECT 'Normal' 	AS category, 'undo_retention'								AS name, '10800' AS recommend_val, '읽기 일관성 보고 ora-01555 에러 발생을 최소화 하기 위해 적절한 값으로 설정.' AS comm FROM dual UNION ALL
+SELECT 'Normal' 	AS category, 'client_statistics_level'						AS name, 'OFF'   AS recommend_val, 'Client 세션의 network 통계를 수집하기 위한 기능. SQLPLUS 에서 1초 Delay 발생으로 사용 안함.' AS comm FROM dual UNION ALL
+SELECT 'Normal'		AS category, 'processes'									AS name, '500'	 AS recommend_val, 'create 명령수행 직후 table은 dictionary에만 등록되고 segment는 만들어 지지 않고 insert시에 segment생성 됨.' AS comm FROM dual ))
+SELECT z.category,
+	   z.name ,
+	   y.KSPPSTDFL default_val,
+	   y.ksppstvl VALUE,
+       z.recommend_val,
+	   z.comm
+FROM   sys.xm$ksppi x,
+	   sys.xm$ksppsv y,
+	   recommend z
+WHERE  x.indx = y.indx
+and x.ksppinm = z.name

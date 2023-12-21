@@ -253,6 +253,20 @@ class PptSql:
     SELECT_INSTANCE_NUMBER = """
             SELECT INSTANCE_NUMBER,
                    INSTANCE_NAME,
-                   COUNT(INSTANCE_NUMBER) OVER () INST_TOT_COUNT
+                   COUNT(INSTANCE_NUMBER) OVER () INST_TOT_COUNT,
+                   substr(VERSION,1,2) ORACLE_VERSION,
+                   DATABASE_TYPE
             FROM GV$INSTANCE
+            """
+
+    SELECT_ACTIVITY_INFO = """
+            select 'Oracle ' || (select EDITION from V$INSTANCE) || ' '
+                            || substr(substr(BANNER_FULL,instr(BANNER_FULL, 'Version')),9) || ' '
+                            || (select DATABASE_TYPE from V$INSTANCE) || ', '
+                            || (select PLATFORM_NAME from V$DATABASE)
+            from v$version
+            """
+
+    SELECT_SYSDATE = """
+            SELECT TO_CHAR(TRUNC(SYSDATE),'YYYY.MM.DD') FROM DUAL
             """

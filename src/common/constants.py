@@ -38,9 +38,11 @@ class SystemConstants:
     SQL_PATH = "export/sql_excel/sql"
     EXCEL_PATH = "export/sql_excel/excel"
 
+    TEMPLATE_PATH = "resources/template"
+
     # chart 폴더명
     CHART_EXCEL = "export/excel_chart/excel"
-    CHART_SQL = "export/excel_chart/sql"
+    CHART_SQL = "export/db_report_query/oracle"
     EXPORT_DIR = "export"
 
     # batch_pid_tmp

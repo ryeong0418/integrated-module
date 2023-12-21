@@ -79,6 +79,8 @@ class SystemUtils:
         parser.add_argument("--proc", required=True)
         parser.add_argument("--s_date")
         parser.add_argument("--interval")
+        parser.add_argument("--s_time")
+        parser.add_argument("--s_interval")
 
         args = parser.parse_args()
         return args
@@ -468,7 +470,7 @@ class DateUtils:
         return date_conditions
 
     @staticmethod
-    def get_each_date_by_interval2(s_date, interval, arg_fmt):
+    def get_each_date_by_interval2(s_date, interval, s_time, time_interval, arg_fmt):
         """
         input_date에서 interval 이후 날짜를 구하기 위한 함수
         :param s_date: 시작 날짜
@@ -476,12 +478,13 @@ class DateUtils:
         :param arg_fmt: 시작 날짜 format
         :return: 시작날짜 , 끝날짜
         """
-        s_date = datetime.strptime(str(s_date), "%Y%m%d")
-        e_date = s_date + timedelta(days=int(interval))
-        s_date = s_date.strftime(arg_fmt)
+        s_date = datetime.strptime(str(s_date), "%Y%m%d")  # 2023-11-26 00:00:00
+        e_date = s_date + timedelta(days=int(interval) - 1)
+        s_date = s_date.strftime(arg_fmt)  # 2023-11-26
         e_date = e_date.strftime(arg_fmt)
+        e_time = str(int(s_time) + int(time_interval))
 
-        return s_date, e_date
+        return s_date, e_date, s_time, e_time
 
 
 class ExcelUtils:

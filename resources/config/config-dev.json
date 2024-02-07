@@ -1,32 +1,32 @@
 {
 	"intermax_repo": {
 		"analysis_target_type": "",
-		"collector_db_type": "postgres",
-		"host": "10.10.48.173",
-		"port": 5432,
-		"sid": "intermax",
-		"user": "intermax",
-		"password": "intermax",
+		"collector_db_type": "",
+		"host": "",
+		"port": ,
+		"sid": "",
+		"user": "",
+		"password": "",
 		"use": true
 	},
 	"maxgauge_repo": {
-		"analysis_target_type": "oracle",
-		"collector_db_type": "postgres",
-		"host": "10.20.132.206",
-		"port": 5430,
-		"sid": "MFO",
-		"user": "postgres",
-		"password": "intermax",
-		"use": true,
-		"extend_mode": true,
+		"analysis_target_type": "",
+		"collector_db_type": "",
+		"host": "",
+		"port": ,
+		"sid": "",
+		"user": "",
+		"password": "",
+		"use": ,
+		"extend_mode": ,
 		"extend_target_repo": [
 			{
-				"host": "10.10.48.36",
-				"port": 1918,
-				"user": "sys",
-				"password": "oracle",
-				"role": "sysdba",
-				"service_name": "ORCLCDB",
+				"host": "",
+				"port": ,
+				"user": "",
+				"password": "",
+				"role": "",
+				"service_name": "",
 				"sid": ""
 			}
 		]

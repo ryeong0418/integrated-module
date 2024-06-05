@@ -32,13 +32,13 @@
 		]
 	},
 	"analysis_repo": {
-		"analysis_target_type": "oracle",
-		"collector_db_type": "postgres",
-		"host": "10.10.47.241",
-		"port": 15432,
-		"sid": "postgres",
-		"user": "postgres",
-		"password": "dmddyd2307!"
+		"analysis_target_type": "",
+		"collector_db_type": "",
+		"host": "",
+		"port": ,
+		"sid": "",
+		"user": "",
+		"password": "!"
 	},
 	"scheduler": {
 		"is_alive_sched": {

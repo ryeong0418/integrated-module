@@ -34,11 +34,11 @@
 	"analysis_repo": {
 		"analysis_target_type": "oracle",
 		"collector_db_type": "postgres",
-		"host": "127.0.0.1",
-		"port": 5432,
-		"sid": "aeproject",
-		"user": "aeproject",
-		"password": "7WRPw6hnKS5KJpUcZF8F"
+		"host": "",
+		"port": ,
+		"sid": "",
+		"user": "",
+		"password": ""
 	},
 	"scheduler": {
 		"is_alive_sched": {
